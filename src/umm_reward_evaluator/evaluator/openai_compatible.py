@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from umm_reward_evaluator.manifest import append_jsonl, read_jsonl, validate_row
-from umm_reward_evaluator.media import discover_frame_paths, image_to_data_url, sample_frames, summarize_actions
+from umm_reward_evaluator.media import sampled_image_data_urls, summarize_actions
 from umm_reward_evaluator.evaluator.prompts import ROLL_OUT_REWARD_PROMPT, SYSTEM_PROMPT
 
 
@@ -38,10 +38,10 @@ def wait_ready(api_base: str, timeout: int) -> bool:
 
 def build_messages(row: dict[str, Any], num_frames: int) -> list[dict[str, Any]]:
     validate_row(row)
-    frames = sample_frames(discover_frame_paths(row), num_frames)
-    if not frames:
+    data_urls = sampled_image_data_urls(row, num_frames)
+    if not data_urls:
         raise ValueError(
-            f"{row.get('case_id')}/{row.get('candidate_id')} has no frame_paths or frames_dir"
+            f"{row.get('case_id')}/{row.get('candidate_id')} has no usable frame_paths, frames_dir, or rollout_video"
         )
     prompt = ROLL_OUT_REWARD_PROMPT.format(
         instruction=row.get("instruction", ""),
@@ -50,8 +50,8 @@ def build_messages(row: dict[str, Any], num_frames: int) -> list[dict[str, Any]]
         action_summary=summarize_actions(row),
     )
     content: list[dict[str, Any]] = [{"type": "text", "text": prompt}]
-    for path in frames:
-        content.append({"type": "image_url", "image_url": {"url": image_to_data_url(path)}})
+    for data_url in data_urls:
+        content.append({"type": "image_url", "image_url": {"url": data_url}})
     return [
         {"role": "system", "content": [{"type": "text", "text": SYSTEM_PROMPT}]},
         {"role": "user", "content": content},

@@ -43,6 +43,15 @@ Install the local package:
 pip install -e .
 ```
 
+Convert NanoWM planning outputs to a rollout manifest:
+
+```bash
+python -m umm_reward_evaluator.exporters.nanowm_planning \
+  --planning-dir /path/to/planning_results \
+  --output outputs/manifests/pusht_rollouts.jsonl \
+  --extract-frames-root outputs/frames/pusht
+```
+
 Given a rollout manifest, create hard negatives:
 
 ```bash
@@ -50,6 +59,14 @@ python -m umm_reward_evaluator.hard_negatives \
   --manifest outputs/manifests/pusht_rollouts.jsonl \
   --output outputs/manifests/pusht_hard_negatives.jsonl \
   --include-originals
+```
+
+Compute pixel baselines:
+
+```bash
+python -m umm_reward_evaluator.metrics.pixel \
+  --manifest outputs/manifests/pusht_hard_negatives.jsonl \
+  --output outputs/scores/pixel_scores.jsonl
 ```
 
 Score rollouts with an OpenAI-compatible multimodal endpoint:
@@ -70,8 +87,8 @@ python -m umm_reward_evaluator.analysis.pairwise_negatives --scores outputs/scor
 python -m umm_reward_evaluator.analysis.rerank --scores outputs/scores/umm_scores.jsonl
 ```
 
-The next missing component is a NanoWM rollout exporter that produces
-`outputs/manifests/pusht_rollouts.jsonl`.
+For UMM-vs-VLM comparisons, run the same manifest through multiple evaluator
+configs and compare their outputs with the analysis scripts.
 
 ## Reference Projects
 

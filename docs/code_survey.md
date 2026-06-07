@@ -39,6 +39,15 @@ Recommended integration:
 - Later add a top-k reranking stage after CEM produces candidate rollouts.
 - Avoid putting slow UMM calls inside every CEM iteration.
 
+Current implementation:
+
+- `umm_reward_evaluator.exporters.nanowm_planning` parses NanoWM
+  `planning_results.json` and `episode_*.mp4` files.
+- It can extract sampled frames and split NanoWM side-by-side videos into
+  rollout frames plus a goal frame.
+- This enables episode-level evaluator correlation immediately.
+- Candidate-level reranking still requires a deeper NanoWM CEM export hook.
+
 ## Echo-Memory
 
 Local path:

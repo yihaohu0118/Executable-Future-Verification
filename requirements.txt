@@ -1,1 +1,4 @@
+imageio[ffmpeg]>=2.34
+numpy>=1.24
+pillow>=10.0
 requests>=2.31

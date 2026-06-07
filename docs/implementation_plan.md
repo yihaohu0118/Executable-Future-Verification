@@ -5,8 +5,10 @@
 Implemented modules:
 
 - `umm_reward_evaluator.manifest`
+- `umm_reward_evaluator.exporters.nanowm_planning`
 - `umm_reward_evaluator.hard_negatives`
 - `umm_reward_evaluator.evaluator.openai_compatible`
+- `umm_reward_evaluator.metrics.pixel`
 - `umm_reward_evaluator.analysis.correlate`
 - `umm_reward_evaluator.analysis.rerank`
 - `umm_reward_evaluator.analysis.pairwise_negatives`
@@ -14,10 +16,19 @@ Implemented modules:
 Expected flow:
 
 ```bash
+python -m umm_reward_evaluator.exporters.nanowm_planning \
+  --planning-dir /path/to/nanowm/planning_results \
+  --output outputs/manifests/pusht_rollouts.jsonl \
+  --extract-frames-root outputs/frames/pusht
+
 python -m umm_reward_evaluator.hard_negatives \
   --manifest outputs/manifests/pusht_rollouts.jsonl \
   --output outputs/manifests/pusht_hard_negatives.jsonl \
   --include-originals
+
+python -m umm_reward_evaluator.metrics.pixel \
+  --manifest outputs/manifests/pusht_hard_negatives.jsonl \
+  --output outputs/scores/pixel_scores.jsonl
 
 python -m umm_reward_evaluator.evaluator.openai_compatible \
   --manifest outputs/manifests/pusht_hard_negatives.jsonl \
@@ -37,13 +48,15 @@ python -m umm_reward_evaluator.analysis.rerank \
 
 ## Next Missing Piece
 
-The current pipeline expects a rollout manifest. The next implementation task is
-a NanoWM exporter that runs or wraps NanoWM planning, decodes candidate rollouts
-to frames/videos, and writes `outputs/manifests/pusht_rollouts.jsonl`.
+The current exporter converts NanoWM episode-level planning outputs into a
+manifest. The next implementation task is candidate-level export from inside
+NanoWM CEM planning, so reranking can compare multiple action candidates per
+initial state instead of only scoring the final planned episode.
 
-That exporter should not modify NanoWM initially. It should either:
+That candidate exporter should initially avoid invasive NanoWM changes. It can:
 
-1. call NanoWM scripts and collect their saved outputs, or
+1. wrap a modified CEM top-k export path in a local adapter, or
 2. import NanoWM planning modules and add a local decode/export path.
 
-The safer first choice is script-level wrapping.
+The episode-level exporter is sufficient for first-pass correlation and
+hard-negative experiments.

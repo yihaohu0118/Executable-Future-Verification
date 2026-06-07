@@ -9,6 +9,9 @@ description = "UMM reward evaluator utilities for action-conditioned world-model
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+  "imageio[ffmpeg]>=2.34",
+  "numpy>=1.24",
+  "pillow>=10.0",
   "requests>=2.31",
 ]
 
