@@ -1,0 +1,7 @@
+output_manifest: outputs/manifests/hard_negatives.jsonl
+output_root: outputs/hard_negatives
+types:
+  - temporal_reverse
+  - temporal_shuffle
+  - action_shuffle
+  - goal_swap

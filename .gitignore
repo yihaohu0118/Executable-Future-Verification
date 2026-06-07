@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Environments
+.venv/
+venv/
+env/
+.env
+
+# Data and outputs
+data/raw/
+data/videos/
+outputs/
+runs/
+wandb/
+third_party/
+
+# OS/editor
+.DS_Store
+.idea/
+.vscode/

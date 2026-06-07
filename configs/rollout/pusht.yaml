@@ -1,0 +1,10 @@
+task: pusht
+world_model_repo: third_party/nano-world-model
+dataset: dino_wm/pusht
+model: nanowm_b2
+checkpoint: null
+num_cases: 100
+candidates_per_case: 16
+horizon: 5
+output_root: outputs/rollouts/pusht
+manifest: outputs/manifests/pusht_rollouts.jsonl
