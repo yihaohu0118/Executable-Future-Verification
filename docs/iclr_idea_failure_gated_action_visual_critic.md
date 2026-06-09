@@ -150,6 +150,22 @@ Interpretation:
 - StackCube is harder but reaches 48/50 with only 8 training cases and 49/50 with 16.
 - This supports the claim that failure detection can be data-efficient, while also showing that contact-rich tasks need task-specific calibration.
 
+Learned proposal diagnostic:
+
+| Candidate source / selector | Success | Recovered rank0 failures | Notes |
+| --- | ---: | ---: | --- |
+| First learned proposal sample | 25/50 | 0/25 | stochastic sample from trained success-conditioned proposal |
+| Action critic on learned samples | 49/50 | 24/25 | zero-action control stays 25/50 |
+| Likelihood-ranked proposal | 44/50 | 0/6 | strong proposal-likelihood baseline |
+| Global action critic on likelihood-ranked samples | 49/50 | 6/6 | recovers failures but harms one successful rank0 |
+| Failure-gated action critic on likelihood-ranked samples | 50/50 | 6/6 | preserves 43 rank0 choices and reaches oracle success |
+
+Interpretation:
+
+- This reduces the hand-designed candidate-family concern: candidates come from a trained high-level grasp proposal fit to successful rollouts.
+- Proposal likelihood is not equivalent to physical success.
+- The full FAVC mechanism is visible: action critic recovers proposal failures, while the gate prevents unnecessary harmful overrides.
+
 ### Video-Frame Selector
 
 Case-heldout MLP over rendered RGB frame features:
@@ -210,6 +226,7 @@ The common framing is to build a stronger planner, larger world model, or global
 - a globally shared critic can fail even with a task one-hot, while per-task calibration recovers most of the gap;
 - failure gating is a calibration tradeoff, not a free replacement for global reranking;
 - failure detection is data-efficient on these diagnostics, but the sample complexity differs sharply across contact regimes;
+- a trained proposal can rank likely samples well while still missing physical execution failures that a rollout critic detects;
 - the critic can recover failures caused by small action-geometry mistakes;
 - action/video signals can expose failure even when the candidate appears plausible;
 - in the current slice, temporal order is less important than expected.
@@ -218,11 +235,11 @@ The common framing is to build a stronger planner, larger world model, or global
 
 These must be addressed before this is paper-ready:
 
-1. ManiSkill candidate source is privileged diagnostic, not a policy-generated baseline.
+1. ManiSkill low-level executor is still privileged diagnostic, even though the newest grasp proposal is trained.
 2. PickCube brittle-grasp profile is intentionally constructed.
 3. Current video/action selectors may exploit candidate-family regularities.
 4. Current phenomenon does not prove temporal world modeling because shuffle-time controls remain strong.
-5. Need a policy-generated candidate source for external validity.
+5. Need a full low-level policy-generated candidate source or official benchmark demonstrations for external validity.
 6. Need a harder fusion benchmark because current action/video critics each solve the slice independently.
 7. Need uncertainty-aware gate calibration; StackCube mixed-rank shows a conservative gate can preserve a failing rank0.
 
@@ -230,16 +247,21 @@ These must be addressed before this is paper-ready:
 
 Priority order:
 
-1. Train a gate that combines visual-progress anchor and action/video critic on heterogeneous failures.
-2. Replace privileged candidates with BC/diffusion-policy top-k samples.
-3. Move to LIBERO once the ManiSkill gate is stable.
+1. Replace the diagnostic low-level executor with BC/diffusion-policy top-k samples.
+2. Move to LIBERO once a usable policy candidate source is available.
+3. Add uncertainty-aware calibration to the gate and evaluate under mixed proposal qualities.
 
 ## Implemented Files
 
 - `src/umm_reward_evaluator/benchmarks/maniskill_candidate_pool.py`
 - `src/umm_reward_evaluator/benchmarks/train_action_sequence_selector.py`
+- `src/umm_reward_evaluator/benchmarks/train_multitask_action_sequence_selector.py`
+- `src/umm_reward_evaluator/benchmarks/train_gated_action_sequence_selector.py`
+- `src/umm_reward_evaluator/benchmarks/train_action_sequence_selector_scaling.py`
 - `src/umm_reward_evaluator/benchmarks/train_video_frame_selector.py`
 - `src/umm_reward_evaluator/benchmarks/train_action_video_fusion_selector.py`
+- `src/umm_reward_evaluator/benchmarks/maniskill_bc_policy_pool.py`
+- `src/umm_reward_evaluator/benchmarks/maniskill_learned_grasp_proposal_pool.py`
 - `src/umm_reward_evaluator/benchmarks/shuffle_manifest_rows.py`
 - `docs/maniskill_pickcube_brittle_grasp_headroom.md`
 - `docs/maniskill_pickcube_action_selector_results.md`
@@ -250,6 +272,7 @@ Priority order:
 - `docs/maniskill_multitask_action_critic.md`
 - `docs/maniskill_mixed_rank_gate_diagnostic.md`
 - `docs/maniskill_action_selector_scaling.md`
+- `docs/maniskill_learned_grasp_proposal.md`
 
 ## Newly Added Verification Hooks
 
@@ -266,3 +289,5 @@ The implementation now also includes `train_multitask_action_sequence_selector.p
 The implementation also includes `randomize_planner_rank.py` and `train_gated_action_sequence_selector.py`, which create mixed-planner-rank diagnostics and evaluate held-out failure gates. These scripts expose a useful negative result: gating preserves good planner choices on PickCube but slightly underperforms global reranking on StackCube due to calibration.
 
 The implementation also includes `train_action_sequence_selector_scaling.py`, which measures data efficiency by limiting the number of training cases per held-out fold. The first scaling result shows a sharp task difference: PickCube solves with 4 training cases, while StackCube needs roughly 8-16 cases to approach its full-data ceiling.
+
+The implementation now includes `maniskill_learned_grasp_proposal_pool.py`, which creates a trained high-level grasp proposal from successful candidate rollouts. This gives the strongest current story: a likelihood-ranked learned proposal reaches 44/50, a global action critic reaches 49/50, and the failure-gated critic reaches 50/50.
