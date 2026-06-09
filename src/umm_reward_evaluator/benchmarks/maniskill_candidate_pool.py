@@ -226,6 +226,7 @@ def run_candidate(
         candidate_id=spec.candidate_id,
         candidate_rank_by_planner=spec.rank,
         rollout_video_path=str(video_path) if render_video else "",
+        rollout_video=str(video_path) if render_video else None,
         rollout_video_layout="prediction_only",
         actions=all_actions,
         oracle_success=_success(info),

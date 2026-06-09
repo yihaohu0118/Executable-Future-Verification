@@ -20,6 +20,7 @@ class CandidateRow:
     rollout_video_layout: str
     actions: list[list[float]]
     oracle_success: bool
+    rollout_video: str | None = None
     instruction: str | None = None
     init_obs_path: str | None = None
     goal_obs_path: str | None = None
@@ -103,4 +104,3 @@ def summarize_headroom(rows: Iterable[dict[str, Any]]) -> dict[str, float | int]
         "rank0_success_rate": rank0_success / cases if cases else 0.0,
         "oracle_success_rate": oracle_success / cases if cases else 0.0,
     }
-
