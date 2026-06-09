@@ -55,7 +55,7 @@ def _to_numpy(value: Any) -> np.ndarray:
     return np.asarray(value)
 
 
-def flatten_obs(obs: dict[str, Any]) -> np.ndarray:
+def flatten_obs(obs: dict[str, Any], *, step: int = 0, max_steps: int = 200) -> np.ndarray:
     parts: list[np.ndarray] = []
 
     def visit(value: Any) -> None:
@@ -67,7 +67,12 @@ def flatten_obs(obs: dict[str, Any]) -> np.ndarray:
             parts.append(arr)
 
     visit(obs)
-    return np.concatenate(parts).astype(np.float32)
+    step_frac = float(step) / max(float(max_steps), 1.0)
+    phase = np.array(
+        [step_frac, np.sin(2.0 * np.pi * step_frac), np.cos(2.0 * np.pi * step_frac)],
+        dtype=np.float32,
+    )
+    return np.concatenate([*parts, phase]).astype(np.float32)
 
 
 def pick_demo_specs() -> tuple[CandidateSpec, ...]:
@@ -97,17 +102,25 @@ def _pick_stages(obs: dict[str, Any], spec: CandidateSpec) -> list[tuple[np.ndar
     ]
 
 
-def collect_demo_pairs(env: Any, seed: int, spec: CandidateSpec) -> tuple[list[np.ndarray], list[np.ndarray], bool]:
+def collect_demo_pairs(
+    env: Any,
+    seed: int,
+    spec: CandidateSpec,
+    *,
+    max_steps: int,
+) -> tuple[list[np.ndarray], list[np.ndarray], bool]:
     obs, _ = env.reset(seed=seed)
     xs: list[np.ndarray] = []
     ys: list[np.ndarray] = []
     info: dict[str, Any] = {}
+    step = 0
     for target, gripper, steps in _pick_stages(obs, spec):
         for _ in range(max(1, steps)):
             action = _delta_action(obs, target, gripper, spec.gain)
-            xs.append(flatten_obs(obs))
+            xs.append(flatten_obs(obs, step=step, max_steps=max_steps))
             ys.append(action.astype(np.float32))
             obs, _, terminated, truncated, info = env.step(action[None, :])
+            step += 1
             if _success(info) or bool(_scalar(terminated)) or bool(_scalar(truncated)):
                 break
         if _success(info):
@@ -115,7 +128,7 @@ def collect_demo_pairs(env: Any, seed: int, spec: CandidateSpec) -> tuple[list[n
     return xs, ys, _success(info)
 
 
-def collect_dataset(env: Any, seeds: list[int]) -> tuple[np.ndarray, np.ndarray, dict[str, int]]:
+def collect_dataset(env: Any, seeds: list[int], *, max_steps: int) -> tuple[np.ndarray, np.ndarray, dict[str, int]]:
     xs: list[np.ndarray] = []
     ys: list[np.ndarray] = []
     attempts = 0
@@ -123,7 +136,7 @@ def collect_dataset(env: Any, seeds: list[int]) -> tuple[np.ndarray, np.ndarray,
     for seed in seeds:
         for spec in pick_demo_specs():
             attempts += 1
-            demo_xs, demo_ys, ok = collect_demo_pairs(env, seed, spec)
+            demo_xs, demo_ys, ok = collect_demo_pairs(env, seed, spec, max_steps=max_steps)
             if ok:
                 xs.extend(demo_xs)
                 ys.extend(demo_ys)
@@ -174,8 +187,10 @@ def policy_action(
     *,
     rng: np.random.Generator,
     noise_std: float,
+    step: int,
+    max_steps: int,
 ) -> np.ndarray:
-    x = flatten_obs(obs)[None, :]
+    x = flatten_obs(obs, step=step, max_steps=max_steps)[None, :]
     x = (x - x_mean) / x_std
     with torch.no_grad():
         action = model(torch.from_numpy(x.astype(np.float32))).cpu().numpy()[0]
@@ -213,7 +228,16 @@ def run_policy_candidate(
     if render_video:
         frames.append(_render_frame(env))
     for step in range(max_steps):
-        action = policy_action(model, obs, x_mean, x_std, rng=rng, noise_std=noise_std)
+        action = policy_action(
+            model,
+            obs,
+            x_mean,
+            x_std,
+            rng=rng,
+            noise_std=noise_std,
+            step=step,
+            max_steps=max_steps,
+        )
         obs, reward, terminated, truncated, info = env.step(action[None, :])
         actions.append(action.astype(float).tolist())
         total_reward += _scalar(reward)
@@ -280,7 +304,7 @@ def generate_policy_pool(
     )
     rows: list[dict[str, Any]] = []
     try:
-        x, y, demo_summary = collect_dataset(env, demo_seeds)
+        x, y, demo_summary = collect_dataset(env, demo_seeds, max_steps=max_steps)
         model, x_mean, x_std, train_summary = train_bc_policy(x, y, hidden=hidden, epochs=epochs, lr=lr, seed=seed)
         for eval_seed in eval_seeds:
             for rank, noise_std in enumerate(noise_stds):
