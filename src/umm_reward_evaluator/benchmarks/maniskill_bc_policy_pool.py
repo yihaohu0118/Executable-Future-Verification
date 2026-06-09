@@ -108,8 +108,11 @@ def collect_demo_pairs(
     spec: CandidateSpec,
     *,
     max_steps: int,
+    rollout_noise_std: float,
+    rollout_seed: int,
 ) -> tuple[list[np.ndarray], list[np.ndarray], bool]:
     obs, _ = env.reset(seed=seed)
+    rng = np.random.default_rng(rollout_seed)
     xs: list[np.ndarray] = []
     ys: list[np.ndarray] = []
     info: dict[str, Any] = {}
@@ -119,7 +122,12 @@ def collect_demo_pairs(
             action = _delta_action(obs, target, gripper, spec.gain)
             xs.append(flatten_obs(obs, step=step, max_steps=max_steps))
             ys.append(action.astype(np.float32))
-            obs, _, terminated, truncated, info = env.step(action[None, :])
+            executed = action.copy()
+            if rollout_noise_std > 0:
+                noise = rng.normal(0.0, rollout_noise_std, size=executed.shape).astype(np.float32)
+                noise[3:6] *= 0.25
+                executed = np.clip(executed + noise, -1.0, 1.0)
+            obs, _, terminated, truncated, info = env.step(executed[None, :])
             step += 1
             if _success(info) or bool(_scalar(terminated)) or bool(_scalar(truncated)):
                 break
@@ -128,25 +136,46 @@ def collect_demo_pairs(
     return xs, ys, _success(info)
 
 
-def collect_dataset(env: Any, seeds: list[int], *, max_steps: int) -> tuple[np.ndarray, np.ndarray, dict[str, int]]:
+def collect_dataset(
+    env: Any,
+    seeds: list[int],
+    *,
+    max_steps: int,
+    rollout_noise_stds: list[float],
+    seed: int,
+) -> tuple[np.ndarray, np.ndarray, dict[str, int]]:
     xs: list[np.ndarray] = []
     ys: list[np.ndarray] = []
     attempts = 0
     successful_demos = 0
     for seed in seeds:
         for spec in pick_demo_specs():
-            attempts += 1
-            demo_xs, demo_ys, ok = collect_demo_pairs(env, seed, spec, max_steps=max_steps)
-            if ok:
-                xs.extend(demo_xs)
-                ys.extend(demo_ys)
-                successful_demos += 1
+            for noise_idx, rollout_noise_std in enumerate(rollout_noise_stds):
+                attempts += 1
+                demo_xs, demo_ys, ok = collect_demo_pairs(
+                    env,
+                    seed,
+                    spec,
+                    max_steps=max_steps,
+                    rollout_noise_std=rollout_noise_std,
+                    rollout_seed=seed * 1009 + spec.rank * 37 + noise_idx,
+                )
+                if ok or rollout_noise_std > 0:
+                    xs.extend(demo_xs)
+                    ys.extend(demo_ys)
+                if ok:
+                    successful_demos += 1
     if not xs:
         raise RuntimeError("No successful demonstrations collected")
     return (
         np.stack(xs).astype(np.float32),
         np.stack(ys).astype(np.float32),
-        {"demo_attempts": attempts, "successful_demos": successful_demos, "num_transitions": len(xs)},
+        {
+            "demo_attempts": attempts,
+            "successful_demos": successful_demos,
+            "num_transitions": len(xs),
+            "demo_rollout_noise_stds": rollout_noise_stds,
+        },
     )
 
 
@@ -287,6 +316,7 @@ def generate_policy_pool(
     lr: float,
     seed: int,
     max_steps: int,
+    demo_rollout_noise_stds: list[float],
     render_video: bool,
     video_fps: int,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
@@ -304,7 +334,13 @@ def generate_policy_pool(
     )
     rows: list[dict[str, Any]] = []
     try:
-        x, y, demo_summary = collect_dataset(env, demo_seeds, max_steps=max_steps)
+        x, y, demo_summary = collect_dataset(
+            env,
+            demo_seeds,
+            max_steps=max_steps,
+            rollout_noise_stds=demo_rollout_noise_stds,
+            seed=seed,
+        )
         model, x_mean, x_std, train_summary = train_bc_policy(x, y, hidden=hidden, epochs=epochs, lr=lr, seed=seed)
         for eval_seed in eval_seeds:
             for rank, noise_std in enumerate(noise_stds):
@@ -351,6 +387,10 @@ def parse_noise_stds(raw: str, *, num_candidates: int | None) -> list[float]:
     return values
 
 
+def parse_float_list(raw: str) -> list[float]:
+    return [float(item.strip()) for item in raw.split(",") if item.strip()]
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--demo-cases", type=int, default=32)
@@ -359,6 +399,7 @@ def main() -> None:
     parser.add_argument("--eval-seed-offset", type=int, default=0)
     parser.add_argument("--num-candidates", type=int, default=8)
     parser.add_argument("--noise-stds", default="0.0,0.015,0.025,0.035,0.045,0.060,0.080,0.100")
+    parser.add_argument("--demo-rollout-noise-stds", default="0.0")
     parser.add_argument("--output-dir", type=Path, default=Path("outputs/maniskill_pickcube_bc_policy_pool"))
     parser.add_argument("--hidden", type=int, default=128)
     parser.add_argument("--epochs", type=int, default=250)
@@ -382,6 +423,7 @@ def main() -> None:
         lr=args.lr,
         seed=args.seed,
         max_steps=args.max_steps,
+        demo_rollout_noise_stds=parse_float_list(args.demo_rollout_noise_stds),
         render_video=args.render_video,
         video_fps=args.video_fps,
     )
