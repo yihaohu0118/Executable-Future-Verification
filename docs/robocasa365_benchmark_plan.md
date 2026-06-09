@@ -50,6 +50,7 @@ Status:
 - A temporal-shuffle diagnostic strengthens the counterintuitive mechanism: in no-demo subsets, deterministic shuffled-time action statistics recover 16-17/24 across three seeds, compared with 13-14/24 for ordered raw statistics. Simple bag-of-actions moments stay at 14/24, so the effect is not explained by generic order-invariant moments alone. Multi-pseudo-endpoint features recover 16,16,17/24, nearly matching shuffle while providing a cleaner endpoint-dropout interpretation.
 - `TurnOnMicrowave` adds a fourth target task and a second button-style fixture interaction. Conservative-prior rank0 gets 0/8 and oracle-best gets 8/8 with original demos; removing original demos leaves oracle-best at 6/8. In four-task no-demo multitask evaluation, raw ordered features recover 16-18/32 against a 25/32 oracle ceiling, shuffled-time recovers 19-22/32, and multi-pseudo-endpoints recover 16-19/32.
 - Unordered permutation-endpoint features add a cleaner counterfactual to the shuffle diagnostic. A single stable unordered endpoint pair recovers 20,20,20/32 in four-task no-demo multitask evaluation, while four unordered pairs recover 17,19,20/32 without length and 16,20,19/32 with length. This suggests endpoint dropout is useful, but adding more pseudo-endpoints can destabilize small-data calibration.
+- A multiview temporal-dropout calibrator gives the cleanest method-shaped four-task no-demo result so far: one unordered endpoint view plus shuffled-time view, combined by an outer-isolated logistic calibrator, recovers 21,20,20/32. Simple rank aggregation of the same views recovers only 20,19,19/32, so the effect is learned stabilization rather than naive voting.
 
 ## Smoke Command
 
@@ -122,4 +123,5 @@ The key evidence is a consistent gap:
 - ordered learned scoring can overfit or mis-rank;
 - shuffle-robust calibration can be stronger than preserving true temporal endpoints in the current small-data regime;
 - endpoint-dropout is a promising method-shaped approximation, especially with one unordered pseudo-endpoint pair, but the four-task result shows it is not yet a full replacement for shuffle-robust calibration;
+- multiview temporal-dropout calibration can improve the stability of the strongest diagnostic view, but the current gain is small and must be scaled beyond 32 cases;
 - a failure-gated critic recovers hard cases with less damage to easy cases.

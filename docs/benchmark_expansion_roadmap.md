@@ -58,12 +58,13 @@ Local finding on the remote machine:
 - Temporal-shuffle diagnostic: after making shuffle controls deterministic, no-demo shuffled-time action statistics recover 16-17/24 across three tasks, compared with 13-14/24 for ordered raw statistics. Simple bag-of-actions moments stay at 14/24, so the gain is not explained by ordinary order-invariant moments alone. Multi-pseudo-endpoint features recover 16,16,17/24, nearly matching shuffle while giving a cleaner endpoint-dropout interpretation.
 - Fourth-task randomized replay probe on `TurnOnMicrowave`: conservative-prior rank0 is 0/8, oracle-best is 8/8 with original demos and 6/8 without original demos. In four-task no-demo multitask evaluation, raw ordered statistics recover 16-18/32 against a 25/32 oracle ceiling, shuffled-time recovers 19-22/32, and multi-pseudo-endpoints recover 16-19/32. This keeps shuffled-time as the strongest diagnostic while showing endpoint-dropout is only a partial method explanation.
 - Permutation-endpoint counterfactual: a single stable unordered pseudo-endpoint pair recovers 20,20,20/32 in four-task no-demo multitask evaluation. Using four unordered pairs is less stable at 17,19,20/32 without length and 16,20,19/32 with length. This gives a sharper story than "more temporal features help": a small amount of endpoint dropout helps calibration, but extra pseudo-temporal evidence can overfit.
+- Multiview temporal-dropout calibrator: an outer-isolated meta selector over one unordered endpoint-dropout view plus a shuffled-time view recovers 21,20,20/32, compared with 22,19,19/32 for shuffled-time alone and 20,20,20/32 for unordered endpoints alone. Simple rank aggregation of the same two views stays at 20,19,19/32, so the effect is learned stabilization rather than naive agreement voting.
 
 First RoboCasa365 milestone:
 
 1. Replace the intentionally brittle replay rank0 with a non-oracle policy score, likelihood score, or noisy BC proposal.
 2. Randomize scale, noise, truncation, and temporal warp per episode so candidate identity is not sufficient.
-3. Add shuffle-robust, endpoint-dropout, and task/contact-conditioned calibration features that can separate Faucet-style fixture interaction from easier pick-place and cabinet-opening action statistics.
+3. Add shuffle-robust, endpoint-dropout, multiview temporal-dropout, and task/contact-conditioned calibration features that can separate Faucet-style fixture interaction from easier pick-place and cabinet-opening action statistics.
 4. Train the same compact action critic and failure gate used in the diagnostic pipeline.
 5. Report rank0 success, oracle-best success, gated success, and hard-case recovery on target split tasks.
 
