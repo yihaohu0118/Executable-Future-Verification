@@ -165,6 +165,7 @@ Interpretation:
 - This reduces the hand-designed candidate-family concern: candidates come from a trained high-level grasp proposal fit to successful rollouts.
 - Proposal likelihood is not equivalent to physical success.
 - The full FAVC mechanism is visible: action critic recovers proposal failures, while the gate prevents unnecessary harmful overrides.
+- A second proposal sampling seed gives the same rank0 baseline, 44/50, and the gate reaches that pool's oracle ceiling, 49/50.
 
 ### Video-Frame Selector
 

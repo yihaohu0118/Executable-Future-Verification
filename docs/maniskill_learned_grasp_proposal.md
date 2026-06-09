@@ -58,6 +58,8 @@ Interpretation:
 
 A stronger baseline ranks samples by proposal likelihood before execution.
 
+Main sampling seed:
+
 | Selector | Success | Recovered rank0 failures | Preserved rank0 |
 | --- | ---: | ---: | ---: |
 | Likelihood-ranked proposal rank0 | 44/50 | 0/6 | 50/50 |
@@ -70,6 +72,15 @@ Interpretation:
 - Proposal likelihood is a strong baseline, but it is not the same as rollout success.
 - The global action critic recovers all 6 likelihood-rank0 failures, but changes one successful rank0 into a failure.
 - The failure gate closes this gap: it recovers all 6 failures while preserving most successful rank0 choices, reaching 50/50.
+
+Sampling-seed repeat:
+
+| Proposal seed | Rank0 success | Oracle success | Gated success | Gated recovered rank0 failures |
+| ---: | ---: | ---: | ---: | ---: |
+| 0 | 44/50 | 50/50 | 50/50 | 6/6 |
+| 1 | 44/50 | 49/50 | 49/50 | 5/6 |
+
+The seed1 repeat reaches the oracle ceiling of that sampled candidate pool, so the main result is not only a lucky proposal sample.
 
 ## Mechanism
 
@@ -108,3 +119,5 @@ Remote outputs:
 - `outputs/maniskill_pickcube_learned_grasp_proposal_n50_t2p5_likelihood_ranked/summary.json`
 - `outputs/maniskill_pickcube_learned_grasp_proposal_n50_t2p5_likelihood_ranked/action_selector_raw_no_length_e50/summary.json`
 - `outputs/maniskill_pickcube_learned_grasp_proposal_n50_t2p5_likelihood_ranked/gated_action_raw_no_length_e50/summary.json`
+- `outputs/maniskill_pickcube_learned_grasp_proposal_n50_t2p5_likelihood_ranked_s1/summary.json`
+- `outputs/maniskill_pickcube_learned_grasp_proposal_n50_t2p5_likelihood_ranked_s1/gated_action_raw_no_length_e50/summary.json`
