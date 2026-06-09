@@ -137,6 +137,19 @@ Interpretation:
 - StackCube exposes the calibration risk: when the global critic is already near-oracle, a conservative gate can preserve a failing rank0.
 - Therefore the paper should not claim that gating is automatically better than global reranking. The stronger claim is that failure detection and override calibration are separate problems.
 
+Training-case scaling diagnostic:
+
+| Task | 4 train cases | 8 train cases | 16 train cases | 32 train cases | All train cases |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| PickCube random-grasp | 50.0/50 | 50.0/50 | 50.0/50 | 50.0/50 | 50.0/50 |
+| StackCube brittle-stack | 43.0/50 | 48.0/50 | 49.0/50 | 49.3/50 | 50.0/50 |
+
+Interpretation:
+
+- PickCube exposes a very low-sample failure signature, likely dominated by grasp-height/action-geometry.
+- StackCube is harder but reaches 48/50 with only 8 training cases and 49/50 with 16.
+- This supports the claim that failure detection can be data-efficient, while also showing that contact-rich tasks need task-specific calibration.
+
 ### Video-Frame Selector
 
 Case-heldout MLP over rendered RGB frame features:
@@ -196,6 +209,7 @@ The common framing is to build a stronger planner, larger world model, or global
 - a simple trained critic is valuable as a failure detector;
 - a globally shared critic can fail even with a task one-hot, while per-task calibration recovers most of the gap;
 - failure gating is a calibration tradeoff, not a free replacement for global reranking;
+- failure detection is data-efficient on these diagnostics, but the sample complexity differs sharply across contact regimes;
 - the critic can recover failures caused by small action-geometry mistakes;
 - action/video signals can expose failure even when the candidate appears plausible;
 - in the current slice, temporal order is less important than expected.
@@ -235,6 +249,7 @@ Priority order:
 - `docs/maniskill_pickcube_random_grasp_n50.md`
 - `docs/maniskill_multitask_action_critic.md`
 - `docs/maniskill_mixed_rank_gate_diagnostic.md`
+- `docs/maniskill_action_selector_scaling.md`
 
 ## Newly Added Verification Hooks
 
@@ -249,3 +264,5 @@ The implementation also includes `train_action_video_fusion_selector.py`, a case
 The implementation now also includes `train_multitask_action_sequence_selector.py`, which tests whether action critics should share one global head, use task-specific heads, or remain fully independent. The first result is a concrete negative/positive pair: shared one-hot underperforms on StackCube, while per-task heads recover most of the gap.
 
 The implementation also includes `randomize_planner_rank.py` and `train_gated_action_sequence_selector.py`, which create mixed-planner-rank diagnostics and evaluate held-out failure gates. These scripts expose a useful negative result: gating preserves good planner choices on PickCube but slightly underperforms global reranking on StackCube due to calibration.
+
+The implementation also includes `train_action_sequence_selector_scaling.py`, which measures data efficiency by limiting the number of training cases per held-out fold. The first scaling result shows a sharp task difference: PickCube solves with 4 training cases, while StackCube needs roughly 8-16 cases to approach its full-data ceiling.
