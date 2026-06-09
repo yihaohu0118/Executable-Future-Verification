@@ -248,9 +248,10 @@ These must be addressed before this is paper-ready:
 
 Priority order:
 
-1. Replace the diagnostic low-level executor with BC/diffusion-policy top-k samples.
-2. Move to LIBERO once a usable policy candidate source is available.
+1. Make RoboCasa365 the headline benchmark layer and scale beyond the current two-task probe.
+2. Replace the diagnostic low-level executor with BC/diffusion-policy top-k samples where a 2025-2026 benchmark provides usable policy or demonstration sources.
 3. Add uncertainty-aware calibration to the gate and evaluate under mixed proposal qualities.
+4. Use RoboTwin 2.0, RoboMIND 2.0, or 2026 robotic world-model diagnostics as the next benchmark layer; do not make legacy LIBERO/CALVIN/D4RL the main evidence.
 
 ## Implemented Files
 

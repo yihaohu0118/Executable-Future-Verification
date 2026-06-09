@@ -33,6 +33,7 @@ Environment:
 Status:
 
 - LIBERO clone was removed from the remote machine.
+- A fresh check found no legacy benchmark installs under `/home/yihao_hyh/benchmarks`; only RoboCasa365 and its required robosuite dependency remain.
 - RoboCasa kitchen/object assets are being downloaded.
 - RoboCasa kitchen/object assets finished downloading and extracting.
 - Reset/step smoke succeeds for `PickPlaceCounterToCabinet`, `PickPlaceCounterToSink`, `CloseCabinet`, and `TurnOnSinkFaucet` on `split=target`.
@@ -42,6 +43,7 @@ Status:
 - Implementation detail: run the smoke script from `/tmp` or another neutral path. Running a standalone script from `/home/yihao_hyh/benchmarks` can interact badly with the sibling `robocasa/` repo directory on `sys.path`.
 - A first target-human demo candidate probe was run for `PickPlaceCounterToCabinet`: rank0 under-actuated replay failed in 0/5 episodes, while oracle-best recovered 5/5. See `docs/robocasa365_demo_candidate_probe.md`.
 - A randomized candidate probe reduces fixed candidate-ID shortcuts: with eight target-human episodes and six candidates per episode, conservative-prior rank0 gets 0/8, oracle-best gets 8/8, and a held-out action selector gets 8/8. Removing original demo candidates leaves oracle-best at 6/8 and shuffled-time action statistics reach 6/8.
+- A second randomized probe on `TurnOnSinkFaucet` confirms cross-task headroom: conservative-prior rank0 gets 0/8 and oracle-best gets 8/8 with original demos. Removing original demos leaves oracle-best at 7/8, while simple action-statistic selectors recover only 2-3/8. This is a useful harder case because it shows the no-demo setting needs task-conditioned calibration rather than a single global action-energy shortcut.
 
 ## Smoke Command
 
@@ -88,10 +90,12 @@ Start with tasks where success is object/contact sensitive but not too long-hori
 
 Then expand to longer or more compositional families only after headroom is visible.
 
-## 2026 Complementary Benchmarks
+## 2025-2026 Complementary Benchmarks
 
 These are useful for the second layer but should not block RoboCasa365:
 
+- RoboTwin 2.0 / 2026 manipulation benchmark-audit settings: good for shortcut, statistical-significance, and data-source-dependence stress tests.
+- RoboMIND 2.0: 2025 multi-embodiment manipulation data layer; useful if we need dataset-scale evaluation without real-robot execution.
 - RoboWM-Bench: 2026, world-model execution validation for manipulation. Good for comparing action-conditioned visual prediction to executable behavior.
 - MiraBench: 2026, action-conditioned reliability and optimism-bias diagnostics for robotic world models. Good for framing why visual fidelity is insufficient.
 - RoboTrustBench: 2026, trustworthiness of video world models for robotic manipulation. Good for stress tests and failure taxonomy.

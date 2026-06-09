@@ -17,9 +17,44 @@ Current PushT-100 numbers:
 | Static DINO progress + ActionWorld failure gate | 177.3960 | 43/100 |
 | Oracle-best CEM | 157.4419 | 100/100 |
 
-## Updated 2025-2026 External-Benchmark Plan
+## 2025-2026 External-Benchmark Plan
 
-### 1. ManiSkill3 First
+### 1. RoboCasa365 First
+
+RoboCasa365 is the primary benchmark because it is a 2026 benchmark for generalist household manipulation and substantially closer to modern Physical AI/VLA evaluation than legacy tabletop suites. It covers hundreds of kitchen manipulation tasks and supports Gymnasium-style environment construction through the official RoboCasa/robosuite stack.
+
+Official sources:
+
+- RoboCasa365 paper: https://arxiv.org/abs/2603.04356
+- RoboCasa project: https://robocasa.ai/
+- RoboCasa code: https://github.com/robocasa/robocasa
+- robosuite code: https://github.com/ARISE-Initiative/robosuite
+
+Local finding on the remote machine:
+
+- No legacy benchmark install remains under `/home/yihao_hyh/benchmarks`; only `robocasa` and its required `robosuite` dependency are present.
+- The old LIBERO clone was removed from `/home/yihao_hyh/LIBERO`; no `libero-favc` conda env was present.
+- Official `robosuite` and `robocasa` repositories were cloned under `/home/yihao_hyh/benchmarks/`.
+- A separate `robocasa-favc` conda environment was created with Python 3.11.
+- Editable installs for official robosuite and robocasa succeeded.
+- Import smoke passed with `robocasa==1.0.1`, `robosuite==1.5.2`, `gymnasium==0.29.1`, and CUDA-enabled `torch==2.7.1+cu126`.
+- Gymnasium registers 396 `robocasa/*` environments.
+- Full kitchen/object assets were downloaded and extracted.
+- Four target-split smoke tasks reset and step successfully: `PickPlaceCounterToCabinet`, `PickPlaceCounterToSink`, `CloseCabinet`, and `TurnOnSinkFaucet`.
+- The RoboCasa Gym wrapper exposes language instructions, proprioceptive state, and three 256x256 RGB camera streams per observation.
+- Code finding: top-level `import robocasa` does not register Gymnasium IDs; the adapter must import `robocasa.wrappers.gym_wrapper`.
+- First demo replay headroom probe on `PickPlaceCounterToCabinet` target-human data: rank0 under-actuated replay success is 0/5, oracle-best success is 5/5, and oracle is better than rank0 in 5/5 cases.
+- Randomized replay probe on the same task: conservative-prior rank0 is 0/8, oracle-best is 8/8, held-out action selector is 8/8, and zero-feature control is 0/8. Removing original demo candidates leaves oracle-best 6/8; shuffled-time action statistics reach 6/8.
+- Cross-task randomized replay probe on `TurnOnSinkFaucet`: conservative-prior rank0 is 0/8, oracle-best is 8/8 with original demos and 7/8 without original demos. This gives a harder articulated-fixture case where simple no-demo action statistics recover only 2-3/8, so the story cannot collapse to a single pick-place shortcut.
+
+First RoboCasa365 milestone:
+
+1. Replace the intentionally brittle replay rank0 with a non-oracle policy score, likelihood score, or noisy BC proposal.
+2. Randomize scale, noise, truncation, and temporal warp per episode so candidate identity is not sufficient.
+3. Train the same action critic and failure gate used for ManiSkill.
+4. Report rank0 success, oracle-best success, gated success, and hard-case recovery on target split tasks.
+
+### 2. ManiSkill3 As A Mechanism Benchmark
 
 ManiSkill3 is now the best near-term external benchmark target. Official docs describe built-in rigid-body tasks, task cards with success/fail conditions, sparse/dense rewards, demonstrations, and GPU-parallel simulation. It also exposes a Gymnasium-style API, which maps cleanly to our candidate executor.
 
@@ -48,48 +83,22 @@ First ManiSkill milestone:
    - progress-anchor failure gate
 4. Report hard-case recovery where rank0 fails.
 
-### 2. RoboCasa365 Next
+### 3. Newer Complementary Benchmarks Only
 
-RoboCasa365 is now the best next benchmark because it is current for the 2025-2026 cycle and substantially closer to modern Physical AI/VLA evaluation than legacy tabletop suites. It covers hundreds of kitchen manipulation tasks and supports Gymnasium-style environment construction through the official RoboCasa/robosuite stack.
+Do not spend more setup time on legacy LIBERO, CALVIN, D4RL, or PointMaze for the main ICLR evidence. They can be cited as background, but they are not the benchmark target for the current story.
 
-Official sources:
+Use newer benchmark layers only:
 
-- RoboCasa project: https://robocasa.ai/
-- RoboCasa code: https://github.com/robocasa/robocasa
-- robosuite code: https://github.com/ARISE-Initiative/robosuite
-
-Local finding on the remote machine:
-
-- The old LIBERO clone was removed from `/home/yihao_hyh/LIBERO`; no `libero-favc` conda env was present.
-- Official `robosuite` and `robocasa` repositories were cloned under `/home/yihao_hyh/benchmarks/`.
-- A separate `robocasa-favc` conda environment was created with Python 3.11.
-- Editable installs for official robosuite and robocasa succeeded.
-- Import smoke passed with `robocasa==1.0.1`, `robosuite==1.5.2`, `gymnasium==0.29.1`, and CUDA-enabled `torch==2.7.1+cu126`.
-- Gymnasium registers 396 `robocasa/*` environments.
-- Full kitchen/object assets were downloaded and extracted.
-- Four target-split smoke tasks reset and step successfully: `PickPlaceCounterToCabinet`, `PickPlaceCounterToSink`, `CloseCabinet`, and `TurnOnSinkFaucet`.
-- The RoboCasa Gym wrapper exposes language instructions, proprioceptive state, and three 256x256 RGB camera streams per observation.
-- Code finding: top-level `import robocasa` does not register Gymnasium IDs; the adapter must import `robocasa.wrappers.gym_wrapper`.
-- First demo replay headroom probe on `PickPlaceCounterToCabinet` target-human data: rank0 under-actuated replay success is 0/5, oracle-best success is 5/5, and oracle is better than rank0 in 5/5 cases.
-- Randomized replay probe on the same task: conservative-prior rank0 is 0/8, oracle-best is 8/8, held-out action selector is 8/8, and zero-feature control is 0/8. Removing original demo candidates leaves oracle-best 6/8; shuffled-time action statistics reach 6/8.
-
-First RoboCasa365 milestone:
-
-1. Replace the intentionally brittle replay rank0 with a non-oracle policy score, likelihood score, or noisy BC proposal.
-2. Randomize scale, noise, truncation, and temporal warp per episode so candidate identity is not sufficient.
-3. Train the same action critic and failure gate used for ManiSkill.
-4. Report rank0 success, oracle-best success, gated success, and hard-case recovery on target split tasks.
-
-### 3. PointMaze As A Cross-Task Sanity Check
-
-NanoWM has a PointMaze config/checkpoint path, but the current environment is missing `d4rl`, MuJoCo 2.10, and PointMaze data. This is still useful because it shares the NanoWM planning stack with PushT, but it should not block the higher-impact ManiSkill/LIBERO work.
+- RoboTwin 2.0 / recent manipulation benchmark-audit settings for shortcut and statistical-significance stress tests.
+- RoboMIND 2.0 if we need a 2025 multi-embodiment dataset layer rather than executable sim.
+- 2026 robotic world-model diagnostics such as RoboWM-Bench, MiraBench, and RoboTrustBench if we need a world-model-specific reliability table.
 
 ## Reviewer-Facing Minimum Bar
 
 The paper-quality result should not be framed as "we improve PushT." The target claim should be:
 
 1. PushT-100 shows the mechanism under NanoWM/CEM planning.
-2. ManiSkill3 shows it improves executable manipulation candidate selection under standard simulator success metrics.
-3. RoboCasa365 shows the same failure-gated mechanism transfers to a current kitchen-manipulation benchmark with much stronger 2025-2026 relevance.
+2. RoboCasa365 shows the same failure-gated mechanism transfers to a current kitchen-manipulation benchmark with strong 2025-2026 relevance.
+3. ManiSkill3 remains as a mechanism-control benchmark for executable manipulation success, not as the headline benchmark.
 
 The key ablation is whether the trained action-world critic helps only when used as a gated override. If global ActionWorld is worse than static progress but the gate is better, that is a stronger and more counterintuitive story.

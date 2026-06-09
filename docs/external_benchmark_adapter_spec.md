@@ -13,7 +13,7 @@ Each candidate row is JSONL:
 
 | Field | Required | Meaning |
 | --- | --- | --- |
-| `benchmark` | yes | `maniskill`, `libero`, `robomimic`, etc. |
+| `benchmark` | yes | `robocasa365`, `maniskill3`, or another 2025-2026 benchmark id |
 | `suite` | yes | Suite or environment id, such as `PickCube-v1` |
 | `task_name` | yes | Human-readable task id |
 | `case_id` | yes | Initial-state / instruction / goal id |
@@ -35,10 +35,10 @@ The helper module `umm_reward_evaluator.benchmarks.common` provides row serializ
 
 | Priority | Benchmark | Why | Main risk |
 | ---: | --- | --- | --- |
-| 1 | ManiSkill3 | Recognized manipulation suite, Gymnasium API, built-in success flags, GPU-parallel execution | Need candidate source that is not just oracle perturbation |
-| 2 | LIBERO | High VLA visibility, language-conditioned manipulation, standard published protocol | Heavy MuJoCo/robosuite/LeRobot stack and policy checkpoint dependency |
-| 3 | NanoWM PointMaze | Same planning stack as PushT, fast cross-task sanity | Current environment lacks D4RL/MuJoCo 2.10/data |
-| 4 | RoboMimic/RoboSuite | Standard imitation learning benchmark | Less directly aligned with world-model candidate rollouts |
+| 1 | RoboCasa365 | 2026 household manipulation benchmark, broad task diversity, official success labels, target split demonstrations | Need non-oracle candidate source beyond replay perturbations |
+| 2 | ManiSkill3 | Recognized manipulation suite, Gymnasium API, built-in success flags, GPU-parallel execution | Useful as mechanism control, but less current than RoboCasa365 for the headline |
+| 3 | RoboTwin 2.0 / benchmark-audit stress tests | Current manipulation stress-test direction for shortcut and statistical-significance claims | Setup and policy sources still need verification |
+| 4 | RoboMIND 2.0 | 2025 multi-embodiment manipulation data layer | Primarily dataset/offline evaluation unless simulator execution is available |
 
 ## Required Evidence
 
@@ -55,4 +55,3 @@ Per benchmark, report:
 | oracle-best candidate | | | | | |
 
 The most important subset is cases where rank0 fails or is not oracle-best. If the oracle-best candidate is not better than rank0, reranking cannot prove anything.
-
