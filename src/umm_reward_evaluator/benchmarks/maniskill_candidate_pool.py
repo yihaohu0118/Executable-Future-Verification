@@ -9,7 +9,7 @@ pool contain better alternatives than rank0?
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import json
 from pathlib import Path
 from typing import Any
@@ -51,6 +51,21 @@ PUSH_SPECS = (
     CandidateSpec("left_offset", 3, "push_privileged", xy_offset=(0.0, 0.012), gain=18.0),
     CandidateSpec("slow_center", 4, "push_privileged", gain=10.0, push_depth=0.12),
 )
+
+
+def specs_for(env_id: str, rank0_profile: str) -> tuple[CandidateSpec, ...]:
+    if env_id == "PickCube-v1":
+        specs = PICK_SPECS
+        if rank0_profile == "brittle_grasp":
+            order = ["high_grasp", "rank0_center", "low_grasp", "x_offset", "slow_center"]
+            by_id = {spec.candidate_id: spec for spec in specs}
+            return tuple(replace(by_id[candidate_id], rank=rank) for rank, candidate_id in enumerate(order))
+        if rank0_profile == "strong":
+            return specs
+    if env_id == "PushCube-v1":
+        if rank0_profile in {"strong", "brittle_grasp"}:
+            return PUSH_SPECS
+    raise ValueError(f"Unsupported rank0 profile {rank0_profile!r} for {env_id}")
 
 
 def _to_numpy(value: Any) -> np.ndarray:
@@ -234,13 +249,14 @@ def generate_pool(
     seeds: list[int],
     output_dir: Path,
     *,
+    rank0_profile: str,
     render_video: bool,
     video_fps: int,
 ) -> tuple[list[dict[str, Any]], dict[str, float | int]]:
     import gymnasium as gym
     import mani_skill.envs  # noqa: F401
 
-    specs = PICK_SPECS if env_id == "PickCube-v1" else PUSH_SPECS
+    specs = specs_for(env_id, rank0_profile)
     env = gym.make(
         env_id,
         num_envs=1,
@@ -267,7 +283,9 @@ def generate_pool(
     finally:
         env.close()
     rows = annotate_oracle_best(rows)
-    return rows, summarize_headroom(rows)
+    summary = summarize_headroom(rows)
+    summary["rank0_profile"] = rank0_profile
+    return rows, summary
 
 
 def main() -> None:
@@ -276,6 +294,12 @@ def main() -> None:
     parser.add_argument("--num-cases", type=int, default=10)
     parser.add_argument("--seed-offset", type=int, default=0)
     parser.add_argument("--output-dir", type=Path, default=Path("outputs/maniskill_candidate_pool"))
+    parser.add_argument(
+        "--rank0-profile",
+        default="strong",
+        choices=["strong", "brittle_grasp"],
+        help="Candidate ordering profile. brittle_grasp makes PickCube rank0 use the high-grasp variant.",
+    )
     parser.add_argument("--render-video", action="store_true")
     parser.add_argument("--video-fps", type=int, default=10)
     args = parser.parse_args()
@@ -290,6 +314,7 @@ def main() -> None:
             env_id,
             seeds,
             args.output_dir,
+            rank0_profile=args.rank0_profile,
             render_video=args.render_video,
             video_fps=args.video_fps,
         )
@@ -304,4 +329,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

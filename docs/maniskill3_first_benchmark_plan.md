@@ -77,3 +77,20 @@ For `PickCube-v1` and `PushCube-v1`:
    - progress-anchor failure gate
 
 If oracle-best success is not meaningfully higher than rank0 success, change candidate source before training any reranker.
+
+## First Code-Driven Observation
+
+The first PickCube smoke exposed a useful diagnostic mechanism. With two seeds, the `high_grasp` candidate failed while the lower grasp-height candidate succeeded and was oracle-best. This suggests a concrete benchmark slice:
+
+> A brittle candidate ordering can fail because of a small grasp-height choice, while the candidate pool already contains a successful low-grasp counterfactual.
+
+This is exactly the kind of setting where a failure-gated reranker should help. The diagnostic script therefore supports:
+
+```bash
+python -m umm_reward_evaluator.benchmarks.maniskill_candidate_pool \
+  --tasks PickCube-v1 \
+  --rank0-profile brittle_grasp \
+  --num-cases 50
+```
+
+This profile should not be presented as the final paper baseline. It is a mechanism probe to verify that visual progress and action-world critics can identify recoverable failures before we invest in a trained BC/diffusion policy candidate source.
