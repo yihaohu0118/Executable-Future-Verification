@@ -40,6 +40,7 @@ Status:
 - `robocasa/CloseDoor` is registered but requires an extra `fixture_id`, so it is not a good default smoke task.
 - Implementation detail: Gymnasium registration requires importing `robocasa.wrappers.gym_wrapper`; top-level `import robocasa` is not sufficient.
 - Implementation detail: run the smoke script from `/tmp` or another neutral path. Running a standalone script from `/home/yihao_hyh/benchmarks` can interact badly with the sibling `robocasa/` repo directory on `sys.path`.
+- A first target-human demo candidate probe was run for `PickPlaceCounterToCabinet`: rank0 under-actuated replay failed in 0/5 episodes, while oracle-best recovered 5/5. See `docs/robocasa365_demo_candidate_probe.md`.
 
 ## Smoke Command
 

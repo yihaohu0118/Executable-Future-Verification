@@ -70,11 +70,12 @@ Local finding on the remote machine:
 - Four target-split smoke tasks reset and step successfully: `PickPlaceCounterToCabinet`, `PickPlaceCounterToSink`, `CloseCabinet`, and `TurnOnSinkFaucet`.
 - The RoboCasa Gym wrapper exposes language instructions, proprioceptive state, and three 256x256 RGB camera streams per observation.
 - Code finding: top-level `import robocasa` does not register Gymnasium IDs; the adapter must import `robocasa.wrappers.gym_wrapper`.
+- First demo replay headroom probe on `PickPlaceCounterToCabinet` target-human data: rank0 under-actuated replay success is 0/5, oracle-best success is 5/5, and oracle is better than rank0 in 5/5 cases.
 
 First RoboCasa365 milestone:
 
-1. Select 3-5 task families that expose candidate-selection headroom under noisy or learned action proposals.
-2. Build a RoboCasa candidate manifest with task instruction, initial state metadata, action chunk, rollout success, and optional camera video.
+1. Replace the intentionally brittle replay rank0 with a non-oracle policy score, likelihood score, or noisy BC proposal.
+2. Randomize scale, noise, truncation, and temporal warp per episode so candidate identity is not sufficient.
 3. Train the same action critic and failure gate used for ManiSkill.
 4. Report rank0 success, oracle-best success, gated success, and hard-case recovery on target split tasks.
 
