@@ -100,6 +100,16 @@ Second-task StackCube check:
 
 StackCube is a stronger second-task diagnostic than PushCube. PushCube rank0 already succeeded on 100/100 cases, while StackCube exposes multiple recoverable failure types: high grasp, no release, and lateral placement error.
 
+Randomized PickCube candidate-pool check:
+
+| Selector | Success | Recovered rank0 failures | Oracle match |
+| --- | ---: | ---: | ---: |
+| Random-grasp rank0 | 1/50 | 0/49 | 0/50 |
+| Random-grasp raw action MLP without trajectory length | 50/50 | 49/49 | 14/50 |
+| Random-grasp oracle-best candidate | 50/50 | 49/49 | 50/50 |
+
+This control reduces the fixed-family shortcut concern. Non-rank0 candidates are sampled continuously over grasp height, xy offset, and gain; the selector chooses across multiple candidate ranks rather than always selecting one fixed index.
+
 ### Video-Frame Selector
 
 Case-heldout MLP over rendered RGB frame features:
@@ -175,10 +185,9 @@ These must be addressed before this is paper-ready:
 
 Priority order:
 
-1. Randomize candidate family positions, not only JSONL row order.
-2. Train a gate that combines visual-progress anchor and action/video critic on heterogeneous failures.
-3. Replace privileged candidates with BC/diffusion-policy top-k samples.
-4. Move to LIBERO once the ManiSkill gate is stable.
+1. Train a gate that combines visual-progress anchor and action/video critic on heterogeneous failures.
+2. Replace privileged candidates with BC/diffusion-policy top-k samples.
+3. Move to LIBERO once the ManiSkill gate is stable.
 
 ## Implemented Files
 
@@ -192,6 +201,7 @@ Priority order:
 - `docs/maniskill_pickcube_video_selector_results.md`
 - `docs/maniskill_pickcube_n100_action_stability.md`
 - `docs/maniskill_stackcube_brittle_stack_n50.md`
+- `docs/maniskill_pickcube_random_grasp_n50.md`
 
 ## Newly Added Verification Hooks
 
