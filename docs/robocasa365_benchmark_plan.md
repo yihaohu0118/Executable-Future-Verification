@@ -47,6 +47,7 @@ Status:
 - A third randomized probe on `OpenCabinet` adds a longer fixture-interaction task. Conservative-prior rank0 gets 0/8 and oracle-best gets 8/8 with original demos. Removing original demos leaves oracle-best at 6/8, and raw/shuffled action-statistic selectors both reach 6/8.
 - Three-task multitask result: with original demo candidates, shared action-statistic selectors recover 24/24 rank0 failures while zero-feature control recovers 1/24. In no-demo subsets, the selector recovers 14/24 against a 19/24 oracle ceiling; the missing cases are concentrated in `TurnOnSinkFaucet`.
 - A temporal-shuffle diagnostic strengthens the counterintuitive mechanism: in no-demo subsets, deterministic shuffled-time action statistics recover 16-17/24 across three seeds, compared with 13-14/24 for ordered raw statistics. Simple bag-of-actions moments stay at 14/24, so the effect is not explained by generic order-invariant moments alone. Multi-pseudo-endpoint features recover 16,16,17/24, nearly matching shuffle while providing a cleaner endpoint-dropout interpretation.
+- `TurnOnMicrowave` adds a fourth target task and a second button-style fixture interaction. Conservative-prior rank0 gets 0/8 and oracle-best gets 8/8 with original demos; removing original demos leaves oracle-best at 6/8. In four-task no-demo multitask evaluation, raw ordered features recover 16-18/32 against a 25/32 oracle ceiling, shuffled-time recovers 19-22/32, and multi-pseudo-endpoints recover 16-19/32.
 
 ## Smoke Command
 
@@ -88,6 +89,7 @@ Start with tasks where success is object/contact sensitive but not too long-hori
 - `PickPlaceCounterToCabinet`
 - `OpenCabinet`
 - `TurnOnSinkFaucet`
+- `TurnOnMicrowave`
 - `PickPlaceCounterToStove`
 - `PickPlaceSinkToCounter`
 
@@ -116,5 +118,6 @@ The key evidence is a consistent gap:
 - rank0 is brittle;
 - oracle-best shows real candidate-set headroom;
 - ordered learned scoring can overfit or mis-rank;
-- endpoint-dropout calibration can be stronger than preserving true temporal endpoints in the current small-data regime;
+- shuffle-robust calibration can be stronger than preserving true temporal endpoints in the current small-data regime;
+- endpoint-dropout is a promising method-shaped approximation, but the four-task result shows it is not yet a full replacement for shuffle-robust calibration;
 - a failure-gated critic recovers hard cases with less damage to easy cases.

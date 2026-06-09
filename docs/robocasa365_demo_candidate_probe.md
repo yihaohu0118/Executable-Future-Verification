@@ -7,13 +7,14 @@ This is the first executable RoboCasa365 candidate-selection probe. The goal is 
 ## Benchmark And Data
 
 - Benchmark: RoboCasa365
-- Tasks: `PickPlaceCounterToCabinet`, `TurnOnSinkFaucet`, `OpenCabinet`
+- Tasks: `PickPlaceCounterToCabinet`, `TurnOnSinkFaucet`, `OpenCabinet`, `TurnOnMicrowave`
 - Split/source: target human demonstrations
 - Dataset path on `dev2`:
   - `/home/yihao_hyh/benchmarks/robocasa/datasets/v1.0/target/atomic/PickPlaceCounterToCabinet/20250811/lerobot`
   - `/home/yihao_hyh/benchmarks/robocasa/datasets/v1.0/target/atomic/TurnOnSinkFaucet/20250812/lerobot`
   - `/home/yihao_hyh/benchmarks/robocasa/datasets/v1.0/target/atomic/OpenCabinet/20250813/lerobot`
-- Download sizes: 561 MB tarball for `PickPlaceCounterToCabinet`, 398 MB tarball for `TurnOnSinkFaucet`, 788 MB tarball for `OpenCabinet`
+  - `/home/yihao_hyh/benchmarks/robocasa/datasets/v1.0/target/atomic/TurnOnMicrowave/20250813/lerobot`
+- Download sizes: 561 MB tarball for `PickPlaceCounterToCabinet`, 398 MB tarball for `TurnOnSinkFaucet`, 788 MB tarball for `OpenCabinet`, 341 MB tarball for `TurnOnMicrowave`
 - Observation exposed by smoke adapter:
   - language instruction
   - proprioceptive state
@@ -198,6 +199,25 @@ Held-out selectors on `OpenCabinet`:
 | No demo | Zero-feature control | 0/8 | 0/8 | 2/8 |
 | No demo | Shuffled-time action statistics | 6/8 | 6/8 | 5/8 |
 
+Randomized eight-episode probe on `TurnOnMicrowave`, seed 11, six candidates per episode:
+
+| Metric | With demo candidate | No-demo subset |
+| --- | ---: | ---: |
+| Cases | 8 | 8 |
+| Rank0 success | 0/8 | 0/8 |
+| Oracle-best success | 8/8 | 6/8 |
+| Oracle better than rank0 | 8/8 | 6/8 |
+| Rank0 oracle match | 0/8 | 2/8 |
+
+Held-out selectors on `TurnOnMicrowave` no-demo:
+
+| Selector | Seeds | Success | Oracle match |
+| --- | --- | ---: | ---: |
+| Raw action statistics, no length | 0,1,2 | 3,2,3 / 8 | 3,2,3 / 8 |
+| Shuffled-time action statistics | 0,1,2 | 3,4,3 / 8 | 3,4,3 / 8 |
+| Four pseudo-endpoint pairs, no length | 0,1,2 | 5,3,5 / 8 | 5,3,5 / 8 |
+| Bag action-envelope moments, no length | 0,1,2 | 4,4,3 / 8 | 4,3,3 / 8 |
+
 Two-task multitask selector results:
 
 | Manifest | Feature | Task mode | Overall success | Pick success | Faucet success | Oracle ceiling | Zero-feature control |
@@ -222,6 +242,15 @@ Three-task multitask selector results:
 | No demo | Phase summaries | per-task head | 0,1,2 | 15,15,14 / 24 | 6,6,6 / 8 | 3,3,2 / 8 | 6,6,6 / 8 | 19/24 |
 | No demo | Phase summaries after time shuffle | per-task head | 0,1,2 | 17,16,16 / 24 | 6,6,6 / 8 | 5,4,4 / 8 | 6,6,6 / 8 | 19/24 |
 
+Four-task no-demo multitask selector results:
+
+| Feature | Task mode | Seeds | Overall success | Pick | Faucet | OpenCabinet | Microwave | Oracle ceiling |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Raw action statistics, no length | per-task head | 0,1,2 | 18,17,16 / 32 | 6,6,6 / 8 | 2,2,1 / 8 | 6,6,6 / 8 | 4,3,3 / 8 | 25/32 |
+| Bag action-envelope moments, no length | per-task head | 0,1,2 | 19,18,16 / 32 | 6,6,6 / 8 | 3,3,2 / 8 | 6,5,6 / 8 | 4,4,2 / 8 | 25/32 |
+| Four pseudo-endpoint pairs, no length | per-task head | 0,1,2 | 19,18,16 / 32 | 5,6,6 / 8 | 5,4,3 / 8 | 6,6,6 / 8 | 3,2,3 / 8 | 25/32 |
+| Shuffled-time action statistics | per-task head | 0,1,2 | 22,19,19 / 32 | 6,6,6 / 8 | 5,5,4 / 8 | 6,5,6 / 8 | 5,2,3 / 8 | 25/32 |
+
 ## Observation
 
 The surprising part is the action calibration cliff:
@@ -238,6 +267,7 @@ The surprising part is the action calibration cliff:
 - Across three tasks, with-demo selectors recover all 24 rank0 failures. In no-demo, raw ordered action statistics recover only 13-14/24 against a 19/24 oracle ceiling, while shuffled-time statistics recover 16-17/24. The gain is concentrated in `TurnOnSinkFaucet`.
 - Phase features do not fix Faucet when temporal order is preserved. Counterintuitively, phase features after time shuffling perform better than ordered phase features. Simple bag-of-actions moments also fail to match shuffle, so the effect is not explained by generic order-invariant statistics alone.
 - Multi-pseudo-endpoint features nearly match shuffled-time statistics on the three-task no-demo setting: 16,16,17/24 vs 17,16,17/24. This makes endpoint-dropout calibration the cleanest method-shaped version of the shuffle diagnostic so far. See `docs/robocasa365_temporal_shuffle_diagnostic.md`.
+- `TurnOnMicrowave` adds a second button-style task. It has the same rank0 failure pattern and a 6/8 no-demo oracle ceiling. In single-task training, multi-pseudo-endpoints recover 5,3,5/8, better than raw 3,2,3/8. In four-task multitask training, shuffled-time remains the strongest and most stable overall feature, while pseudo-endpoints become a partial explanation rather than a complete replacement.
 
 This suggests that for RoboCasa-style long-horizon manipulation, the failure mode may be less about generic action noise and more about systematic action-scale or temporal-completion errors. That is aligned with the failure-gated critic story: a useful critic should detect physically plausible but under-executed candidates, not just visually plausible endpoints.
 
@@ -248,7 +278,7 @@ This probe is not yet sufficient as a final benchmark result:
 - Rank0 is intentionally brittle.
 - The fixed probe has candidate identity shortcuts; the randomized probe reduces but does not eliminate action-energy shortcut concerns.
 - `demo_original` is an oracle-like candidate source if presented as a policy output.
-- The largest randomized selector result so far uses eight episodes per task on three RoboCasa tasks, so it should be treated as a direction check, not a final benchmark table.
+- The largest randomized selector result so far uses eight episodes per task on four RoboCasa tasks, so it should be treated as a direction check, not a final benchmark table.
 - Current ranking prior is intentionally conservative and non-oracle; the next version should compare against an actual learned policy likelihood or BC proposal.
 - The no-demo Faucet result shows the current compact action statistic critic is not enough for articulated-fixture interaction. This is a weakness, but it is also the strongest evidence that the final method needs task-conditioned or contact-conditioned failure modeling.
 

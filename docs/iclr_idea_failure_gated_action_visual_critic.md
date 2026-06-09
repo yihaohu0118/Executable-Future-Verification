@@ -230,7 +230,7 @@ The common framing is to build a stronger planner, larger world model, or global
 - a trained proposal can rank likely samples well while still missing physical execution failures that a rollout critic detects;
 - the critic can recover failures caused by small action-geometry mistakes;
 - action/video signals can expose failure even when the candidate appears plausible;
-- in the current slice, temporal order is not just less important than expected; shuffled-time action summaries can outperform ordered summaries on Faucet-style failures, plain bag-of-actions moments do not reproduce the gain, and multi-pseudo-endpoint features nearly match shuffle.
+- in the current slice, temporal order is not just less important than expected; shuffled-time action summaries can outperform ordered summaries on Faucet-style failures, plain bag-of-actions moments do not reproduce the gain, and multi-pseudo-endpoint features partly explain but do not fully replace shuffle in a four-task setting.
 
 ## Current Weaknesses
 
@@ -249,8 +249,8 @@ These must be addressed before this is paper-ready:
 
 Priority order:
 
-1. Make RoboCasa365 the headline benchmark layer and scale beyond the current three-task probe.
-2. Add endpoint-dropout calibration for the Faucet gap: no-demo oracle is 7/8, ordered compact action statistics recover only 2/8, bag moments remain near 2/8, multi-pseudo-endpoints recover 4-5/8 in the three-task setting, and PickPlace/OpenCabinet reach their 6/8 oracle ceilings.
+1. Make RoboCasa365 the headline benchmark layer and scale beyond the current four-task probe.
+2. Add shuffle-robust and endpoint-dropout calibration for the Faucet/Microwave gap: no-demo oracle is 7/8 on Faucet and 6/8 on Microwave, ordered compact action statistics under-recover both, shuffled-time statistics are strongest in four-task multitask evaluation, and multi-pseudo-endpoints are a partial method-shaped approximation.
 3. Replace the diagnostic replay prior with BC/diffusion-policy top-k samples where a 2025-2026 benchmark provides usable policy or demonstration sources.
 4. Add uncertainty-aware calibration to the gate and evaluate under mixed proposal qualities.
 5. Use RoboTwin 2.0, RoboMIND 2.0, or 2026 robotic world-model diagnostics as the next benchmark layer; do not make legacy LIBERO/CALVIN/D4RL the main evidence.

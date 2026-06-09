@@ -68,6 +68,28 @@ Oracle ceiling: 19/24.
 
 PickPlaceCounterToCabinet and OpenCabinet already reach their no-demo oracle ceilings. The gain from shuffle controls is concentrated in TurnOnSinkFaucet.
 
+## Four-Task No-Demo
+
+The fourth task adds `TurnOnMicrowave`, a second button-style fixture interaction.
+
+Manifests:
+
+- `PickPlaceCounterToCabinet_no_demo_candidate_manifest.jsonl`
+- `TurnOnSinkFaucet_no_demo_candidate_manifest.jsonl`
+- `OpenCabinet_no_demo_candidate_manifest.jsonl`
+- `TurnOnMicrowave_no_demo_candidate_manifest.jsonl`
+
+Oracle ceiling: 25/32.
+
+| Feature | Seeds | Overall success | Faucet success | Microwave success |
+| --- | --- | --- | --- | --- |
+| raw action statistics, no length | 0,1,2 | 18,17,16 | 2,2,1 | 4,3,3 |
+| bag action-envelope moments, no length | 0,1,2 | 19,18,16 | 3,3,2 | 4,4,2 |
+| four pseudo-endpoint pairs, no length | 0,1,2 | 19,18,16 | 5,4,3 | 3,2,3 |
+| shuffled-time action statistics | 0,1,2 | 22,19,19 | 5,5,4 | 5,2,3 |
+
+Single-task `TurnOnMicrowave` no-demo has oracle ceiling 6/8. Multi-pseudo-endpoints recover 5,3,5/8, compared with raw 3,2,3/8 and shuffled-time 3,4,3/8. In the four-task multitask setting, however, pseudo-endpoints are weaker than shuffled-time overall. This makes endpoint dropout a useful partial mechanism, not yet a complete replacement for shuffle-robust calibration.
+
 ## Interpretation
 
 The current evidence supports this mechanism:
@@ -76,17 +98,17 @@ The current evidence supports this mechanism:
 
 This is a useful ICLR-style diagnostic because it contradicts the default assumption that more temporal structure is always better for action-conditioned evaluation.
 
-The negative bag result matters. If ordinary order-invariant moments were enough, `bag_no_length` should have matched `shuffle_time`; it did not. The pseudo-endpoint result narrows the mechanism further: replacing brittle true endpoints with multiple deterministic pseudo-endpoints nearly matches shuffled-time performance in the three-task setting. The single-task Faucet result is still weaker, so pseudo-endpoints are not the whole solution, but they are the cleanest method-shaped version of the shuffle diagnostic so far.
+The negative bag result matters. If ordinary order-invariant moments were enough, `bag_no_length` should have matched `shuffle_time`; it did not. The pseudo-endpoint result narrows the mechanism further: replacing brittle true endpoints with multiple deterministic pseudo-endpoints nearly matches shuffled-time performance in the three-task setting. The four-task `TurnOnMicrowave` result adds a boundary: pseudo-endpoints help, but shuffled-time remains more robust overall.
 
 The next method should not be "always shuffle actions." A safer direction is:
 
 1. learn when temporal order is reliable;
-2. use multi-pseudo-endpoint or endpoint-dropout calibration features as a conservative failure detector;
+2. use multi-pseudo-endpoint or endpoint-dropout calibration features as a conservative failure detector, but keep shuffle-robust controls as the current strongest diagnostic baseline;
 3. add contact-conditioned features for Faucet-style interactions where successful candidates exist but compact statistics still miss them.
 
 ## Reviewer Caveats
 
 - Candidate generation is still replay perturbation, not a learned policy.
 - The action traces are sparse snapshots stored with stride 25, so this diagnostic does not rule out high-frequency temporal information.
-- The task count is three tasks and eight episodes per task; the result should be used as a mechanism-finding diagnostic before becoming a headline benchmark table.
+- The task count is four tasks and eight episodes per task; the result should be used as a mechanism-finding diagnostic before becoming a headline benchmark table.
 - The shuffled controls should be presented as a warning against overclaiming temporal world modeling, not as proof that action order is irrelevant.
