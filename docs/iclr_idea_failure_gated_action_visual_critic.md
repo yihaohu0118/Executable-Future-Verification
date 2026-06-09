@@ -90,6 +90,16 @@ Interpretation:
 - Shuffle-time staying strong means this slice is mostly action-distribution/stage-geometry driven, not precise temporal-order driven.
 - The n100 stability check shows the action-critic result is not a small-seed accident.
 
+Second-task StackCube check:
+
+| Selector | Success | Recovered rank0 failures | Oracle match |
+| --- | ---: | ---: | ---: |
+| StackCube rank0 high-grasp | 0/50 | 0/50 | 0/50 |
+| StackCube raw action MLP without trajectory length | 50/50 | 50/50 | 35/50 |
+| StackCube oracle-best candidate | 50/50 | 50/50 | 50/50 |
+
+StackCube is a stronger second-task diagnostic than PushCube. PushCube rank0 already succeeded on 100/100 cases, while StackCube exposes multiple recoverable failure types: high grasp, no release, and lateral placement error.
+
 ### Video-Frame Selector
 
 Case-heldout MLP over rendered RGB frame features:
@@ -158,7 +168,7 @@ These must be addressed before this is paper-ready:
 2. PickCube brittle-grasp profile is intentionally constructed.
 3. Current video/action selectors may exploit candidate-family regularities.
 4. Current phenomenon does not prove temporal world modeling because shuffle-time controls remain strong.
-5. Need a second task or policy-generated candidate source for external validity.
+5. Need a policy-generated candidate source for external validity.
 6. Need a harder fusion benchmark because current action/video critics each solve the slice independently.
 
 ## Next Experiments
@@ -166,10 +176,9 @@ These must be addressed before this is paper-ready:
 Priority order:
 
 1. Randomize candidate family positions, not only JSONL row order.
-2. Add a second ManiSkill task with genuine success headroom.
-3. Train a gate that combines visual-progress anchor and action/video critic on heterogeneous failures.
-4. Replace privileged candidates with BC/diffusion-policy top-k samples.
-5. Move to LIBERO once the ManiSkill gate is stable.
+2. Train a gate that combines visual-progress anchor and action/video critic on heterogeneous failures.
+3. Replace privileged candidates with BC/diffusion-policy top-k samples.
+4. Move to LIBERO once the ManiSkill gate is stable.
 
 ## Implemented Files
 
@@ -182,6 +191,7 @@ Priority order:
 - `docs/maniskill_pickcube_action_selector_results.md`
 - `docs/maniskill_pickcube_video_selector_results.md`
 - `docs/maniskill_pickcube_n100_action_stability.md`
+- `docs/maniskill_stackcube_brittle_stack_n50.md`
 
 ## Newly Added Verification Hooks
 
