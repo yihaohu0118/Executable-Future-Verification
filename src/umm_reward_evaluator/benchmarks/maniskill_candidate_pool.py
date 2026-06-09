@@ -33,6 +33,8 @@ class CandidateSpec:
     gain: float = 18.0
     grasp_z: float = 0.035
     push_depth: float = 0.12
+    place_extra: float = 0.0
+    release_gripper: float = 1.0
     speed_scale: float = 1.0
 
 
@@ -52,6 +54,15 @@ PUSH_SPECS = (
     CandidateSpec("slow_center", 4, "push_privileged", gain=10.0, push_depth=0.12),
 )
 
+STACK_SPECS = (
+    CandidateSpec("center", 0, "stack_privileged", gain=20.0, grasp_z=0.035, place_extra=0.0),
+    CandidateSpec("low_grasp", 1, "stack_privileged", gain=20.0, grasp_z=0.026, place_extra=0.0),
+    CandidateSpec("high_grasp", 2, "stack_privileged", gain=20.0, grasp_z=0.050, place_extra=0.0),
+    CandidateSpec("xy_offset", 3, "stack_privileged", xy_offset=(0.025, 0.0), gain=20.0, grasp_z=0.035),
+    CandidateSpec("no_release", 4, "stack_privileged", gain=20.0, grasp_z=0.035, release_gripper=-1.0),
+    CandidateSpec("slow_center", 5, "stack_privileged", gain=10.0, grasp_z=0.035, place_extra=0.0),
+)
+
 
 def specs_for(env_id: str, rank0_profile: str) -> tuple[CandidateSpec, ...]:
     if env_id == "PickCube-v1":
@@ -65,6 +76,13 @@ def specs_for(env_id: str, rank0_profile: str) -> tuple[CandidateSpec, ...]:
     if env_id == "PushCube-v1":
         if rank0_profile in {"strong", "brittle_grasp"}:
             return PUSH_SPECS
+    if env_id == "StackCube-v1":
+        if rank0_profile == "brittle_stack":
+            order = ["high_grasp", "center", "low_grasp", "xy_offset", "no_release", "slow_center"]
+            by_id = {spec.candidate_id: spec for spec in STACK_SPECS}
+            return tuple(replace(by_id[candidate_id], rank=rank) for rank, candidate_id in enumerate(order))
+        if rank0_profile == "strong":
+            return STACK_SPECS
     raise ValueError(f"Unsupported rank0 profile {rank0_profile!r} for {env_id}")
 
 
@@ -154,6 +172,28 @@ def _push_stages(obs: dict[str, Any], spec: CandidateSpec) -> list[tuple[np.ndar
     ]
 
 
+def _stack_stages(obs: dict[str, Any], spec: CandidateSpec) -> list[tuple[np.ndarray, float, int]]:
+    cube_a = _extra_pos(obs, "cubeA_pose")
+    cube_b = _extra_pos(obs, "cubeB_pose")
+    offset = np.array([spec.xy_offset[0], spec.xy_offset[1], 0.0], dtype=np.float32)
+    above = cube_a + offset
+    above[2] = 0.16
+    grasp = above.copy()
+    grasp[2] = spec.grasp_z
+    lift = above.copy()
+    lift[2] = 0.17
+    place = cube_b + offset
+    place[2] = 0.085 + spec.place_extra
+    return [
+        (above.astype(np.float32), 1.0, int(18 * spec.speed_scale)),
+        (grasp.astype(np.float32), 1.0, int(18 * spec.speed_scale)),
+        (grasp.astype(np.float32), -1.0, int(12 * spec.speed_scale)),
+        (lift.astype(np.float32), -1.0, int(18 * spec.speed_scale)),
+        (place.astype(np.float32), -1.0, int(45 * spec.speed_scale)),
+        (place.astype(np.float32), spec.release_gripper, int(12 * spec.speed_scale)),
+    ]
+
+
 def _final_distance(env_id: str, obs: dict[str, Any]) -> float | None:
     extra = obs.get("extra", {})
     if env_id == "PickCube-v1" and "obj_to_goal_pos" in extra:
@@ -162,6 +202,12 @@ def _final_distance(env_id: str, obs: dict[str, Any]) -> float | None:
         obj = _extra_pos(obs, "obj_pose")
         goal = _extra_pos(obs, "goal_pos")
         return float(np.linalg.norm(obj[:2] - goal[:2]))
+    if env_id == "StackCube-v1" and "cubeA_pose" in extra and "cubeB_pose" in extra:
+        cube_a = _extra_pos(obs, "cubeA_pose")
+        cube_b = _extra_pos(obs, "cubeB_pose")
+        goal = cube_b.copy()
+        goal[2] = cube_b[2] + 0.04
+        return float(np.linalg.norm(cube_a - goal))
     return None
 
 
@@ -194,7 +240,14 @@ def run_candidate(
 ) -> CandidateRow:
     obs, _ = env.reset(seed=seed)
     initial_distance = _final_distance(env_id, obs)
-    stages = _pick_stages(obs, spec) if env_id == "PickCube-v1" else _push_stages(obs, spec)
+    if env_id == "PickCube-v1":
+        stages = _pick_stages(obs, spec)
+    elif env_id == "PushCube-v1":
+        stages = _push_stages(obs, spec)
+    elif env_id == "StackCube-v1":
+        stages = _stack_stages(obs, spec)
+    else:
+        raise ValueError(f"Unsupported env_id={env_id!r}")
     all_actions: list[list[float]] = []
     total_reward = 0.0
     info: dict[str, Any] = {}
@@ -240,6 +293,8 @@ def run_candidate(
             "gain": spec.gain,
             "grasp_z": spec.grasp_z,
             "push_depth": spec.push_depth,
+            "place_extra": spec.place_extra,
+            "release_gripper": spec.release_gripper,
             "num_actions": len(all_actions),
         },
     )
@@ -264,7 +319,7 @@ def generate_pool(
         obs_mode="state_dict",
         control_mode="pd_ee_delta_pose",
         render_mode="rgb_array" if render_video else None,
-        max_episode_steps=200,
+        max_episode_steps=250 if env_id == "StackCube-v1" else 200,
     )
     rows: list[dict[str, Any]] = []
     try:
@@ -298,8 +353,8 @@ def main() -> None:
     parser.add_argument(
         "--rank0-profile",
         default="strong",
-        choices=["strong", "brittle_grasp"],
-        help="Candidate ordering profile. brittle_grasp makes PickCube rank0 use the high-grasp variant.",
+        choices=["strong", "brittle_grasp", "brittle_stack"],
+        help="Candidate ordering profile. brittle_grasp/brittle_stack make rank0 use a high-grasp variant.",
     )
     parser.add_argument("--render-video", action="store_true")
     parser.add_argument("--video-fps", type=int, default=10)
@@ -308,7 +363,7 @@ def main() -> None:
     args.output_dir.mkdir(parents=True, exist_ok=True)
     all_summaries: dict[str, dict[str, float | int]] = {}
     for env_id in args.tasks:
-        if env_id not in {"PickCube-v1", "PushCube-v1"}:
+        if env_id not in {"PickCube-v1", "PushCube-v1", "StackCube-v1"}:
             raise ValueError(f"Unsupported diagnostic controller for {env_id}")
         seeds = list(range(args.seed_offset, args.seed_offset + args.num_cases))
         rows, summary = generate_pool(
