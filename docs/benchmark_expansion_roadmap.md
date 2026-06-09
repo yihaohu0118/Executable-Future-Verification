@@ -17,7 +17,7 @@ Current PushT-100 numbers:
 | Static DINO progress + ActionWorld failure gate | 177.3960 | 43/100 |
 | Oracle-best CEM | 157.4419 | 100/100 |
 
-## Updated External-Benchmark Plan
+## Updated 2025-2026 External-Benchmark Plan
 
 ### 1. ManiSkill3 First
 
@@ -48,27 +48,35 @@ First ManiSkill milestone:
    - progress-anchor failure gate
 4. Report hard-case recovery where rank0 fails.
 
-### 2. LIBERO Next
+### 2. RoboCasa365 Next
 
-LIBERO has higher VLA visibility. The LeRobot documentation lists five suites covering 130 tasks: Spatial, Object, Goal, LIBERO-90, and Long. The standard evaluation uses task success over suites, with observations containing proprioception and two camera views and actions as 7D end-effector control.
+RoboCasa365 is now the best next benchmark because it is current for the 2025-2026 cycle and substantially closer to modern Physical AI/VLA evaluation than legacy tabletop suites. It covers hundreds of kitchen manipulation tasks and supports Gymnasium-style environment construction through the official RoboCasa/robosuite stack.
 
-Official source:
+Official sources:
 
-- LeRobot LIBERO benchmark docs: https://huggingface.co/docs/lerobot/libero
+- RoboCasa project: https://robocasa.ai/
+- RoboCasa code: https://github.com/robocasa/robocasa
+- robosuite code: https://github.com/ARISE-Initiative/robosuite
 
-This should be the second target because it needs more infrastructure:
+Local finding on the remote machine:
 
-- Linux/MuJoCo rendering setup.
-- LeRobot/LIBERO policy checkpoint.
-- Candidate generation for K action chunks per decision point.
-- Language-conditioned manifest fields.
+- The old LIBERO clone was removed from `/home/yihao_hyh/LIBERO`; no `libero-favc` conda env was present.
+- Official `robosuite` and `robocasa` repositories were cloned under `/home/yihao_hyh/benchmarks/`.
+- A separate `robocasa-favc` conda environment was created with Python 3.11.
+- Editable installs for official robosuite and robocasa succeeded.
+- Import smoke passed with `robocasa==1.0.1`, `robosuite==1.5.2`, `gymnasium==0.29.1`, and CUDA-enabled `torch==2.7.1+cu126`.
+- Gymnasium registers 396 `robocasa/*` environments.
+- Full kitchen/object assets were downloaded and extracted.
+- Four target-split smoke tasks reset and step successfully: `PickPlaceCounterToCabinet`, `PickPlaceCounterToSink`, `CloseCabinet`, and `TurnOnSinkFaucet`.
+- The RoboCasa Gym wrapper exposes language instructions, proprioceptive state, and three 256x256 RGB camera streams per observation.
+- Code finding: top-level `import robocasa` does not register Gymnasium IDs; the adapter must import `robocasa.wrappers.gym_wrapper`.
 
-First LIBERO milestone:
+First RoboCasa365 milestone:
 
-1. Start with `libero_spatial` or `libero_object`.
-2. Use a public policy checkpoint or a small BC policy to produce K candidates.
-3. Execute candidates in simulator to build oracle-best upper bound.
-4. Evaluate whether the failure gate improves success where rank0 fails.
+1. Select 3-5 task families that expose candidate-selection headroom under noisy or learned action proposals.
+2. Build a RoboCasa candidate manifest with task instruction, initial state metadata, action chunk, rollout success, and optional camera video.
+3. Train the same action critic and failure gate used for ManiSkill.
+4. Report rank0 success, oracle-best success, gated success, and hard-case recovery on target split tasks.
 
 ### 3. PointMaze As A Cross-Task Sanity Check
 
@@ -80,6 +88,6 @@ The paper-quality result should not be framed as "we improve PushT." The target 
 
 1. PushT-100 shows the mechanism under NanoWM/CEM planning.
 2. ManiSkill3 shows it improves executable manipulation candidate selection under standard simulator success metrics.
-3. LIBERO shows the same failure-gated mechanism transfers to language-conditioned manipulation.
+3. RoboCasa365 shows the same failure-gated mechanism transfers to a current kitchen-manipulation benchmark with much stronger 2025-2026 relevance.
 
 The key ablation is whether the trained action-world critic helps only when used as a gated override. If global ActionWorld is worse than static progress but the gate is better, that is a stronger and more counterintuitive story.

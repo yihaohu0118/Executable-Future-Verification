@@ -1,0 +1,108 @@
+# RoboCasa365 Benchmark Plan
+
+## Why This Benchmark
+
+RoboCasa365 is the current high-impact target for the ICLR story because it is a 2026 benchmark for generalist household manipulation rather than a legacy tabletop suite. The reported benchmark scale is 365 everyday tasks across 2,500 kitchen environments, with large human and synthetic demonstration corpora.
+
+This makes it a better fit for our current claim than older LIBERO-style evaluation:
+
+- It is current for the 2025-2026 benchmark cycle.
+- It tests household mobile manipulation, not only small tabletop primitives.
+- It has enough task diversity to test whether the failure-gated action critic is a mechanism or a one-task artifact.
+- It still exposes simulator success labels, which lets us measure rank0, oracle-best, and gated recovery without a real robot.
+
+## Current Remote Setup
+
+Remote host: `dev2`
+
+Environment:
+
+- Conda env: `robocasa-favc`
+- Python: 3.11
+- Official repos:
+  - `/home/yihao_hyh/benchmarks/robosuite`
+  - `/home/yihao_hyh/benchmarks/robocasa`
+- Import smoke:
+  - `robocasa==1.0.1`
+  - `robosuite==1.5.2`
+  - `gymnasium==0.29.1`
+  - `torch==2.7.1+cu126`
+  - CUDA available
+  - 396 registered `robocasa/*` env IDs
+
+Status:
+
+- LIBERO clone was removed from the remote machine.
+- RoboCasa kitchen/object assets are being downloaded.
+- RoboCasa kitchen/object assets finished downloading and extracting.
+- Reset/step smoke succeeds for `PickPlaceCounterToCabinet`, `PickPlaceCounterToSink`, `CloseCabinet`, and `TurnOnSinkFaucet` on `split=target`.
+- The wrapper returns language text, proprioceptive state, and three 256x256 RGB camera views.
+- `robocasa/CloseDoor` is registered but requires an extra `fixture_id`, so it is not a good default smoke task.
+- Implementation detail: Gymnasium registration requires importing `robocasa.wrappers.gym_wrapper`; top-level `import robocasa` is not sufficient.
+- Implementation detail: run the smoke script from `/tmp` or another neutral path. Running a standalone script from `/home/yihao_hyh/benchmarks` can interact badly with the sibling `robocasa/` repo directory on `sys.path`.
+
+## Smoke Command
+
+Run after assets finish:
+
+```bash
+python -m umm_reward_evaluator.benchmarks.robocasa365_smoke \
+  --list-envs \
+  --list-limit 20 \
+  --tasks \
+    robocasa/PickPlaceCounterToCabinet \
+    robocasa/PickPlaceCounterToSink \
+    robocasa/CloseCabinet \
+    robocasa/TurnOnSinkFaucet \
+  --split target \
+  --seed 0 \
+  --num-steps 1 \
+  --output runs/robocasa365_smoke_seed0.json
+```
+
+## First Experimental Layer
+
+The first layer should not attempt full VLA/diffusion-policy training immediately. The minimum publishable diagnostic is candidate-selection headroom:
+
+1. Generate multiple action candidates per initial state.
+2. Execute each candidate in RoboCasa.
+3. Measure:
+   - planner rank0 success
+   - oracle-best success
+   - oracle-better-than-rank0 cases
+   - failure-gated action critic success
+4. Train the same compact action critic used in ManiSkill.
+5. Report hard-case recovery where rank0 fails but at least one candidate succeeds.
+
+## Candidate Families
+
+Start with tasks where success is object/contact sensitive but not too long-horizon:
+
+- `PickPlaceCounterToCabinet`
+- `PickPlaceCounterToSink`
+- `CloseCabinet`
+- `TurnOnSinkFaucet`
+- `OpenSingleDoor`
+
+Then expand to longer or more compositional families only after headroom is visible.
+
+## 2026 Complementary Benchmarks
+
+These are useful for the second layer but should not block RoboCasa365:
+
+- RoboWM-Bench: 2026, world-model execution validation for manipulation. Good for comparing action-conditioned visual prediction to executable behavior.
+- MiraBench: 2026, action-conditioned reliability and optimism-bias diagnostics for robotic world models. Good for framing why visual fidelity is insufficient.
+- RoboTrustBench: 2026, trustworthiness of video world models for robotic manipulation. Good for stress tests and failure taxonomy.
+
+## Target Claim
+
+The target claim is:
+
+> In current manipulation benchmarks, the useful role of an action-conditioned critic is not to globally replace visual/planner scores, but to identify planner failures and rerank executable alternatives.
+
+The key evidence is a consistent gap:
+
+- rank0 is brittle;
+- oracle-best shows real candidate-set headroom;
+- global learned scoring can overfit or mis-rank;
+- a failure-gated critic recovers hard cases with less damage to easy cases.
