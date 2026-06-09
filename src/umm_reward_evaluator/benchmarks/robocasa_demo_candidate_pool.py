@@ -34,6 +34,7 @@ class ActionProfile:
     noise_std: float = 0.0
     truncate_frac: float = 1.0
     seed_offset: int = 0
+    prior_score: float = 0.0
 
 
 DEFAULT_PROFILES = (
@@ -43,6 +44,66 @@ DEFAULT_PROFILES = (
     ActionProfile("cand_03_noisy_003", 3, "noise", noise_std=0.03, seed_offset=3),
     ActionProfile("cand_04_truncated_080", 4, "truncate", truncate_frac=0.80),
 )
+
+
+def conservative_prior_score(actions: np.ndarray) -> float:
+    """Non-oracle policy prior: prefer smaller, smoother action chunks."""
+    if actions.size == 0:
+        return 0.0
+    action_energy = float(np.mean(np.square(actions)))
+    smoothness = float(np.mean(np.square(np.diff(actions, axis=0)))) if len(actions) > 1 else 0.0
+    return -(action_energy + 0.1 * smoothness)
+
+
+def random_profiles(
+    actions: np.ndarray,
+    *,
+    episode_index: int,
+    num_candidates: int,
+    seed: int,
+    include_original: bool,
+) -> tuple[ActionProfile, ...]:
+    rng = np.random.default_rng(seed + 1009 * episode_index)
+    profiles: list[ActionProfile] = []
+    raw_profiles: list[ActionProfile] = []
+    if include_original:
+        raw_profiles.append(ActionProfile("raw_demo_original", 0, "original"))
+    while len(raw_profiles) < num_candidates:
+        scale = float(rng.uniform(0.55, 1.15))
+        noise_std = float(rng.choice([0.0, 0.01, 0.02, 0.03, 0.05]))
+        truncate_frac = float(rng.choice([1.0, 1.0, 0.95, 0.90, 0.80]))
+        raw_profiles.append(
+            ActionProfile(
+                f"raw_scale{scale:.3f}_noise{noise_std:.3f}_trunc{truncate_frac:.2f}",
+                0,
+                "scale_noise_truncate",
+                scale=scale,
+                noise_std=noise_std,
+                truncate_frac=truncate_frac,
+                seed_offset=len(raw_profiles),
+            )
+        )
+
+    scored = []
+    for raw_profile in raw_profiles:
+        transformed = transform_actions(actions, raw_profile, case_seed=episode_index)
+        scored.append((conservative_prior_score(transformed), raw_profile))
+
+    # Higher prior score means more likely under the conservative non-oracle prior.
+    for rank, (score, raw_profile) in enumerate(sorted(scored, key=lambda item: item[0], reverse=True)):
+        profiles.append(
+            ActionProfile(
+                candidate_id=f"cand_{rank:02d}",
+                rank=rank,
+                kind=raw_profile.kind,
+                scale=raw_profile.scale,
+                noise_std=raw_profile.noise_std,
+                truncate_frac=raw_profile.truncate_frac,
+                seed_offset=raw_profile.seed_offset,
+                prior_score=float(score),
+            )
+        )
+    return tuple(profiles)
 
 
 def _import_robocasa_playback() -> tuple[Any, Any, Any]:
@@ -112,6 +173,15 @@ def transform_actions(
         rng = np.random.default_rng(case_seed + profile.seed_offset)
         noise = rng.normal(0.0, profile.noise_std, size=transformed.shape)
         return np.clip(transformed + noise, -1.0, 1.0)
+    if profile.kind == "scale_noise_truncate":
+        transformed = transformed * profile.scale
+        if profile.noise_std > 0.0:
+            rng = np.random.default_rng(case_seed + profile.seed_offset)
+            transformed = transformed + rng.normal(0.0, profile.noise_std, size=transformed.shape)
+        if profile.truncate_frac < 1.0:
+            keep = max(1, int(round(len(transformed) * profile.truncate_frac)))
+            transformed[keep:] = 0.0
+        return np.clip(transformed, -1.0, 1.0)
     if profile.kind == "truncate":
         keep = max(1, int(round(len(transformed) * profile.truncate_frac)))
         transformed[keep:] = 0.0
@@ -169,6 +239,10 @@ def build_pool(
     suite: str,
     num_episodes: int,
     profiles: tuple[ActionProfile, ...],
+    profile_mode: str,
+    num_candidates: int,
+    seed: int,
+    include_original: bool,
     max_steps: int | None,
     action_stride: int,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
@@ -185,7 +259,18 @@ def build_pool(
             initial_state = _initial_state(dataset, episode_index)
             instruction = _episode_instruction(dataset, episode_index)
             case_id = f"{task_name}:ep_{episode_index:04d}"
-            for profile in profiles:
+            case_profiles = (
+                random_profiles(
+                    actions,
+                    episode_index=episode_index,
+                    num_candidates=num_candidates,
+                    seed=seed,
+                    include_original=include_original,
+                )
+                if profile_mode == "random"
+                else profiles
+            )
+            for profile in case_profiles:
                 print(
                     f"[robocasa_demo_pool] episode={episode_index} candidate={profile.candidate_id}",
                     flush=True,
@@ -224,6 +309,7 @@ def build_pool(
                         "scale": profile.scale,
                         "noise_std": profile.noise_std,
                         "truncate_frac": profile.truncate_frac,
+                        "conservative_prior_score": profile.prior_score,
                         "original_action_shape": list(actions.shape),
                         "stored_action_stride": action_stride,
                         "executed_steps": executed_steps,
@@ -241,7 +327,10 @@ def build_pool(
             "suite": suite,
             "task_name": task_name,
             "dataset": str(dataset),
-            "num_profiles": len(profiles),
+            "profile_mode": profile_mode,
+            "num_profiles": num_candidates if profile_mode == "random" else len(profiles),
+            "include_original": include_original,
+            "ranking_prior": "conservative_action_energy",
         }
     )
     return rows, summary
@@ -253,6 +342,10 @@ def main() -> None:
     parser.add_argument("--task-name", required=True)
     parser.add_argument("--suite", default="target-human")
     parser.add_argument("--num-episodes", type=int, default=5)
+    parser.add_argument("--profile-mode", choices=["fixed", "random"], default="fixed")
+    parser.add_argument("--num-candidates", type=int, default=8)
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--exclude-original", action="store_true")
     parser.add_argument("--max-steps", type=int)
     parser.add_argument("--action-stride", type=int, default=10)
     parser.add_argument("--output-dir", type=Path, default=Path("outputs/robocasa365_demo_pool"))
@@ -264,6 +357,10 @@ def main() -> None:
         suite=args.suite,
         num_episodes=args.num_episodes,
         profiles=DEFAULT_PROFILES,
+        profile_mode=args.profile_mode,
+        num_candidates=args.num_candidates,
+        seed=args.seed,
+        include_original=not args.exclude_original,
         max_steps=args.max_steps,
         action_stride=args.action_stride,
     )

@@ -54,6 +54,14 @@ Each case uses five candidates from the same initial state:
 
 This intentionally creates a brittle rank0. It should be treated as a headroom probe, not as the final planner baseline.
 
+The second probe randomizes the candidate profiles per episode:
+
+- Candidate IDs are reassigned after ranking as `cand_00`, `cand_01`, ...
+- The rank is assigned by a non-oracle conservative action-energy prior.
+- Each sampled candidate applies a random action scale, optional small noise, and optional truncation.
+- The true transform parameters are stored only in metadata.
+- The original demonstration can appear in the pool, but it is not rank0 under the conservative prior.
+
 ## Results
 
 Two-episode smoke:
@@ -86,6 +94,63 @@ Per-candidate success on five episodes:
 | `cand_03_noisy_003` | 5/5 | 0 |
 | `cand_04_truncated_080` | 0/5 | 0 |
 
+Randomized five-episode probe, seed 7, eight candidates per episode:
+
+| Metric | Value |
+| --- | ---: |
+| Cases | 5 |
+| Rank0 success | 0/5 |
+| Oracle-best success | 5/5 |
+| Oracle better than rank0 | 5/5 |
+| Rank0 oracle match | 0/5 |
+
+Held-out action selector on the randomized five-episode manifest:
+
+| Selector | Success | Recovered rank0 failures | Oracle match |
+| --- | ---: | ---: | ---: |
+| Raw action statistics, no length | 5/5 | 5/5 | 4/5 |
+| Zero-feature control | 0/5 | 0/5 | 0/5 |
+| Shuffled-time action statistics | 5/5 | 5/5 | 3/5 |
+| Failure-gated raw action selector | 5/5 | 5/5 | n/a |
+
+Randomized eight-episode probe, seed 11, six candidates per episode:
+
+| Metric | With demo candidate | No-demo subset |
+| --- | ---: | ---: |
+| Cases | 8 | 8 |
+| Rank0 success | 0/8 | 0/8 |
+| Oracle-best success | 8/8 | 6/8 |
+| Oracle better than rank0 | 8/8 | 6/8 |
+| Rank0 oracle match | 0/8 | 2/8 |
+
+Candidate-rank success in the randomized eight-episode probe:
+
+| Rank under conservative prior | Success |
+| ---: | ---: |
+| 0 | 0/8 |
+| 1 | 0/8 |
+| 2 | 2/8 |
+| 3 | 3/8 |
+| 4 | 6/8 |
+| 5 | 8/8 |
+
+The original demonstration is not rank0 under the conservative prior. Its ranks across the eight episodes are 5, 5, 4, 4, 5, 4, 3, and 5.
+
+Perturbed-only candidates are not all failures: 11/40 randomized non-demo candidates succeed. Removing original demonstrations still leaves oracle-best success at 6/8.
+
+Held-out selectors on the randomized eight-episode manifest:
+
+| Manifest | Selector | Success | Recovered rank0 failures | Oracle match |
+| --- | --- | ---: | ---: | ---: |
+| With demo | Raw action statistics, no length | 8/8 | 8/8 | 5/8 |
+| With demo | Zero-feature control | 0/8 | 0/8 | 0/8 |
+| With demo | Shuffled-time action statistics | 8/8 | 8/8 | 5/8 |
+| With demo | Failure-gated raw action selector | 8/8 | 8/8 | n/a |
+| No demo | Raw action statistics, no length | 5/8 | 5/8 | 4/8 |
+| No demo | Zero-feature control | 0/8 | 0/8 | 2/8 |
+| No demo | Shuffled-time action statistics | 6/8 | 6/8 | 5/8 |
+| No demo | Failure-gated raw action selector | 5/8 | 5/8 | n/a |
+
 ## Observation
 
 The surprising part is the action calibration cliff:
@@ -93,6 +158,9 @@ The surprising part is the action calibration cliff:
 - Scaling the full demonstration action sequence by 0.85 fails in all first five target episodes.
 - Adding small noise with std 0.03 still succeeds in all first five target episodes.
 - Truncating the final 20% fails in all first five target episodes.
+- In the randomized pool, a held-out selector recovers all rank0 failures while the zero-feature control recovers none.
+- Shuffling action time still performs well, suggesting the current signal is dominated by action calibration statistics rather than fine temporal ordering.
+- In the no-demo subset, shuffled-time action statistics reach the 6/8 oracle ceiling while raw ordered statistics reach 5/8. More temporal structure is not automatically better on this diagnostic.
 
 This suggests that for RoboCasa-style long-horizon manipulation, the failure mode may be less about generic action noise and more about systematic action-scale or temporal-completion errors. That is aligned with the failure-gated critic story: a useful critic should detect physically plausible but under-executed candidates, not just visually plausible endpoints.
 
@@ -101,18 +169,21 @@ This suggests that for RoboCasa-style long-horizon manipulation, the failure mod
 This probe is not yet sufficient as a final benchmark result:
 
 - Rank0 is intentionally brittle.
-- The candidate profiles are fixed, so a selector could exploit candidate identity or simple action-energy shortcuts.
+- The fixed probe has candidate identity shortcuts; the randomized probe reduces but does not eliminate action-energy shortcut concerns.
 - `demo_original` is an oracle-like candidate source if presented as a policy output.
+- The largest randomized selector result so far uses eight episodes from one RoboCasa task, so it should be treated as a direction check, not a final benchmark table.
+- Current ranking prior is intentionally conservative and non-oracle; the next version should compare against an actual learned policy likelihood or BC proposal.
 
 ## Next Experiment
 
-The next fairer RoboCasa365 experiment should keep the same replay infrastructure but change the candidate source:
+The next fairer RoboCasa365 experiment should keep the same replay infrastructure and scale the randomized probe:
 
-1. Use original demo actions only as supervision or an oracle upper bound.
-2. Generate rank0 from a non-oracle policy score, likelihood score, or noisy BC model.
-3. Randomize scale, noise, truncation, and temporal warp per episode so candidate identity is not enough.
-4. Train/evaluate the action critic under held-out episodes.
-5. Report:
+1. Run more target episodes and multiple random seeds.
+2. Use original demo actions only as supervision or an oracle upper bound.
+3. Generate rank0 from a non-oracle policy score, likelihood score, or noisy BC model.
+4. Add harder controls that match action energy while changing direction or phase.
+5. Train/evaluate the action critic under held-out episodes.
+6. Report:
    - rank0 success
    - oracle-best success
    - global action critic success

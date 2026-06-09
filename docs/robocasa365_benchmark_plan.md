@@ -41,6 +41,7 @@ Status:
 - Implementation detail: Gymnasium registration requires importing `robocasa.wrappers.gym_wrapper`; top-level `import robocasa` is not sufficient.
 - Implementation detail: run the smoke script from `/tmp` or another neutral path. Running a standalone script from `/home/yihao_hyh/benchmarks` can interact badly with the sibling `robocasa/` repo directory on `sys.path`.
 - A first target-human demo candidate probe was run for `PickPlaceCounterToCabinet`: rank0 under-actuated replay failed in 0/5 episodes, while oracle-best recovered 5/5. See `docs/robocasa365_demo_candidate_probe.md`.
+- A randomized candidate probe reduces fixed candidate-ID shortcuts: with eight target-human episodes and six candidates per episode, conservative-prior rank0 gets 0/8, oracle-best gets 8/8, and a held-out action selector gets 8/8. Removing original demo candidates leaves oracle-best at 6/8 and shuffled-time action statistics reach 6/8.
 
 ## Smoke Command
 
