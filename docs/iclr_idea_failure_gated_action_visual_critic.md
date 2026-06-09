@@ -124,6 +124,19 @@ Interpretation:
 - The action features contain enough information, because independent per-task models reach 100/100.
 - Per-task output heads recover most of the shared-critic failure, so the bottleneck is task-specific failure calibration rather than representation alone.
 
+Mixed-rank failure-gate diagnostic:
+
+| Task | Rank0 success | Global critic success | Gated critic success | Gated preserved rank0 |
+| --- | ---: | ---: | ---: | ---: |
+| PickCube random-grasp | 24/50 | 50/50 | 50/50 | 24/50 |
+| StackCube brittle-stack | 20/50 | 50/50 | 49/50 | 18/50 |
+
+Interpretation:
+
+- PickCube supports the conservative-gate claim: the gate preserves correct rank0 choices while recovering all failures.
+- StackCube exposes the calibration risk: when the global critic is already near-oracle, a conservative gate can preserve a failing rank0.
+- Therefore the paper should not claim that gating is automatically better than global reranking. The stronger claim is that failure detection and override calibration are separate problems.
+
 ### Video-Frame Selector
 
 Case-heldout MLP over rendered RGB frame features:
@@ -168,7 +181,7 @@ Core pipeline:
 2. A static visual-progress anchor selects the default candidate.
 3. A trained action/video critic scores candidate failure likelihood.
 4. A task- or mode-conditioned head calibrates failure probability for the current contact regime.
-5. A learned gate overrides the anchor only when the anchor is likely to fail.
+5. An uncertainty-aware gate overrides the anchor only when the anchor is likely to fail and the critic is sufficiently calibrated.
 6. The final selector is evaluated on task success and hard-case recovery.
 
 The key claim should be:
@@ -182,6 +195,7 @@ The common framing is to build a stronger planner, larger world model, or global
 - global replacement is not always best;
 - a simple trained critic is valuable as a failure detector;
 - a globally shared critic can fail even with a task one-hot, while per-task calibration recovers most of the gap;
+- failure gating is a calibration tradeoff, not a free replacement for global reranking;
 - the critic can recover failures caused by small action-geometry mistakes;
 - action/video signals can expose failure even when the candidate appears plausible;
 - in the current slice, temporal order is less important than expected.
@@ -196,6 +210,7 @@ These must be addressed before this is paper-ready:
 4. Current phenomenon does not prove temporal world modeling because shuffle-time controls remain strong.
 5. Need a policy-generated candidate source for external validity.
 6. Need a harder fusion benchmark because current action/video critics each solve the slice independently.
+7. Need uncertainty-aware gate calibration; StackCube mixed-rank shows a conservative gate can preserve a failing rank0.
 
 ## Next Experiments
 
@@ -219,6 +234,7 @@ Priority order:
 - `docs/maniskill_stackcube_brittle_stack_n50.md`
 - `docs/maniskill_pickcube_random_grasp_n50.md`
 - `docs/maniskill_multitask_action_critic.md`
+- `docs/maniskill_mixed_rank_gate_diagnostic.md`
 
 ## Newly Added Verification Hooks
 
@@ -231,3 +247,5 @@ The implementation now includes reviewer-oriented controls:
 The implementation also includes `train_action_video_fusion_selector.py`, a case-heldout fusion critic over action and video selector scores. This is the first minimal FAVC implementation beyond separate action-only and video-only diagnostics.
 
 The implementation now also includes `train_multitask_action_sequence_selector.py`, which tests whether action critics should share one global head, use task-specific heads, or remain fully independent. The first result is a concrete negative/positive pair: shared one-hot underperforms on StackCube, while per-task heads recover most of the gap.
+
+The implementation also includes `randomize_planner_rank.py` and `train_gated_action_sequence_selector.py`, which create mixed-planner-rank diagnostics and evaluate held-out failure gates. These scripts expose a useful negative result: gating preserves good planner choices on PickCube but slightly underperforms global reranking on StackCube due to calibration.
