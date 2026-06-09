@@ -18,12 +18,11 @@ def action_features(row: dict[str, Any], *, mode: str) -> np.ndarray:
     actions = np.asarray(row["actions"], dtype=np.float32)
     if actions.ndim != 2 or actions.shape[0] == 0:
         actions = np.zeros((1, 7), dtype=np.float32)
-    if mode == "zero":
-        actions = np.zeros_like(actions)
-    elif mode == "shuffle_time":
+    zero_features = mode == "zero"
+    if mode == "shuffle_time":
         rng = np.random.default_rng(abs(hash(row["case_id"])) % (2**32))
         actions = actions[rng.permutation(actions.shape[0])]
-    elif mode != "raw":
+    elif mode not in {"raw", "zero"}:
         raise ValueError(f"Unknown feature mode {mode}")
 
     first = actions[0]
@@ -45,6 +44,8 @@ def action_features(row: dict[str, Any], *, mode: str) -> np.ndarray:
             abs_mean,
         ]
     )
+    if zero_features:
+        feature = np.zeros_like(feature)
     return feature.astype(np.float32)
 
 
@@ -214,4 +215,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
