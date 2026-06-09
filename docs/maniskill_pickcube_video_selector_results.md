@@ -23,6 +23,7 @@ Selector:
 | --- | ---: | ---: | ---: |
 | Rank0 brittle grasp | 4/20 | 0/16 | 0/20 |
 | Raw video-frame MLP | 20/20 | 16/16 | 13/20 |
+| Raw video-frame MLP on shuffled manifest rows | 20/20 | 16/16 | 13/20 |
 | Zero-video negative control | 4/20 | 0/16 | 0/20 |
 | Shuffle-time video control | 20/20 | 16/16 | 10/20 |
 | Oracle-best candidate | 20/20 | 16/16 | 20/20 |
@@ -44,6 +45,8 @@ Zero-video control choices:
 ## Interpretation
 
 The visual selector recovers every brittle-grasp failure using only rendered video frames. The zero-video control falls back to rank0, so the result is not explained by case ordering or a constant class prior.
+
+Shuffling JSONL row order does not change the result, so the video selector is not relying on manifest order.
 
 The shuffle-time control also succeeds. This mirrors the action-sequence selector result and suggests that the visible failure signal is mostly stage appearance or final configuration, not precise frame order. This is useful for mechanism discovery but weakens any claim that this particular slice requires temporal reasoning.
 
@@ -70,4 +73,3 @@ Move from diagnostic candidates to one of:
 For the paper story, the strongest next result would be:
 
 > visual progress alone is strong, action critic alone is strong, but a learned gate is more robust when candidate failures are heterogeneous.
-

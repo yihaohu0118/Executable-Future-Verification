@@ -68,6 +68,8 @@ Case-heldout MLP over raw action-sequence statistics:
 | --- | ---: | ---: | ---: |
 | Rank0 brittle grasp | 4/20 | 0/16 | 0/20 |
 | Raw action-sequence MLP | 20/20 | 16/16 | 13/20 |
+| Raw action MLP without trajectory length | 20/20 | 16/16 | 13/20 |
+| Raw action MLP on shuffled manifest rows | 20/20 | 16/16 | 13/20 |
 | Zero-action negative control | 4/20 | 0/16 | 0/20 |
 | Shuffle-time action control | 20/20 | 16/16 | 8/20 |
 
@@ -75,6 +77,8 @@ Interpretation:
 
 - The learned critic recovers every rank0 failure.
 - The zero control proves the result is not only class prior or candidate ordering.
+- The no-length control proves the result is not explained by early termination or trajectory length.
+- Shuffling manifest rows does not change the result, so JSONL row order is not the shortcut.
 - Shuffle-time staying strong means this slice is mostly action-distribution/stage-geometry driven, not precise temporal-order driven.
 
 ### Video-Frame Selector
@@ -85,6 +89,7 @@ Case-heldout MLP over rendered RGB frame features:
 | --- | ---: | ---: | ---: |
 | Rank0 brittle grasp | 4/20 | 0/16 | 0/20 |
 | Raw video-frame MLP | 20/20 | 16/16 | 13/20 |
+| Raw video-frame MLP on shuffled manifest rows | 20/20 | 16/16 | 13/20 |
 | Zero-video negative control | 4/20 | 0/16 | 0/20 |
 | Shuffle-time video control | 20/20 | 16/16 | 10/20 |
 
@@ -92,7 +97,21 @@ Interpretation:
 
 - The failure is visible from rollout frames.
 - Zero-video control falls back to rank0.
+- Shuffling manifest rows does not change the result, so row order is not the shortcut.
 - Shuffle-time staying strong again warns against overclaiming temporal reasoning on this slice.
+
+### Action-Video Fusion Selector
+
+Case-heldout MLP over action and video critic scores:
+
+| Selector | Success | Recovered rank0 failures | Oracle match |
+| --- | ---: | ---: | ---: |
+| Action-video fusion MLP | 20/20 | 16/16 | 2/20 |
+
+Interpretation:
+
+- Fusion recovers all failures but has low oracle match because many successful candidates are near-equivalent under the binary success metric.
+- For this diagnostic slice, success recovery is the primary metric; oracle match is less informative because `rank0_center`, `low_grasp`, `x_offset`, and `slow_center` often all succeed.
 
 ## Concrete Method Direction
 
@@ -131,19 +150,18 @@ These must be addressed before this is paper-ready:
 3. Current video/action selectors may exploit candidate-family regularities.
 4. Current phenomenon does not prove temporal world modeling because shuffle-time controls remain strong.
 5. Need a second task or policy-generated candidate source for external validity.
-6. The `raw_no_length` action-control experiment is implemented but not yet run because the remote machine was temporarily unreachable.
+6. Need a harder fusion benchmark because current action/video critics each solve the slice independently.
 
 ## Next Experiments
 
 Priority order:
 
-1. Run `raw_no_length` action selector.
-2. Randomize candidate row order and candidate family positions.
-3. Generate a larger PickCube sweep.
-4. Add a second ManiSkill task with genuine success headroom.
-5. Train a gate that combines visual-progress anchor and action/video critic.
-6. Replace privileged candidates with BC/diffusion-policy top-k samples.
-7. Move to LIBERO once the ManiSkill gate is stable.
+1. Randomize candidate family positions, not only JSONL row order.
+2. Generate a larger PickCube sweep.
+3. Add a second ManiSkill task with genuine success headroom.
+4. Train a gate that combines visual-progress anchor and action/video critic on heterogeneous failures.
+5. Replace privileged candidates with BC/diffusion-policy top-k samples.
+6. Move to LIBERO once the ManiSkill gate is stable.
 
 ## Implemented Files
 
@@ -158,9 +176,10 @@ Priority order:
 
 ## Newly Added Verification Hooks
 
-The implementation now includes two reviewer-oriented controls:
+The implementation now includes reviewer-oriented controls:
 
 1. `raw_no_length` action features: removes trajectory length as a possible success shortcut while preserving action statistics.
 2. Candidate-row shuffling: tests whether results are invariant to JSONL order. Selector tie-breaking now prefers planner rank0 when scores are equal, so zero controls are well-defined and not row-order dependent.
+3. Action-video fusion: tests whether the FAVC critic can combine independently trained action and visual critics in a held-out protocol.
 
 The implementation also includes `train_action_video_fusion_selector.py`, a case-heldout fusion critic over action and video selector scores. This is the first minimal FAVC implementation beyond separate action-only and video-only diagnostics.

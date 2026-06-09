@@ -22,6 +22,8 @@ Selector:
 | --- | ---: | ---: | ---: |
 | Rank0 brittle grasp | 4/20 | 0/16 | 0/20 |
 | Raw action-sequence MLP | 20/20 | 16/16 | 13/20 |
+| Raw action MLP without trajectory length | 20/20 | 16/16 | 13/20 |
+| Raw action MLP on shuffled manifest rows | 20/20 | 16/16 | 13/20 |
 | Zero-action negative control | 4/20 | 0/16 | 0/20 |
 | Shuffle-time action control | 20/20 | 16/16 | 8/20 |
 | Oracle-best candidate | 20/20 | 16/16 | 20/20 |
@@ -29,6 +31,8 @@ Selector:
 ## Interpretation
 
 The learned action selector fully recovers the brittle grasp failures on held-out cases. The corrected zero-action control falls back to rank0, so the result is not explained by class prior or candidate ordering.
+
+The no-length control also recovers all failures, so the action result is not explained by early termination or trajectory length. Shuffling JSONL row order does not change the result, so row order is not the shortcut either.
 
 The shuffle-time control still succeeds. This is a useful diagnostic: for this PickCube slice, the key signal is mostly in the action distribution and stage geometry, not precise temporal order. That makes the first external benchmark result simpler but also creates a reviewer risk. We should not overclaim temporal world modeling from this result alone.
 
@@ -48,4 +52,3 @@ This is stronger than a training-free reranker, but still not enough for a final
 4. Larger `PickCube-v1` seed sweep.
 5. A second ManiSkill task where rank0 has genuine success headroom.
 6. Replace privileged diagnostic candidates with BC/diffusion-policy top-k candidates.
-
