@@ -46,7 +46,7 @@ Status:
 - A second randomized probe on `TurnOnSinkFaucet` confirms cross-task headroom: conservative-prior rank0 gets 0/8 and oracle-best gets 8/8 with original demos. Removing original demos leaves oracle-best at 7/8, while simple action-statistic selectors recover only 2-3/8. This is a useful harder case because it shows the no-demo setting needs task-conditioned calibration rather than a single global action-energy shortcut.
 - A third randomized probe on `OpenCabinet` adds a longer fixture-interaction task. Conservative-prior rank0 gets 0/8 and oracle-best gets 8/8 with original demos. Removing original demos leaves oracle-best at 6/8, and raw/shuffled action-statistic selectors both reach 6/8.
 - Three-task multitask result: with original demo candidates, shared action-statistic selectors recover 24/24 rank0 failures while zero-feature control recovers 1/24. In no-demo subsets, the selector recovers 14/24 against a 19/24 oracle ceiling; the missing cases are concentrated in `TurnOnSinkFaucet`.
-- A temporal-shuffle diagnostic strengthens the counterintuitive mechanism: in no-demo subsets, deterministic shuffled-time action statistics recover 16-17/24 across three seeds, compared with 13-14/24 for ordered raw statistics. The improvement is concentrated in `TurnOnSinkFaucet`.
+- A temporal-shuffle diagnostic strengthens the counterintuitive mechanism: in no-demo subsets, deterministic shuffled-time action statistics recover 16-17/24 across three seeds, compared with 13-14/24 for ordered raw statistics. Simple bag-of-actions moments stay at 14/24, so the effect is not explained by generic order-invariant moments alone. The improvement is concentrated in `TurnOnSinkFaucet`.
 
 ## Smoke Command
 
@@ -116,5 +116,5 @@ The key evidence is a consistent gap:
 - rank0 is brittle;
 - oracle-best shows real candidate-set headroom;
 - ordered learned scoring can overfit or mis-rank;
-- order-invariant calibration can be stronger than preserving temporal order in the current small-data regime;
+- shuffle-robust calibration can be stronger than preserving temporal endpoints in the current small-data regime;
 - a failure-gated critic recovers hard cases with less damage to easy cases.

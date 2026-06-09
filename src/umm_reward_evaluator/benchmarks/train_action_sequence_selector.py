@@ -17,6 +17,8 @@ from umm_reward_evaluator.benchmarks.common import load_jsonl, oracle_key
 ACTION_FEATURE_MODES = (
     "raw",
     "raw_no_length",
+    "bag",
+    "bag_no_length",
     "shuffle_time",
     "phase",
     "phase_no_length",
@@ -51,12 +53,23 @@ def phase_features(actions: np.ndarray, *, num_phases: int = 4) -> np.ndarray:
     return np.concatenate(features).astype(np.float32)
 
 
+def bag_features(actions: np.ndarray) -> np.ndarray:
+    mean = actions.mean(axis=0)
+    std = actions.std(axis=0)
+    amin = actions.min(axis=0)
+    amax = actions.max(axis=0)
+    abs_mean = np.abs(actions).mean(axis=0)
+    energy = np.mean(np.square(actions), axis=0)
+    return np.concatenate([mean, std, amin, amax, abs_mean, energy]).astype(np.float32)
+
+
 def action_features(row: dict[str, Any], *, mode: str) -> np.ndarray:
     actions = np.asarray(row["actions"], dtype=np.float32)
     if actions.ndim != 2 or actions.shape[0] == 0:
         actions = np.zeros((1, 7), dtype=np.float32)
     zero_features = mode == "zero"
-    drop_length = mode in {"raw_no_length", "phase_no_length", "phase_shuffle_time"}
+    use_bag = mode in {"bag", "bag_no_length"}
+    drop_length = mode in {"raw_no_length", "bag_no_length", "phase_no_length", "phase_shuffle_time"}
     use_phase = mode in {"phase", "phase_no_length", "phase_shuffle_time"}
     if mode in {"shuffle_time", "phase_shuffle_time"}:
         rng = np.random.default_rng(stable_case_seed(str(row["case_id"])))
@@ -65,6 +78,12 @@ def action_features(row: dict[str, Any], *, mode: str) -> np.ndarray:
         raise ValueError(f"Unknown feature mode {mode}")
 
     length_feature = 0.0 if drop_length else actions.shape[0] / 200.0
+    if use_bag:
+        feature = np.concatenate([np.array([length_feature], dtype=np.float32), bag_features(actions)])
+        if zero_features:
+            feature = np.zeros_like(feature)
+        return feature.astype(np.float32)
+
     first = actions[0]
     last = actions[-1]
     mean = actions.mean(axis=0)

@@ -12,10 +12,11 @@ This is not evidence that robot actions are order-invariant. It is evidence that
 
 New feature modes:
 
+- `bag_no_length`: order-invariant action-envelope moments without first/last endpoints.
 - `phase_no_length`: raw summary plus four equal temporal phase summaries.
 - `phase_shuffle_time`: shuffle the action snapshot order first, then compute the same phase summaries.
 
-The phase features include per-phase mean, standard deviation, absolute mean, phase energy, late-energy ratio, and early-late energy delta.
+The bag features include mean, standard deviation, min, max, absolute mean, and per-action-dimension energy. The phase features include per-phase mean, standard deviation, absolute mean, phase energy, late-energy ratio, and early-late energy delta.
 
 ## Single-Task Faucet No-Demo
 
@@ -28,11 +29,13 @@ Oracle ceiling: 7/8.
 | Feature | Seeds | Selector success |
 | --- | --- | --- |
 | raw action statistics, no length | 0,1,2,3,4 | 2,2,2,2,2 |
+| bag action-envelope moments, no length | 0,1,2,3,4 | 4,2,2,2,3 |
+| bag action-envelope moments with length | 0,1,2,3,4 | 3,2,2,2,3 |
 | shuffled-time action statistics | 0,1,2,3,4 | 2,3,3,3,3 |
 | phase summaries | 0,1,2,3,4 | 2,2,2,2,2 |
 | phase summaries after time shuffle | 0,1,2,3,4 | 4,4,3,3,5 |
 
-The important result is not that phase features solve Faucet. They do not. The surprising result is that shuffling before phase summaries improves over ordered phase summaries on every seed.
+The important result is not that phase features solve Faucet. They do not. The surprising result is that shuffling before phase summaries improves over ordered phase summaries on every seed. Simple order-invariant bag moments also do not explain the gain; they remain close to the raw ordered baseline.
 
 ## Three-Task No-Demo
 
@@ -47,6 +50,8 @@ Oracle ceiling: 19/24.
 | Feature | Seeds | Overall success | Faucet success |
 | --- | --- | --- | --- |
 | raw action statistics, no length | 0,1,2 | 14,14,13 | 2,3,1 |
+| bag action-envelope moments, no length | 0,1,2 | 14,14,14 | 2,2,2 |
+| bag action-envelope moments with length | 0,1,2 | 14,14,14 | 2,2,2 |
 | shuffled-time action statistics | 0,1,2 | 17,16,17 | 5,4,5 |
 | phase summaries | 0,1,2 | 15,15,14 | 3,3,2 |
 | phase summaries after time shuffle | 0,1,2 | 17,16,16 | 5,4,4 |
@@ -57,14 +62,16 @@ PickPlaceCounterToCabinet and OpenCabinet already reach their no-demo oracle cei
 
 The current evidence supports this mechanism:
 
-> For small-data action critics on RoboCasa365 replay candidates, temporal order can be an anti-feature: ordered summaries overfit to phase artifacts, while shuffled action-distribution summaries better capture whether a candidate has the right calibration envelope.
+> For small-data action critics on RoboCasa365 replay candidates, temporal order can be an anti-feature: ordered summaries overfit to endpoint or phase artifacts, while deterministic shuffle perturbations act like an anti-overfitting control that preserves candidate-level action calibration.
 
 This is a useful ICLR-style diagnostic because it contradicts the default assumption that more temporal structure is always better for action-conditioned evaluation.
+
+The negative bag result matters. If ordinary order-invariant moments were enough, `bag_no_length` should have matched `shuffle_time`; it did not. The mechanism is therefore probably not just "ignore order and keep moments." The shuffle benefit may come from replacing brittle first/last endpoint features with deterministic pseudo-endpoint samples, or from perturbing phase summaries so they cannot memorize sparse phase artifacts.
 
 The next method should not be "always shuffle actions." A safer direction is:
 
 1. learn when temporal order is reliable;
-2. use order-invariant calibration features as a conservative failure detector;
+2. use shuffle-robust calibration features or endpoint-dropout as a conservative failure detector;
 3. add contact-conditioned features for Faucet-style interactions where successful candidates exist but compact statistics still miss them.
 
 ## Reviewer Caveats
