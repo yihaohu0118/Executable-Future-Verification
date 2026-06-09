@@ -44,6 +44,8 @@ Status:
 - A first target-human demo candidate probe was run for `PickPlaceCounterToCabinet`: rank0 under-actuated replay failed in 0/5 episodes, while oracle-best recovered 5/5. See `docs/robocasa365_demo_candidate_probe.md`.
 - A randomized candidate probe reduces fixed candidate-ID shortcuts: with eight target-human episodes and six candidates per episode, conservative-prior rank0 gets 0/8, oracle-best gets 8/8, and a held-out action selector gets 8/8. Removing original demo candidates leaves oracle-best at 6/8 and shuffled-time action statistics reach 6/8.
 - A second randomized probe on `TurnOnSinkFaucet` confirms cross-task headroom: conservative-prior rank0 gets 0/8 and oracle-best gets 8/8 with original demos. Removing original demos leaves oracle-best at 7/8, while simple action-statistic selectors recover only 2-3/8. This is a useful harder case because it shows the no-demo setting needs task-conditioned calibration rather than a single global action-energy shortcut.
+- A third randomized probe on `OpenCabinet` adds a longer fixture-interaction task. Conservative-prior rank0 gets 0/8 and oracle-best gets 8/8 with original demos. Removing original demos leaves oracle-best at 6/8, and raw/shuffled action-statistic selectors both reach 6/8.
+- Three-task multitask result: with original demo candidates, shared action-statistic selectors recover 24/24 rank0 failures while zero-feature control recovers 1/24. In no-demo subsets, the selector recovers 14/24 against a 19/24 oracle ceiling; the missing cases are concentrated in `TurnOnSinkFaucet`.
 
 ## Smoke Command
 
@@ -83,10 +85,12 @@ The first layer should not attempt full VLA/diffusion-policy training immediatel
 Start with tasks where success is object/contact sensitive but not too long-horizon:
 
 - `PickPlaceCounterToCabinet`
-- `PickPlaceCounterToSink`
-- `CloseCabinet`
+- `OpenCabinet`
 - `TurnOnSinkFaucet`
-- `OpenSingleDoor`
+- `PickPlaceCounterToStove`
+- `PickPlaceSinkToCounter`
+
+`PickPlaceCounterToSink` is useful as an environment smoke task but currently has no target-human dataset in the official RoboCasa365 registry, so it should not be used for the target-split demo replay table.
 
 Then expand to longer or more compositional families only after headroom is visible.
 

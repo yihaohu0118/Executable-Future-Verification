@@ -224,7 +224,7 @@ The common framing is to build a stronger planner, larger world model, or global
 
 - global replacement is not always best;
 - a simple trained critic is valuable as a failure detector;
-- a globally shared critic can fail even with a task one-hot, while per-task calibration recovers most of the gap;
+- a globally shared critic can fail even with a task one-hot, and simple per-task heads are still insufficient for Faucet-style contact calibration;
 - failure gating is a calibration tradeoff, not a free replacement for global reranking;
 - failure detection is data-efficient on these diagnostics, but the sample complexity differs sharply across contact regimes;
 - a trained proposal can rank likely samples well while still missing physical execution failures that a rollout critic detects;
@@ -243,15 +243,17 @@ These must be addressed before this is paper-ready:
 5. Need a full low-level policy-generated candidate source or official benchmark demonstrations for external validity.
 6. Need a harder fusion benchmark because current action/video critics each solve the slice independently.
 7. Need uncertainty-aware gate calibration; StackCube mixed-rank shows a conservative gate can preserve a failing rank0.
+8. RoboCasa365 now gives a stronger three-task story, but the current rank0 prior is still a conservative replay prior rather than a learned policy likelihood.
 
 ## Next Experiments
 
 Priority order:
 
-1. Make RoboCasa365 the headline benchmark layer and scale beyond the current two-task probe.
-2. Replace the diagnostic low-level executor with BC/diffusion-policy top-k samples where a 2025-2026 benchmark provides usable policy or demonstration sources.
-3. Add uncertainty-aware calibration to the gate and evaluate under mixed proposal qualities.
-4. Use RoboTwin 2.0, RoboMIND 2.0, or 2026 robotic world-model diagnostics as the next benchmark layer; do not make legacy LIBERO/CALVIN/D4RL the main evidence.
+1. Make RoboCasa365 the headline benchmark layer and scale beyond the current three-task probe.
+2. Add task/contact-conditioned calibration for the Faucet gap: no-demo oracle is 7/8, but compact action-statistic selectors recover only 2/8 while PickPlace and OpenCabinet reach their 6/8 oracle ceilings.
+3. Replace the diagnostic replay prior with BC/diffusion-policy top-k samples where a 2025-2026 benchmark provides usable policy or demonstration sources.
+4. Add uncertainty-aware calibration to the gate and evaluate under mixed proposal qualities.
+5. Use RoboTwin 2.0, RoboMIND 2.0, or 2026 robotic world-model diagnostics as the next benchmark layer; do not make legacy LIBERO/CALVIN/D4RL the main evidence.
 
 ## Implemented Files
 
@@ -265,6 +267,9 @@ Priority order:
 - `src/umm_reward_evaluator/benchmarks/maniskill_bc_policy_pool.py`
 - `src/umm_reward_evaluator/benchmarks/maniskill_learned_grasp_proposal_pool.py`
 - `src/umm_reward_evaluator/benchmarks/shuffle_manifest_rows.py`
+- `src/umm_reward_evaluator/benchmarks/robocasa365_smoke.py`
+- `src/umm_reward_evaluator/benchmarks/robocasa_demo_candidate_pool.py`
+- `src/umm_reward_evaluator/benchmarks/filter_candidate_manifest.py`
 - `docs/maniskill_pickcube_brittle_grasp_headroom.md`
 - `docs/maniskill_pickcube_action_selector_results.md`
 - `docs/maniskill_pickcube_video_selector_results.md`

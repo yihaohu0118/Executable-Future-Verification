@@ -7,12 +7,13 @@ This is the first executable RoboCasa365 candidate-selection probe. The goal is 
 ## Benchmark And Data
 
 - Benchmark: RoboCasa365
-- Tasks: `PickPlaceCounterToCabinet`, `TurnOnSinkFaucet`
+- Tasks: `PickPlaceCounterToCabinet`, `TurnOnSinkFaucet`, `OpenCabinet`
 - Split/source: target human demonstrations
 - Dataset path on `dev2`:
   - `/home/yihao_hyh/benchmarks/robocasa/datasets/v1.0/target/atomic/PickPlaceCounterToCabinet/20250811/lerobot`
   - `/home/yihao_hyh/benchmarks/robocasa/datasets/v1.0/target/atomic/TurnOnSinkFaucet/20250812/lerobot`
-- Download sizes: 561 MB tarball for `PickPlaceCounterToCabinet`, 398 MB tarball for `TurnOnSinkFaucet`
+  - `/home/yihao_hyh/benchmarks/robocasa/datasets/v1.0/target/atomic/OpenCabinet/20250813/lerobot`
+- Download sizes: 561 MB tarball for `PickPlaceCounterToCabinet`, 398 MB tarball for `TurnOnSinkFaucet`, 788 MB tarball for `OpenCabinet`
 - Observation exposed by smoke adapter:
   - language instruction
   - proprioceptive state
@@ -40,6 +41,7 @@ Implementation details:
 - Executes action candidates open-loop in robosuite.
 - Uses `env._check_success()` as the oracle success label.
 - Writes the shared candidate JSONL schema used by the ManiSkill selectors.
+- Uses `filter_candidate_manifest.py` to remove original-demonstration candidates and recompute oracle-best labels for no-demo subsets.
 
 ## Candidate Pool
 
@@ -175,6 +177,27 @@ Held-out selectors on `TurnOnSinkFaucet`:
 | No demo | Shuffled-time action statistics | 3/8 | 3/8 | 2/8 |
 | No demo | Failure-gated raw action selector | 2/8 | 2/8 | n/a |
 
+Randomized eight-episode probe on `OpenCabinet`, seed 11, six candidates per episode:
+
+| Metric | With demo candidate | No-demo subset |
+| --- | ---: | ---: |
+| Cases | 8 | 8 |
+| Rank0 success | 0/8 | 0/8 |
+| Oracle-best success | 8/8 | 6/8 |
+| Oracle better than rank0 | 8/8 | 6/8 |
+| Rank0 oracle match | 0/8 | 2/8 |
+
+Held-out selectors on `OpenCabinet`:
+
+| Manifest | Selector | Success | Recovered rank0 failures | Oracle match |
+| --- | --- | ---: | ---: | ---: |
+| With demo | Raw action statistics, no length | 7/8 | 7/8 | 6/8 |
+| With demo | Zero-feature control | 0/8 | 0/8 | 0/8 |
+| With demo | Shuffled-time action statistics | 8/8 | 8/8 | 5/8 |
+| No demo | Raw action statistics, no length | 6/8 | 6/8 | 5/8 |
+| No demo | Zero-feature control | 0/8 | 0/8 | 2/8 |
+| No demo | Shuffled-time action statistics | 6/8 | 6/8 | 5/8 |
+
 Two-task multitask selector results:
 
 | Manifest | Feature | Task mode | Overall success | Pick success | Faucet success | Oracle ceiling | Zero-feature control |
@@ -184,6 +207,16 @@ Two-task multitask selector results:
 | No demo | Raw action statistics, no length | per-task head | 8/16 | 5/8 | 3/8 | 13/16 | 0/16 |
 | No demo | Raw action statistics, no length | independent per task | 7/16 | 5/8 | 2/8 | 13/16 | n/a |
 | No demo | Shuffled-time action statistics | per-task head | 8/16 | 6/8 | 2/8 | 13/16 | n/a |
+
+Three-task multitask selector results:
+
+| Manifest | Feature | Task mode | Overall success | Pick success | Faucet success | OpenCabinet success | Oracle ceiling | Zero-feature control |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| With demo | Raw action statistics, no length | shared one-hot | 24/24 | 8/8 | 8/8 | 8/8 | 24/24 | 1/24 |
+| With demo | Shuffled-time action statistics | shared one-hot | 24/24 | 8/8 | 8/8 | 8/8 | 24/24 | n/a |
+| No demo | Raw action statistics, no length | shared one-hot | 14/24 | 6/8 | 2/8 | 6/8 | 19/24 | n/a |
+| No demo | Raw action statistics, no length | per-task head | 14/24 | 6/8 | 2/8 | 6/8 | 19/24 | 0/24 |
+| No demo | Shuffled-time action statistics | per-task head | 14/24 | 6/8 | 2/8 | 6/8 | 19/24 | n/a |
 
 ## Observation
 
@@ -197,6 +230,8 @@ The surprising part is the action calibration cliff:
 - In the no-demo subset, shuffled-time action statistics reach the 6/8 oracle ceiling while raw ordered statistics reach 5/8. More temporal structure is not automatically better on this diagnostic.
 - The same pattern transfers to `TurnOnSinkFaucet` when the original demo is present, but the no-demo subset is much harder: oracle-best remains 7/8 while action-statistic selectors recover only 2-3/8.
 - The two-task no-demo result is a useful boundary case. Task-conditioned heads improve slightly over a shared/global critic, but neither closes the 13/16 oracle ceiling. That points to task/contact-conditioned calibration as the next method need.
+- `OpenCabinet` adds a third target task and a longer fixture-interaction stress test. In no-demo, raw and shuffled-time selectors both reach the 6/8 oracle ceiling, while zero features recover 0/8. This shows the Faucet failure is not simply because all fixture tasks are impossible for action statistics.
+- Across three tasks, with-demo selectors recover all 24 rank0 failures, while no-demo selectors recover 14/24 against a 19/24 oracle ceiling. The remaining gap is concentrated in `TurnOnSinkFaucet`, where successful candidates exist but compact action statistics fail to select them.
 
 This suggests that for RoboCasa-style long-horizon manipulation, the failure mode may be less about generic action noise and more about systematic action-scale or temporal-completion errors. That is aligned with the failure-gated critic story: a useful critic should detect physically plausible but under-executed candidates, not just visually plausible endpoints.
 
@@ -207,7 +242,7 @@ This probe is not yet sufficient as a final benchmark result:
 - Rank0 is intentionally brittle.
 - The fixed probe has candidate identity shortcuts; the randomized probe reduces but does not eliminate action-energy shortcut concerns.
 - `demo_original` is an oracle-like candidate source if presented as a policy output.
-- The largest randomized selector result so far uses eight episodes per task on two RoboCasa tasks, so it should be treated as a direction check, not a final benchmark table.
+- The largest randomized selector result so far uses eight episodes per task on three RoboCasa tasks, so it should be treated as a direction check, not a final benchmark table.
 - Current ranking prior is intentionally conservative and non-oracle; the next version should compare against an actual learned policy likelihood or BC proposal.
 - The no-demo Faucet result shows the current compact action statistic critic is not enough for articulated-fixture interaction. This is a weakness, but it is also the strongest evidence that the final method needs task-conditioned or contact-conditioned failure modeling.
 
