@@ -145,7 +145,13 @@ def evaluate(rows: list[dict[str, Any]], *, feature_mode: str, hidden: int, epoc
     selections = []
     for case_id, case_rows in grouped.items():
         rank0 = min(case_rows, key=lambda row: row["candidate_rank_by_planner"])
-        selector = max(case_rows, key=lambda row: row["action_sequence_selector_score"])
+        selector = max(
+            case_rows,
+            key=lambda row: (
+                row["action_sequence_selector_score"],
+                -int(row.get("candidate_rank_by_planner", 999)),
+            ),
+        )
         oracle = max(case_rows, key=oracle_key)
         rank0_success += int(bool(rank0["oracle_success"]))
         selector_success += int(bool(selector["oracle_success"]))

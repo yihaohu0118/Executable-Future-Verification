@@ -150,7 +150,17 @@ Priority order:
 - `src/umm_reward_evaluator/benchmarks/maniskill_candidate_pool.py`
 - `src/umm_reward_evaluator/benchmarks/train_action_sequence_selector.py`
 - `src/umm_reward_evaluator/benchmarks/train_video_frame_selector.py`
+- `src/umm_reward_evaluator/benchmarks/train_action_video_fusion_selector.py`
+- `src/umm_reward_evaluator/benchmarks/shuffle_manifest_rows.py`
 - `docs/maniskill_pickcube_brittle_grasp_headroom.md`
 - `docs/maniskill_pickcube_action_selector_results.md`
 - `docs/maniskill_pickcube_video_selector_results.md`
 
+## Newly Added Verification Hooks
+
+The implementation now includes two reviewer-oriented controls:
+
+1. `raw_no_length` action features: removes trajectory length as a possible success shortcut while preserving action statistics.
+2. Candidate-row shuffling: tests whether results are invariant to JSONL order. Selector tie-breaking now prefers planner rank0 when scores are equal, so zero controls are well-defined and not row-order dependent.
+
+The implementation also includes `train_action_video_fusion_selector.py`, a case-heldout fusion critic over action and video selector scores. This is the first minimal FAVC implementation beyond separate action-only and video-only diagnostics.
