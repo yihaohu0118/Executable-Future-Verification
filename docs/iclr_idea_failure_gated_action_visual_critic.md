@@ -110,6 +110,20 @@ Randomized PickCube candidate-pool check:
 
 This control reduces the fixed-family shortcut concern. Non-rank0 candidates are sampled continuously over grasp height, xy offset, and gain; the selector chooses across multiple candidate ranks rather than always selecting one fixed index.
 
+Multi-task action-critic diagnostic:
+
+| Selector mode | Overall success | Recovered rank0 failures | Oracle match | Pick success | Stack success |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Shared MLP + task one-hot | 82/100 | 81/99 | 32/100 | 50/50 | 32/50 |
+| Shared trunk + per-task head | 97/100 | 96/99 | 47/100 | 50/50 | 47/50 |
+| Independent per-task MLP | 100/100 | 99/99 | 48/100 | 50/50 | 50/50 |
+
+Interpretation:
+
+- A task one-hot is not enough to make a globally shared action critic reliable.
+- The action features contain enough information, because independent per-task models reach 100/100.
+- Per-task output heads recover most of the shared-critic failure, so the bottleneck is task-specific failure calibration rather than representation alone.
+
 ### Video-Frame Selector
 
 Case-heldout MLP over rendered RGB frame features:
@@ -153,8 +167,9 @@ Core pipeline:
 1. A planner or policy proposes K candidates.
 2. A static visual-progress anchor selects the default candidate.
 3. A trained action/video critic scores candidate failure likelihood.
-4. A learned gate overrides the anchor only when the anchor is likely to fail.
-5. The final selector is evaluated on task success and hard-case recovery.
+4. A task- or mode-conditioned head calibrates failure probability for the current contact regime.
+5. A learned gate overrides the anchor only when the anchor is likely to fail.
+6. The final selector is evaluated on task success and hard-case recovery.
 
 The key claim should be:
 
@@ -166,6 +181,7 @@ The common framing is to build a stronger planner, larger world model, or global
 
 - global replacement is not always best;
 - a simple trained critic is valuable as a failure detector;
+- a globally shared critic can fail even with a task one-hot, while per-task calibration recovers most of the gap;
 - the critic can recover failures caused by small action-geometry mistakes;
 - action/video signals can expose failure even when the candidate appears plausible;
 - in the current slice, temporal order is less important than expected.
@@ -202,6 +218,7 @@ Priority order:
 - `docs/maniskill_pickcube_n100_action_stability.md`
 - `docs/maniskill_stackcube_brittle_stack_n50.md`
 - `docs/maniskill_pickcube_random_grasp_n50.md`
+- `docs/maniskill_multitask_action_critic.md`
 
 ## Newly Added Verification Hooks
 
@@ -212,3 +229,5 @@ The implementation now includes reviewer-oriented controls:
 3. Action-video fusion: tests whether the FAVC critic can combine independently trained action and visual critics in a held-out protocol.
 
 The implementation also includes `train_action_video_fusion_selector.py`, a case-heldout fusion critic over action and video selector scores. This is the first minimal FAVC implementation beyond separate action-only and video-only diagnostics.
+
+The implementation now also includes `train_multitask_action_sequence_selector.py`, which tests whether action critics should share one global head, use task-specific heads, or remain fully independent. The first result is a concrete negative/positive pair: shared one-hot underperforms on StackCube, while per-task heads recover most of the gap.
