@@ -19,12 +19,14 @@ def action_features(row: dict[str, Any], *, mode: str) -> np.ndarray:
     if actions.ndim != 2 or actions.shape[0] == 0:
         actions = np.zeros((1, 7), dtype=np.float32)
     zero_features = mode == "zero"
+    drop_length = mode == "raw_no_length"
     if mode == "shuffle_time":
         rng = np.random.default_rng(abs(hash(row["case_id"])) % (2**32))
         actions = actions[rng.permutation(actions.shape[0])]
-    elif mode not in {"raw", "zero"}:
+    elif mode not in {"raw", "raw_no_length", "zero"}:
         raise ValueError(f"Unknown feature mode {mode}")
 
+    length_feature = 0.0 if drop_length else actions.shape[0] / 200.0
     first = actions[0]
     last = actions[-1]
     mean = actions.mean(axis=0)
@@ -34,7 +36,7 @@ def action_features(row: dict[str, Any], *, mode: str) -> np.ndarray:
     abs_mean = np.abs(actions).mean(axis=0)
     feature = np.concatenate(
         [
-            np.array([actions.shape[0] / 200.0], dtype=np.float32),
+            np.array([length_feature], dtype=np.float32),
             first,
             last,
             mean,
@@ -186,7 +188,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
-    parser.add_argument("--feature-mode", default="raw", choices=["raw", "shuffle_time", "zero"])
+    parser.add_argument("--feature-mode", default="raw", choices=["raw", "raw_no_length", "shuffle_time", "zero"])
     parser.add_argument("--hidden", type=int, default=32)
     parser.add_argument("--epochs", type=int, default=300)
     parser.add_argument("--lr", type=float, default=1e-3)
