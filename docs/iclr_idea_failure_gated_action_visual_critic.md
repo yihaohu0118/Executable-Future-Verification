@@ -73,6 +73,14 @@ Case-heldout MLP over raw action-sequence statistics:
 | Zero-action negative control | 4/20 | 0/16 | 0/20 |
 | Shuffle-time action control | 20/20 | 16/16 | 8/20 |
 
+N100 stability check:
+
+| Selector | Success | Recovered rank0 failures | Oracle match |
+| --- | ---: | ---: | ---: |
+| Rank0 brittle grasp | 17/100 | 0/83 | 0/100 |
+| Raw action MLP without trajectory length | 100/100 | 83/83 | 71/100 |
+| Oracle-best candidate | 100/100 | 83/83 | 100/100 |
+
 Interpretation:
 
 - The learned critic recovers every rank0 failure.
@@ -80,6 +88,7 @@ Interpretation:
 - The no-length control proves the result is not explained by early termination or trajectory length.
 - Shuffling manifest rows does not change the result, so JSONL row order is not the shortcut.
 - Shuffle-time staying strong means this slice is mostly action-distribution/stage-geometry driven, not precise temporal-order driven.
+- The n100 stability check shows the action-critic result is not a small-seed accident.
 
 ### Video-Frame Selector
 
@@ -157,11 +166,10 @@ These must be addressed before this is paper-ready:
 Priority order:
 
 1. Randomize candidate family positions, not only JSONL row order.
-2. Generate a larger PickCube sweep.
-3. Add a second ManiSkill task with genuine success headroom.
-4. Train a gate that combines visual-progress anchor and action/video critic on heterogeneous failures.
-5. Replace privileged candidates with BC/diffusion-policy top-k samples.
-6. Move to LIBERO once the ManiSkill gate is stable.
+2. Add a second ManiSkill task with genuine success headroom.
+3. Train a gate that combines visual-progress anchor and action/video critic on heterogeneous failures.
+4. Replace privileged candidates with BC/diffusion-policy top-k samples.
+5. Move to LIBERO once the ManiSkill gate is stable.
 
 ## Implemented Files
 
@@ -173,6 +181,7 @@ Priority order:
 - `docs/maniskill_pickcube_brittle_grasp_headroom.md`
 - `docs/maniskill_pickcube_action_selector_results.md`
 - `docs/maniskill_pickcube_video_selector_results.md`
+- `docs/maniskill_pickcube_n100_action_stability.md`
 
 ## Newly Added Verification Hooks
 
