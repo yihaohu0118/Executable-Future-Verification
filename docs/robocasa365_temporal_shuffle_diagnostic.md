@@ -13,10 +13,12 @@ This is not evidence that robot actions are order-invariant. It is evidence that
 New feature modes:
 
 - `bag_no_length`: order-invariant action-envelope moments without first/last endpoints.
+- `sampled_endpoints_no_length`: replace true first/last endpoints with one deterministic pseudo-endpoint pair sampled from the trajectory.
+- `multi_sampled_endpoints_no_length`: replace true first/last endpoints with four deterministic pseudo-endpoint pairs sampled from the trajectory.
 - `phase_no_length`: raw summary plus four equal temporal phase summaries.
 - `phase_shuffle_time`: shuffle the action snapshot order first, then compute the same phase summaries.
 
-The bag features include mean, standard deviation, min, max, absolute mean, and per-action-dimension energy. The phase features include per-phase mean, standard deviation, absolute mean, phase energy, late-energy ratio, and early-late energy delta.
+The bag features include mean, standard deviation, min, max, absolute mean, and per-action-dimension energy. The pseudo-endpoint features concatenate sampled endpoint pairs with the same bag features. The phase features include per-phase mean, standard deviation, absolute mean, phase energy, late-energy ratio, and early-late energy delta.
 
 ## Single-Task Faucet No-Demo
 
@@ -31,11 +33,15 @@ Oracle ceiling: 7/8.
 | raw action statistics, no length | 0,1,2,3,4 | 2,2,2,2,2 |
 | bag action-envelope moments, no length | 0,1,2,3,4 | 4,2,2,2,3 |
 | bag action-envelope moments with length | 0,1,2,3,4 | 3,2,2,2,3 |
+| one pseudo-endpoint pair, no length | 0,1,2,3,4 | 1,3,1,1,1 |
+| one pseudo-endpoint pair with length | 0,1,2,3,4 | 2,2,1,1,1 |
+| four pseudo-endpoint pairs, no length | 0,1,2,3,4 | 2,3,3,3,1 |
+| four pseudo-endpoint pairs with length | 0,1,2,3,4 | 2,3,3,3,1 |
 | shuffled-time action statistics | 0,1,2,3,4 | 2,3,3,3,3 |
 | phase summaries | 0,1,2,3,4 | 2,2,2,2,2 |
 | phase summaries after time shuffle | 0,1,2,3,4 | 4,4,3,3,5 |
 
-The important result is not that phase features solve Faucet. They do not. The surprising result is that shuffling before phase summaries improves over ordered phase summaries on every seed. Simple order-invariant bag moments also do not explain the gain; they remain close to the raw ordered baseline.
+The important result is not that phase features solve Faucet. They do not. The surprising result is that shuffling before phase summaries improves over ordered phase summaries on every seed. Simple order-invariant bag moments also do not explain the gain; they remain close to the raw ordered baseline. Pseudo-endpoint features are weaker than phase-shuffle on single-task Faucet, but they become useful in the multitask setting below.
 
 ## Three-Task No-Demo
 
@@ -52,6 +58,10 @@ Oracle ceiling: 19/24.
 | raw action statistics, no length | 0,1,2 | 14,14,13 | 2,3,1 |
 | bag action-envelope moments, no length | 0,1,2 | 14,14,14 | 2,2,2 |
 | bag action-envelope moments with length | 0,1,2 | 14,14,14 | 2,2,2 |
+| one pseudo-endpoint pair, no length | 0,1,2 | 15,16,15 | 3,4,3 |
+| one pseudo-endpoint pair with length | 0,1,2 | 15,16,15 | 3,4,3 |
+| four pseudo-endpoint pairs, no length | 0,1,2 | 16,16,17 | 4,4,5 |
+| four pseudo-endpoint pairs with length | 0,1,2 | 15,16,16 | 3,4,4 |
 | shuffled-time action statistics | 0,1,2 | 17,16,17 | 5,4,5 |
 | phase summaries | 0,1,2 | 15,15,14 | 3,3,2 |
 | phase summaries after time shuffle | 0,1,2 | 17,16,16 | 5,4,4 |
@@ -66,12 +76,12 @@ The current evidence supports this mechanism:
 
 This is a useful ICLR-style diagnostic because it contradicts the default assumption that more temporal structure is always better for action-conditioned evaluation.
 
-The negative bag result matters. If ordinary order-invariant moments were enough, `bag_no_length` should have matched `shuffle_time`; it did not. The mechanism is therefore probably not just "ignore order and keep moments." The shuffle benefit may come from replacing brittle first/last endpoint features with deterministic pseudo-endpoint samples, or from perturbing phase summaries so they cannot memorize sparse phase artifacts.
+The negative bag result matters. If ordinary order-invariant moments were enough, `bag_no_length` should have matched `shuffle_time`; it did not. The pseudo-endpoint result narrows the mechanism further: replacing brittle true endpoints with multiple deterministic pseudo-endpoints nearly matches shuffled-time performance in the three-task setting. The single-task Faucet result is still weaker, so pseudo-endpoints are not the whole solution, but they are the cleanest method-shaped version of the shuffle diagnostic so far.
 
 The next method should not be "always shuffle actions." A safer direction is:
 
 1. learn when temporal order is reliable;
-2. use shuffle-robust calibration features or endpoint-dropout as a conservative failure detector;
+2. use multi-pseudo-endpoint or endpoint-dropout calibration features as a conservative failure detector;
 3. add contact-conditioned features for Faucet-style interactions where successful candidates exist but compact statistics still miss them.
 
 ## Reviewer Caveats

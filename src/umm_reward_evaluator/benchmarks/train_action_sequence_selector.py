@@ -19,6 +19,10 @@ ACTION_FEATURE_MODES = (
     "raw_no_length",
     "bag",
     "bag_no_length",
+    "sampled_endpoints",
+    "sampled_endpoints_no_length",
+    "multi_sampled_endpoints",
+    "multi_sampled_endpoints_no_length",
     "shuffle_time",
     "phase",
     "phase_no_length",
@@ -63,13 +67,43 @@ def bag_features(actions: np.ndarray) -> np.ndarray:
     return np.concatenate([mean, std, amin, amax, abs_mean, energy]).astype(np.float32)
 
 
+def sampled_endpoint_features(
+    actions: np.ndarray,
+    *,
+    case_id: str,
+    num_pairs: int,
+) -> np.ndarray:
+    if len(actions) == 1:
+        return np.tile(actions[0], 2 * num_pairs).astype(np.float32)
+    rng = np.random.default_rng(stable_case_seed(case_id))
+    features = []
+    for _ in range(num_pairs):
+        indices = rng.choice(len(actions), size=2, replace=False)
+        indices.sort()
+        features.extend([actions[int(indices[0])], actions[int(indices[1])]])
+    return np.concatenate(features).astype(np.float32)
+
+
 def action_features(row: dict[str, Any], *, mode: str) -> np.ndarray:
     actions = np.asarray(row["actions"], dtype=np.float32)
     if actions.ndim != 2 or actions.shape[0] == 0:
         actions = np.zeros((1, 7), dtype=np.float32)
     zero_features = mode == "zero"
     use_bag = mode in {"bag", "bag_no_length"}
-    drop_length = mode in {"raw_no_length", "bag_no_length", "phase_no_length", "phase_shuffle_time"}
+    use_sampled_endpoints = mode in {
+        "sampled_endpoints",
+        "sampled_endpoints_no_length",
+        "multi_sampled_endpoints",
+        "multi_sampled_endpoints_no_length",
+    }
+    drop_length = mode in {
+        "raw_no_length",
+        "bag_no_length",
+        "sampled_endpoints_no_length",
+        "multi_sampled_endpoints_no_length",
+        "phase_no_length",
+        "phase_shuffle_time",
+    }
     use_phase = mode in {"phase", "phase_no_length", "phase_shuffle_time"}
     if mode in {"shuffle_time", "phase_shuffle_time"}:
         rng = np.random.default_rng(stable_case_seed(str(row["case_id"])))
@@ -80,6 +114,18 @@ def action_features(row: dict[str, Any], *, mode: str) -> np.ndarray:
     length_feature = 0.0 if drop_length else actions.shape[0] / 200.0
     if use_bag:
         feature = np.concatenate([np.array([length_feature], dtype=np.float32), bag_features(actions)])
+        if zero_features:
+            feature = np.zeros_like(feature)
+        return feature.astype(np.float32)
+    if use_sampled_endpoints:
+        num_pairs = 4 if mode.startswith("multi_") else 1
+        feature = np.concatenate(
+            [
+                np.array([length_feature], dtype=np.float32),
+                sampled_endpoint_features(actions, case_id=str(row["case_id"]), num_pairs=num_pairs),
+                bag_features(actions),
+            ]
+        )
         if zero_features:
             feature = np.zeros_like(feature)
         return feature.astype(np.float32)
