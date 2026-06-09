@@ -48,12 +48,13 @@ Local finding on the remote machine:
 - Cross-task randomized replay probe on `TurnOnSinkFaucet`: conservative-prior rank0 is 0/8, oracle-best is 8/8 with original demos and 7/8 without original demos. This gives a harder articulated-fixture case where simple no-demo action statistics recover only 2-3/8, so the story cannot collapse to a single pick-place shortcut.
 - Third-task randomized replay probe on `OpenCabinet`: conservative-prior rank0 is 0/8, oracle-best is 8/8 with original demos and 6/8 without original demos. No-demo raw and shuffled action-statistic selectors both reach 6/8, which makes the Faucet failures a targeted contact-calibration boundary rather than a generic fixture-task failure.
 - Three-task result on 24 target cases: with original demo candidates, shared action-statistic selectors recover 24/24 rank0 failures; in no-demo subsets, selectors recover 14/24 against a 19/24 oracle ceiling, with the remaining gap concentrated in `TurnOnSinkFaucet`.
+- Temporal-shuffle diagnostic: after making shuffle controls deterministic, no-demo shuffled-time action statistics recover 16-17/24 across three tasks, compared with 13-14/24 for ordered raw statistics. The gain is concentrated in `TurnOnSinkFaucet` and suggests that temporal order can be an anti-feature for small-data action critics.
 
 First RoboCasa365 milestone:
 
 1. Replace the intentionally brittle replay rank0 with a non-oracle policy score, likelihood score, or noisy BC proposal.
 2. Randomize scale, noise, truncation, and temporal warp per episode so candidate identity is not sufficient.
-3. Add task/contact-conditioned calibration features that can separate Faucet-style fixture interaction from easier pick-place and cabinet-opening action statistics.
+3. Add order-invariant and task/contact-conditioned calibration features that can separate Faucet-style fixture interaction from easier pick-place and cabinet-opening action statistics.
 4. Train the same action critic and failure gate used for ManiSkill.
 5. Report rank0 success, oracle-best success, gated success, and hard-case recovery on target split tasks.
 

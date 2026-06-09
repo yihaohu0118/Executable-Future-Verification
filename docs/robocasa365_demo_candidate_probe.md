@@ -210,13 +210,15 @@ Two-task multitask selector results:
 
 Three-task multitask selector results:
 
-| Manifest | Feature | Task mode | Overall success | Pick success | Faucet success | OpenCabinet success | Oracle ceiling | Zero-feature control |
-| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| With demo | Raw action statistics, no length | shared one-hot | 24/24 | 8/8 | 8/8 | 8/8 | 24/24 | 1/24 |
-| With demo | Shuffled-time action statistics | shared one-hot | 24/24 | 8/8 | 8/8 | 8/8 | 24/24 | n/a |
-| No demo | Raw action statistics, no length | shared one-hot | 14/24 | 6/8 | 2/8 | 6/8 | 19/24 | n/a |
-| No demo | Raw action statistics, no length | per-task head | 14/24 | 6/8 | 2/8 | 6/8 | 19/24 | 0/24 |
-| No demo | Shuffled-time action statistics | per-task head | 14/24 | 6/8 | 2/8 | 6/8 | 19/24 | n/a |
+| Manifest | Feature | Task mode | Seeds | Overall success | Pick success | Faucet success | OpenCabinet success | Oracle ceiling |
+| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
+| With demo | Raw action statistics, no length | shared one-hot | 0 | 24/24 | 8/8 | 8/8 | 8/8 | 24/24 |
+| With demo | Shuffled-time action statistics | shared one-hot | 0 | 24/24 | 8/8 | 8/8 | 8/8 | 24/24 |
+| With demo | Zero-feature control | shared one-hot | 0 | 1/24 | 0/8 | 1/8 | 0/8 | 24/24 |
+| No demo | Raw action statistics, no length | per-task head | 0,1,2 | 14,14,13 / 24 | 6,5,6 / 8 | 2,3,1 / 8 | 6,6,6 / 8 | 19/24 |
+| No demo | Shuffled-time action statistics | per-task head | 0,1,2 | 17,16,17 / 24 | 6,6,6 / 8 | 5,4,5 / 8 | 6,6,6 / 8 | 19/24 |
+| No demo | Phase summaries | per-task head | 0,1,2 | 15,15,14 / 24 | 6,6,6 / 8 | 3,3,2 / 8 | 6,6,6 / 8 | 19/24 |
+| No demo | Phase summaries after time shuffle | per-task head | 0,1,2 | 17,16,16 / 24 | 6,6,6 / 8 | 5,4,4 / 8 | 6,6,6 / 8 | 19/24 |
 
 ## Observation
 
@@ -231,7 +233,8 @@ The surprising part is the action calibration cliff:
 - The same pattern transfers to `TurnOnSinkFaucet` when the original demo is present, but the no-demo subset is much harder: oracle-best remains 7/8 while action-statistic selectors recover only 2-3/8.
 - The two-task no-demo result is a useful boundary case. Task-conditioned heads improve slightly over a shared/global critic, but neither closes the 13/16 oracle ceiling. That points to task/contact-conditioned calibration as the next method need.
 - `OpenCabinet` adds a third target task and a longer fixture-interaction stress test. In no-demo, raw and shuffled-time selectors both reach the 6/8 oracle ceiling, while zero features recover 0/8. This shows the Faucet failure is not simply because all fixture tasks are impossible for action statistics.
-- Across three tasks, with-demo selectors recover all 24 rank0 failures, while no-demo selectors recover 14/24 against a 19/24 oracle ceiling. The remaining gap is concentrated in `TurnOnSinkFaucet`, where successful candidates exist but compact action statistics fail to select them.
+- Across three tasks, with-demo selectors recover all 24 rank0 failures. In no-demo, raw ordered action statistics recover only 13-14/24 against a 19/24 oracle ceiling, while shuffled-time statistics recover 16-17/24. The gain is concentrated in `TurnOnSinkFaucet`.
+- Phase features do not fix Faucet when temporal order is preserved. Counterintuitively, phase features after time shuffling perform better than ordered phase features. See `docs/robocasa365_temporal_shuffle_diagnostic.md`.
 
 This suggests that for RoboCasa-style long-horizon manipulation, the failure mode may be less about generic action noise and more about systematic action-scale or temporal-completion errors. That is aligned with the failure-gated critic story: a useful critic should detect physically plausible but under-executed candidates, not just visually plausible endpoints.
 

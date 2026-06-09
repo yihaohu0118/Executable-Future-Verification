@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -13,17 +14,54 @@ from torch import nn
 
 from umm_reward_evaluator.benchmarks.common import load_jsonl, oracle_key
 
+ACTION_FEATURE_MODES = (
+    "raw",
+    "raw_no_length",
+    "shuffle_time",
+    "phase",
+    "phase_no_length",
+    "phase_shuffle_time",
+    "zero",
+)
+
+
+def stable_case_seed(case_id: str) -> int:
+    digest = hashlib.sha256(case_id.encode("utf-8")).digest()
+    return int.from_bytes(digest[:8], byteorder="little", signed=False) % (2**32)
+
+
+def phase_features(actions: np.ndarray, *, num_phases: int = 4) -> np.ndarray:
+    chunks = np.array_split(actions, num_phases)
+    features: list[np.ndarray] = []
+    phase_energy = []
+    for chunk in chunks:
+        if len(chunk) == 0:
+            chunk = np.zeros((1, actions.shape[1]), dtype=np.float32)
+        mean = chunk.mean(axis=0)
+        std = chunk.std(axis=0)
+        abs_mean = np.abs(chunk).mean(axis=0)
+        features.extend([mean, std, abs_mean])
+        phase_energy.append(float(np.mean(np.square(chunk))))
+
+    energy = np.asarray(phase_energy, dtype=np.float32)
+    total_energy = float(energy.sum()) + 1e-6
+    late_ratio = np.asarray([energy[-1] / total_energy], dtype=np.float32)
+    early_late_delta = np.asarray([energy[-1] - energy[0]], dtype=np.float32)
+    features.extend([energy, late_ratio, early_late_delta])
+    return np.concatenate(features).astype(np.float32)
+
 
 def action_features(row: dict[str, Any], *, mode: str) -> np.ndarray:
     actions = np.asarray(row["actions"], dtype=np.float32)
     if actions.ndim != 2 or actions.shape[0] == 0:
         actions = np.zeros((1, 7), dtype=np.float32)
     zero_features = mode == "zero"
-    drop_length = mode == "raw_no_length"
-    if mode == "shuffle_time":
-        rng = np.random.default_rng(abs(hash(row["case_id"])) % (2**32))
+    drop_length = mode in {"raw_no_length", "phase_no_length", "phase_shuffle_time"}
+    use_phase = mode in {"phase", "phase_no_length", "phase_shuffle_time"}
+    if mode in {"shuffle_time", "phase_shuffle_time"}:
+        rng = np.random.default_rng(stable_case_seed(str(row["case_id"])))
         actions = actions[rng.permutation(actions.shape[0])]
-    elif mode not in {"raw", "raw_no_length", "zero"}:
+    elif mode not in ACTION_FEATURE_MODES:
         raise ValueError(f"Unknown feature mode {mode}")
 
     length_feature = 0.0 if drop_length else actions.shape[0] / 200.0
@@ -46,6 +84,8 @@ def action_features(row: dict[str, Any], *, mode: str) -> np.ndarray:
             abs_mean,
         ]
     )
+    if use_phase:
+        feature = np.concatenate([feature, phase_features(actions)])
     if zero_features:
         feature = np.zeros_like(feature)
     return feature.astype(np.float32)
@@ -194,7 +234,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
-    parser.add_argument("--feature-mode", default="raw", choices=["raw", "raw_no_length", "shuffle_time", "zero"])
+    parser.add_argument("--feature-mode", default="raw", choices=list(ACTION_FEATURE_MODES))
     parser.add_argument("--hidden", type=int, default=32)
     parser.add_argument("--epochs", type=int, default=300)
     parser.add_argument("--lr", type=float, default=1e-3)

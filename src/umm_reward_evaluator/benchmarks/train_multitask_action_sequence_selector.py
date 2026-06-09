@@ -13,7 +13,11 @@ import torch
 from torch import nn
 
 from umm_reward_evaluator.benchmarks.common import load_jsonl, oracle_key
-from umm_reward_evaluator.benchmarks.train_action_sequence_selector import SelectorMLP, action_features
+from umm_reward_evaluator.benchmarks.train_action_sequence_selector import (
+    ACTION_FEATURE_MODES,
+    SelectorMLP,
+    action_features,
+)
 
 
 class TaskHeadMLP(nn.Module):
@@ -313,7 +317,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--manifest", action="append", required=True, help="Path or task_label=path. Can repeat.")
     parser.add_argument("--output-dir", type=Path, required=True)
-    parser.add_argument("--feature-mode", default="raw_no_length", choices=["raw", "raw_no_length", "shuffle_time", "zero"])
+    parser.add_argument("--feature-mode", default="raw_no_length", choices=list(ACTION_FEATURE_MODES))
     parser.add_argument("--task-mode", default="shared_onehot", choices=["shared_onehot", "per_task_head", "independent"])
     parser.add_argument("--hidden", type=int, default=32)
     parser.add_argument("--epochs", type=int, default=50)

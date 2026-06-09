@@ -10,7 +10,7 @@ from typing import Any
 import numpy as np
 
 from umm_reward_evaluator.benchmarks.common import load_jsonl, oracle_key
-from umm_reward_evaluator.benchmarks.train_action_sequence_selector import train_fold
+from umm_reward_evaluator.benchmarks.train_action_sequence_selector import ACTION_FEATURE_MODES, train_fold
 
 
 def group_by_case(rows: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
@@ -118,7 +118,7 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--train-case-counts", default="4,8,16,32,all")
     parser.add_argument("--repeats", type=int, default=1)
-    parser.add_argument("--feature-mode", default="raw_no_length", choices=["raw", "raw_no_length", "shuffle_time", "zero"])
+    parser.add_argument("--feature-mode", default="raw_no_length", choices=list(ACTION_FEATURE_MODES))
     parser.add_argument("--hidden", type=int, default=32)
     parser.add_argument("--epochs", type=int, default=50)
     parser.add_argument("--lr", type=float, default=1e-3)
