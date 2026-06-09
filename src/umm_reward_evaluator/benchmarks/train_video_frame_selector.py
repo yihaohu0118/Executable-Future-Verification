@@ -67,10 +67,9 @@ class SelectorMLP(nn.Module):
 def train_fold(
     train_rows: list[dict[str, Any]],
     test_rows: list[dict[str, Any]],
+    train_features: np.ndarray,
+    test_features: np.ndarray,
     *,
-    feature_mode: str,
-    max_frames: int,
-    image_size: int,
     hidden: int,
     epochs: int,
     lr: float,
@@ -78,12 +77,8 @@ def train_fold(
 ) -> list[dict[str, Any]]:
     torch.manual_seed(seed)
     rng = np.random.default_rng(seed)
-    x_train = np.stack(
-        [frame_features(row, max_frames=max_frames, image_size=image_size, mode=feature_mode) for row in train_rows]
-    )
-    x_test = np.stack(
-        [frame_features(row, max_frames=max_frames, image_size=image_size, mode=feature_mode) for row in test_rows]
-    )
+    x_train = train_features
+    x_test = test_features
     y_train = np.asarray([1.0 if row["oracle_success"] else 0.0 for row in train_rows], dtype=np.float32)
 
     # Fixed random projection keeps the visual baseline cheap and reduces pixel shortcut capacity.
@@ -130,21 +125,27 @@ def evaluate(
     lr: float,
     seed: int,
 ):
+    features = np.stack(
+        [frame_features(row, max_frames=max_frames, image_size=image_size, mode=feature_mode) for row in rows]
+    )
     cases: dict[str, list[dict[str, Any]]] = {}
-    for row in rows:
+    case_indices: dict[str, list[int]] = {}
+    for idx, row in enumerate(rows):
         cases.setdefault(str(row["case_id"]), []).append(row)
+        case_indices.setdefault(str(row["case_id"]), []).append(idx)
 
     scored: list[dict[str, Any]] = []
     case_ids = sorted(cases)
     for fold, case_id in enumerate(case_ids):
-        train_rows = [row for other_id in case_ids if other_id != case_id for row in cases[other_id]]
+        train_indices = [idx for other_id in case_ids if other_id != case_id for idx in case_indices[other_id]]
+        test_indices = case_indices[case_id]
+        train_rows = [rows[idx] for idx in train_indices]
         scored.extend(
             train_fold(
                 train_rows,
                 cases[case_id],
-                feature_mode=feature_mode,
-                max_frames=max_frames,
-                image_size=image_size,
+                features[train_indices],
+                features[test_indices],
                 hidden=hidden,
                 epochs=epochs,
                 lr=lr,
@@ -243,4 +244,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
