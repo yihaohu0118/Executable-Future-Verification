@@ -75,12 +75,19 @@ def flatten_obs(obs: dict[str, Any], *, step: int = 0, max_steps: int = 200) -> 
     return np.concatenate([*parts, phase]).astype(np.float32)
 
 
-def pick_demo_specs() -> tuple[CandidateSpec, ...]:
-    return (
-        CandidateSpec("demo_center", 0, "pick_bc_demo", gain=18.0, grasp_z=0.035),
-        CandidateSpec("demo_low", 1, "pick_bc_demo", gain=18.0, grasp_z=0.026),
-        CandidateSpec("demo_slow", 2, "pick_bc_demo", gain=10.0, grasp_z=0.035, speed_scale=1.15),
-    )
+def pick_demo_specs(profile: str) -> tuple[CandidateSpec, ...]:
+    center = CandidateSpec("demo_center", 0, "pick_bc_demo", gain=18.0, grasp_z=0.035)
+    low = CandidateSpec("demo_low", 1, "pick_bc_demo", gain=18.0, grasp_z=0.026)
+    slow = CandidateSpec("demo_slow", 2, "pick_bc_demo", gain=10.0, grasp_z=0.035, speed_scale=1.15)
+    if profile == "mixed":
+        return center, low, slow
+    if profile == "low":
+        return (low,)
+    if profile == "center":
+        return (center,)
+    if profile == "slow":
+        return (slow,)
+    raise ValueError(f"Unknown demo profile {profile}")
 
 
 def _pick_stages(obs: dict[str, Any], spec: CandidateSpec) -> list[tuple[np.ndarray, float, int]]:
@@ -143,13 +150,14 @@ def collect_dataset(
     max_steps: int,
     rollout_noise_stds: list[float],
     seed: int,
+    demo_profile: str,
 ) -> tuple[np.ndarray, np.ndarray, dict[str, int]]:
     xs: list[np.ndarray] = []
     ys: list[np.ndarray] = []
     attempts = 0
     successful_demos = 0
     for seed in seeds:
-        for spec in pick_demo_specs():
+        for spec in pick_demo_specs(demo_profile):
             for noise_idx, rollout_noise_std in enumerate(rollout_noise_stds):
                 attempts += 1
                 demo_xs, demo_ys, ok = collect_demo_pairs(
@@ -175,6 +183,7 @@ def collect_dataset(
             "successful_demos": successful_demos,
             "num_transitions": len(xs),
             "demo_rollout_noise_stds": rollout_noise_stds,
+            "demo_profile": demo_profile,
         },
     )
 
@@ -317,6 +326,7 @@ def generate_policy_pool(
     seed: int,
     max_steps: int,
     demo_rollout_noise_stds: list[float],
+    demo_profile: str,
     render_video: bool,
     video_fps: int,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
@@ -340,6 +350,7 @@ def generate_policy_pool(
             max_steps=max_steps,
             rollout_noise_stds=demo_rollout_noise_stds,
             seed=seed,
+            demo_profile=demo_profile,
         )
         model, x_mean, x_std, train_summary = train_bc_policy(x, y, hidden=hidden, epochs=epochs, lr=lr, seed=seed)
         for eval_seed in eval_seeds:
@@ -400,6 +411,7 @@ def main() -> None:
     parser.add_argument("--num-candidates", type=int, default=8)
     parser.add_argument("--noise-stds", default="0.0,0.015,0.025,0.035,0.045,0.060,0.080,0.100")
     parser.add_argument("--demo-rollout-noise-stds", default="0.0")
+    parser.add_argument("--demo-profile", default="mixed", choices=["mixed", "low", "center", "slow"])
     parser.add_argument("--output-dir", type=Path, default=Path("outputs/maniskill_pickcube_bc_policy_pool"))
     parser.add_argument("--hidden", type=int, default=128)
     parser.add_argument("--epochs", type=int, default=250)
@@ -424,6 +436,7 @@ def main() -> None:
         seed=args.seed,
         max_steps=args.max_steps,
         demo_rollout_noise_stds=parse_float_list(args.demo_rollout_noise_stds),
+        demo_profile=args.demo_profile,
         render_video=args.render_video,
         video_fps=args.video_fps,
     )
