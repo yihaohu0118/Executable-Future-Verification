@@ -15,6 +15,8 @@ New feature modes:
 - `bag_no_length`: order-invariant action-envelope moments without first/last endpoints.
 - `sampled_endpoints_no_length`: replace true first/last endpoints with one deterministic pseudo-endpoint pair sampled from the trajectory.
 - `multi_sampled_endpoints_no_length`: replace true first/last endpoints with four deterministic pseudo-endpoint pairs sampled from the trajectory.
+- `permutation_endpoints_no_length`: shuffle each trajectory with a stable per-case seed and use the permuted first/last actions as one unordered pseudo-endpoint pair.
+- `multi_permutation_endpoints_no_length`: use four stable per-case permutations and concatenate four unordered pseudo-endpoint pairs.
 - `phase_no_length`: raw summary plus four equal temporal phase summaries.
 - `phase_shuffle_time`: shuffle the action snapshot order first, then compute the same phase summaries.
 
@@ -37,6 +39,8 @@ Oracle ceiling: 7/8.
 | one pseudo-endpoint pair with length | 0,1,2,3,4 | 2,2,1,1,1 |
 | four pseudo-endpoint pairs, no length | 0,1,2,3,4 | 2,3,3,3,1 |
 | four pseudo-endpoint pairs with length | 0,1,2,3,4 | 2,3,3,3,1 |
+| one unordered pseudo-endpoint pair, no length | 0,1,2,3,4 | 2,3,2,2,3 |
+| four unordered pseudo-endpoint pairs, no length | 0,1,2,3,4 | 4,4,2,3,3 |
 | shuffled-time action statistics | 0,1,2,3,4 | 2,3,3,3,3 |
 | phase summaries | 0,1,2,3,4 | 2,2,2,2,2 |
 | phase summaries after time shuffle | 0,1,2,3,4 | 4,4,3,3,5 |
@@ -86,9 +90,15 @@ Oracle ceiling: 25/32.
 | raw action statistics, no length | 0,1,2 | 18,17,16 | 2,2,1 | 4,3,3 |
 | bag action-envelope moments, no length | 0,1,2 | 19,18,16 | 3,3,2 | 4,4,2 |
 | four pseudo-endpoint pairs, no length | 0,1,2 | 19,18,16 | 5,4,3 | 3,2,3 |
+| one unordered pseudo-endpoint pair, no length | 0,1,2 | 20,20,20 | 4,4,5 | 4,4,3 |
+| one unordered pseudo-endpoint pair with length | 0,1,2 | 20,20,20 | 4,5,5 | 4,3,3 |
+| four unordered pseudo-endpoint pairs, no length | 0,1,2 | 17,19,20 | 5,5,5 | 1,3,3 |
+| four unordered pseudo-endpoint pairs with length | 0,1,2 | 16,20,19 | 5,6,4 | 1,3,3 |
 | shuffled-time action statistics | 0,1,2 | 22,19,19 | 5,5,4 | 5,2,3 |
 
 Single-task `TurnOnMicrowave` no-demo has oracle ceiling 6/8. Multi-pseudo-endpoints recover 5,3,5/8, compared with raw 3,2,3/8 and shuffled-time 3,4,3/8. In the four-task multitask setting, however, pseudo-endpoints are weaker than shuffled-time overall. This makes endpoint dropout a useful partial mechanism, not yet a complete replacement for shuffle-robust calibration.
+
+Single-task `TurnOnSinkFaucet` remains harder for unordered endpoints: one unordered pair recovers 2,3,2,2,3/8 and four unordered pairs recover 4,4,2,3,3/8 against a 7/8 oracle. Single-task `TurnOnMicrowave` is more favorable: one unordered pair recovers 3,3,5,5,3/8 and four unordered pairs recover 4,4,5,5,4/8 against a 6/8 oracle. The four-task result is therefore not just a single-task feature improvement; task sharing and contact calibration still matter.
 
 ## Interpretation
 
@@ -98,7 +108,7 @@ The current evidence supports this mechanism:
 
 This is a useful ICLR-style diagnostic because it contradicts the default assumption that more temporal structure is always better for action-conditioned evaluation.
 
-The negative bag result matters. If ordinary order-invariant moments were enough, `bag_no_length` should have matched `shuffle_time`; it did not. The pseudo-endpoint result narrows the mechanism further: replacing brittle true endpoints with multiple deterministic pseudo-endpoints nearly matches shuffled-time performance in the three-task setting. The four-task `TurnOnMicrowave` result adds a boundary: pseudo-endpoints help, but shuffled-time remains more robust overall.
+The negative bag result matters. If ordinary order-invariant moments were enough, `bag_no_length` should have matched `shuffle_time`; it did not. The pseudo-endpoint result narrows the mechanism further: replacing brittle true endpoints with deterministic pseudo-endpoints nearly matches shuffled-time performance in the three-task setting. The four-task `TurnOnMicrowave` result adds a boundary: one unordered pseudo-endpoint pair is stable at 20/32, but four unordered pairs are less stable and shuffled-time remains the strongest diagnostic. More pseudo-endpoints are not automatically better.
 
 The next method should not be "always shuffle actions." A safer direction is:
 

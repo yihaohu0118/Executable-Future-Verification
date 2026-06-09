@@ -23,6 +23,10 @@ ACTION_FEATURE_MODES = (
     "sampled_endpoints_no_length",
     "multi_sampled_endpoints",
     "multi_sampled_endpoints_no_length",
+    "permutation_endpoints",
+    "permutation_endpoints_no_length",
+    "multi_permutation_endpoints",
+    "multi_permutation_endpoints_no_length",
     "shuffle_time",
     "phase",
     "phase_no_length",
@@ -84,6 +88,23 @@ def sampled_endpoint_features(
     return np.concatenate(features).astype(np.float32)
 
 
+def permutation_endpoint_features(
+    actions: np.ndarray,
+    *,
+    case_id: str,
+    num_pairs: int,
+) -> np.ndarray:
+    if len(actions) == 1:
+        return np.tile(actions[0], 2 * num_pairs).astype(np.float32)
+    base_seed = stable_case_seed(case_id)
+    features = []
+    for pair_idx in range(num_pairs):
+        rng = np.random.default_rng((base_seed + 104729 * pair_idx) % (2**32))
+        perm = rng.permutation(len(actions))
+        features.extend([actions[int(perm[0])], actions[int(perm[-1])]])
+    return np.concatenate(features).astype(np.float32)
+
+
 def action_features(row: dict[str, Any], *, mode: str) -> np.ndarray:
     actions = np.asarray(row["actions"], dtype=np.float32)
     if actions.ndim != 2 or actions.shape[0] == 0:
@@ -95,12 +116,18 @@ def action_features(row: dict[str, Any], *, mode: str) -> np.ndarray:
         "sampled_endpoints_no_length",
         "multi_sampled_endpoints",
         "multi_sampled_endpoints_no_length",
+        "permutation_endpoints",
+        "permutation_endpoints_no_length",
+        "multi_permutation_endpoints",
+        "multi_permutation_endpoints_no_length",
     }
     drop_length = mode in {
         "raw_no_length",
         "bag_no_length",
         "sampled_endpoints_no_length",
         "multi_sampled_endpoints_no_length",
+        "permutation_endpoints_no_length",
+        "multi_permutation_endpoints_no_length",
         "phase_no_length",
         "phase_shuffle_time",
     }
@@ -119,10 +146,11 @@ def action_features(row: dict[str, Any], *, mode: str) -> np.ndarray:
         return feature.astype(np.float32)
     if use_sampled_endpoints:
         num_pairs = 4 if mode.startswith("multi_") else 1
+        endpoint_fn = permutation_endpoint_features if "permutation" in mode else sampled_endpoint_features
         feature = np.concatenate(
             [
                 np.array([length_feature], dtype=np.float32),
-                sampled_endpoint_features(actions, case_id=str(row["case_id"]), num_pairs=num_pairs),
+                endpoint_fn(actions, case_id=str(row["case_id"]), num_pairs=num_pairs),
                 bag_features(actions),
             ]
         )

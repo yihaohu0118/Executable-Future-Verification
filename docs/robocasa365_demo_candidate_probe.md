@@ -249,6 +249,8 @@ Four-task no-demo multitask selector results:
 | Raw action statistics, no length | per-task head | 0,1,2 | 18,17,16 / 32 | 6,6,6 / 8 | 2,2,1 / 8 | 6,6,6 / 8 | 4,3,3 / 8 | 25/32 |
 | Bag action-envelope moments, no length | per-task head | 0,1,2 | 19,18,16 / 32 | 6,6,6 / 8 | 3,3,2 / 8 | 6,5,6 / 8 | 4,4,2 / 8 | 25/32 |
 | Four pseudo-endpoint pairs, no length | per-task head | 0,1,2 | 19,18,16 / 32 | 5,6,6 / 8 | 5,4,3 / 8 | 6,6,6 / 8 | 3,2,3 / 8 | 25/32 |
+| One unordered pseudo-endpoint pair, no length | per-task head | 0,1,2 | 20,20,20 / 32 | 6,6,6 / 8 | 4,4,5 / 8 | 6,6,6 / 8 | 4,4,3 / 8 | 25/32 |
+| Four unordered pseudo-endpoint pairs, no length | per-task head | 0,1,2 | 17,19,20 / 32 | 6,6,6 / 8 | 5,5,5 / 8 | 6,5,6 / 8 | 1,3,3 / 8 | 25/32 |
 | Shuffled-time action statistics | per-task head | 0,1,2 | 22,19,19 / 32 | 6,6,6 / 8 | 5,5,4 / 8 | 6,5,6 / 8 | 5,2,3 / 8 | 25/32 |
 
 ## Observation
@@ -268,6 +270,7 @@ The surprising part is the action calibration cliff:
 - Phase features do not fix Faucet when temporal order is preserved. Counterintuitively, phase features after time shuffling perform better than ordered phase features. Simple bag-of-actions moments also fail to match shuffle, so the effect is not explained by generic order-invariant statistics alone.
 - Multi-pseudo-endpoint features nearly match shuffled-time statistics on the three-task no-demo setting: 16,16,17/24 vs 17,16,17/24. This makes endpoint-dropout calibration the cleanest method-shaped version of the shuffle diagnostic so far. See `docs/robocasa365_temporal_shuffle_diagnostic.md`.
 - `TurnOnMicrowave` adds a second button-style task. It has the same rank0 failure pattern and a 6/8 no-demo oracle ceiling. In single-task training, multi-pseudo-endpoints recover 5,3,5/8, better than raw 3,2,3/8. In four-task multitask training, shuffled-time remains the strongest and most stable overall feature, while pseudo-endpoints become a partial explanation rather than a complete replacement.
+- Unordered pseudo-endpoints sharpen the mechanism. One stable permutation-derived endpoint pair gets 20,20,20/32 in four-task no-demo multitask evaluation, but four such pairs drop to 17,19,20/32. This is a useful negative result: adding more randomized endpoint evidence can hurt stability, so the method should learn when to trust temporal/detail features rather than simply add more of them.
 
 This suggests that for RoboCasa-style long-horizon manipulation, the failure mode may be less about generic action noise and more about systematic action-scale or temporal-completion errors. That is aligned with the failure-gated critic story: a useful critic should detect physically plausible but under-executed candidates, not just visually plausible endpoints.
 

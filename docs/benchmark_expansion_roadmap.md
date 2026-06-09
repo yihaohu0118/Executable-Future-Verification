@@ -19,6 +19,13 @@ Current PushT-100 numbers:
 
 ## 2025-2026 External-Benchmark Plan
 
+Scope gate:
+
+- Active benchmark evidence must come from 2025-2026 benchmarks.
+- Legacy suites such as LIBERO, CALVIN, D4RL, PointMaze, and older tabletop-only diagnostics are no longer acceptable as main ICLR evidence.
+- Recently installed benchmark attempts that do not pass this scope gate should be removed from the remote machine rather than kept as side tracks.
+- As of the latest remote cleanup, the newly installed VideoZeroBench environment, project directory, and downloaded data shards were removed. The active remote benchmark setup is RoboCasa365 plus its required robosuite dependency.
+
 ### 1. RoboCasa365 First
 
 RoboCasa365 is the primary benchmark because it is a 2026 benchmark for generalist household manipulation and substantially closer to modern Physical AI/VLA evaluation than legacy tabletop suites. It covers hundreds of kitchen manipulation tasks and supports Gymnasium-style environment construction through the official RoboCasa/robosuite stack.
@@ -50,49 +57,21 @@ Local finding on the remote machine:
 - Three-task result on 24 target cases: with original demo candidates, shared action-statistic selectors recover 24/24 rank0 failures; in no-demo subsets, selectors recover 14/24 against a 19/24 oracle ceiling, with the remaining gap concentrated in `TurnOnSinkFaucet`.
 - Temporal-shuffle diagnostic: after making shuffle controls deterministic, no-demo shuffled-time action statistics recover 16-17/24 across three tasks, compared with 13-14/24 for ordered raw statistics. Simple bag-of-actions moments stay at 14/24, so the gain is not explained by ordinary order-invariant moments alone. Multi-pseudo-endpoint features recover 16,16,17/24, nearly matching shuffle while giving a cleaner endpoint-dropout interpretation.
 - Fourth-task randomized replay probe on `TurnOnMicrowave`: conservative-prior rank0 is 0/8, oracle-best is 8/8 with original demos and 6/8 without original demos. In four-task no-demo multitask evaluation, raw ordered statistics recover 16-18/32 against a 25/32 oracle ceiling, shuffled-time recovers 19-22/32, and multi-pseudo-endpoints recover 16-19/32. This keeps shuffled-time as the strongest diagnostic while showing endpoint-dropout is only a partial method explanation.
+- Permutation-endpoint counterfactual: a single stable unordered pseudo-endpoint pair recovers 20,20,20/32 in four-task no-demo multitask evaluation. Using four unordered pairs is less stable at 17,19,20/32 without length and 16,20,19/32 with length. This gives a sharper story than "more temporal features help": a small amount of endpoint dropout helps calibration, but extra pseudo-temporal evidence can overfit.
 
 First RoboCasa365 milestone:
 
 1. Replace the intentionally brittle replay rank0 with a non-oracle policy score, likelihood score, or noisy BC proposal.
 2. Randomize scale, noise, truncation, and temporal warp per episode so candidate identity is not sufficient.
 3. Add shuffle-robust, endpoint-dropout, and task/contact-conditioned calibration features that can separate Faucet-style fixture interaction from easier pick-place and cabinet-opening action statistics.
-4. Train the same action critic and failure gate used for ManiSkill.
+4. Train the same compact action critic and failure gate used in the diagnostic pipeline.
 5. Report rank0 success, oracle-best success, gated success, and hard-case recovery on target split tasks.
 
-### 2. ManiSkill3 As A Mechanism Benchmark
-
-ManiSkill3 is now the best near-term external benchmark target. Official docs describe built-in rigid-body tasks, task cards with success/fail conditions, sparse/dense rewards, demonstrations, and GPU-parallel simulation. It also exposes a Gymnasium-style API, which maps cleanly to our candidate executor.
-
-Official sources:
-
-- ManiSkill tasks: https://maniskill.readthedocs.io/en/latest/tasks/index.html
-- ManiSkill installation/system support: https://maniskill.readthedocs.io/en/latest/user_guide/getting_started/installation.html
-- ManiSkill quickstart/API: https://maniskill.readthedocs.io/en/latest/user_guide/getting_started/quickstart.html
-
-Local finding on the remote machine:
-
-- `mani_skill==3.0.1`, `gymnasium==1.3.0`, and `sapien==3.0.3` install successfully in the existing Python 3.11 environment.
-- `PickCube-v1`, `PushCube-v1`, `StackCube-v1`, and `PegInsertionSide-v1` all run one state-mode step and expose `info["success"]`.
-- `PickCube-v1` also renders RGB frames with `obs_mode=rgbd` and `render_mode=rgb_array`.
-- Official motion-planning solvers currently crash inside the solver path on this machine, so they should be treated as a high-risk candidate source until isolated.
-
-First ManiSkill milestone:
-
-1. Build a candidate manifest for `PickCube-v1` and `PushCube-v1`.
-2. Verify oracle headroom: rank0 success vs oracle-best success.
-3. Train/evaluate the same selectors used on PushT:
-   - static endpoint
-   - static progress
-   - action-world global
-   - component ranker
-   - progress-anchor failure gate
-4. Report hard-case recovery where rank0 fails.
-
-### 3. Newer Complementary Benchmarks Only
+### 2. Newer Complementary Benchmarks Only
 
 Do not spend more setup time on legacy LIBERO, CALVIN, D4RL, or PointMaze for the main ICLR evidence. They can be cited as background, but they are not the benchmark target for the current story.
 
-Use newer benchmark layers only:
+Use newer benchmark layers only after RoboCasa365 has a stronger table:
 
 - RoboTwin 2.0 / recent manipulation benchmark-audit settings for shortcut and statistical-significance stress tests.
 - RoboMIND 2.0 if we need a 2025 multi-embodiment dataset layer rather than executable sim.
@@ -104,6 +83,6 @@ The paper-quality result should not be framed as "we improve PushT." The target 
 
 1. PushT-100 shows the mechanism under NanoWM/CEM planning.
 2. RoboCasa365 shows the same failure-gated mechanism transfers to a current kitchen-manipulation benchmark with strong 2025-2026 relevance.
-3. ManiSkill3 remains as a mechanism-control benchmark for executable manipulation success, not as the headline benchmark.
+3. Any second benchmark must pass the 2025-2026 scope gate and add stress-test value beyond RoboCasa365, rather than serving as an easier legacy control.
 
 The key ablation is whether the trained action-world critic helps only when used as a gated override. If global ActionWorld is worse than static progress but the gate is better, that is a stronger and more counterintuitive story.

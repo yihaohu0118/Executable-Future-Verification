@@ -34,6 +34,7 @@ Status:
 
 - LIBERO clone was removed from the remote machine.
 - A fresh check found no legacy benchmark installs under `/home/yihao_hyh/benchmarks`; only RoboCasa365 and its required robosuite dependency remain.
+- The newly installed VideoZeroBench side track was removed from dev2 because the current benchmark evidence is restricted to 2025-2026 robotics benchmarks.
 - RoboCasa kitchen/object assets are being downloaded.
 - RoboCasa kitchen/object assets finished downloading and extracting.
 - Reset/step smoke succeeds for `PickPlaceCounterToCabinet`, `PickPlaceCounterToSink`, `CloseCabinet`, and `TurnOnSinkFaucet` on `split=target`.
@@ -48,6 +49,7 @@ Status:
 - Three-task multitask result: with original demo candidates, shared action-statistic selectors recover 24/24 rank0 failures while zero-feature control recovers 1/24. In no-demo subsets, the selector recovers 14/24 against a 19/24 oracle ceiling; the missing cases are concentrated in `TurnOnSinkFaucet`.
 - A temporal-shuffle diagnostic strengthens the counterintuitive mechanism: in no-demo subsets, deterministic shuffled-time action statistics recover 16-17/24 across three seeds, compared with 13-14/24 for ordered raw statistics. Simple bag-of-actions moments stay at 14/24, so the effect is not explained by generic order-invariant moments alone. Multi-pseudo-endpoint features recover 16,16,17/24, nearly matching shuffle while providing a cleaner endpoint-dropout interpretation.
 - `TurnOnMicrowave` adds a fourth target task and a second button-style fixture interaction. Conservative-prior rank0 gets 0/8 and oracle-best gets 8/8 with original demos; removing original demos leaves oracle-best at 6/8. In four-task no-demo multitask evaluation, raw ordered features recover 16-18/32 against a 25/32 oracle ceiling, shuffled-time recovers 19-22/32, and multi-pseudo-endpoints recover 16-19/32.
+- Unordered permutation-endpoint features add a cleaner counterfactual to the shuffle diagnostic. A single stable unordered endpoint pair recovers 20,20,20/32 in four-task no-demo multitask evaluation, while four unordered pairs recover 17,19,20/32 without length and 16,20,19/32 with length. This suggests endpoint dropout is useful, but adding more pseudo-endpoints can destabilize small-data calibration.
 
 ## Smoke Command
 
@@ -79,7 +81,7 @@ The first layer should not attempt full VLA/diffusion-policy training immediatel
    - oracle-best success
    - oracle-better-than-rank0 cases
    - failure-gated action critic success
-4. Train the same compact action critic used in ManiSkill.
+4. Train the same compact action critic used in the diagnostic pipeline.
 5. Report hard-case recovery where rank0 fails but at least one candidate succeeds.
 
 ## Candidate Families
@@ -99,7 +101,7 @@ Then expand to longer or more compositional families only after headroom is visi
 
 ## 2025-2026 Complementary Benchmarks
 
-These are useful for the second layer but should not block RoboCasa365:
+These are useful for the second layer but should not block RoboCasa365. They must be verified before installation; anything outside this window should stay out of the active benchmark stack.
 
 - RoboTwin 2.0 / 2026 manipulation benchmark-audit settings: good for shortcut, statistical-significance, and data-source-dependence stress tests.
 - RoboMIND 2.0: 2025 multi-embodiment manipulation data layer; useful if we need dataset-scale evaluation without real-robot execution.
@@ -119,5 +121,5 @@ The key evidence is a consistent gap:
 - oracle-best shows real candidate-set headroom;
 - ordered learned scoring can overfit or mis-rank;
 - shuffle-robust calibration can be stronger than preserving true temporal endpoints in the current small-data regime;
-- endpoint-dropout is a promising method-shaped approximation, but the four-task result shows it is not yet a full replacement for shuffle-robust calibration;
+- endpoint-dropout is a promising method-shaped approximation, especially with one unordered pseudo-endpoint pair, but the four-task result shows it is not yet a full replacement for shuffle-robust calibration;
 - a failure-gated critic recovers hard cases with less damage to easy cases.

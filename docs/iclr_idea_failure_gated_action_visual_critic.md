@@ -236,24 +236,23 @@ The common framing is to build a stronger planner, larger world model, or global
 
 These must be addressed before this is paper-ready:
 
-1. ManiSkill low-level executor is still privileged diagnostic, even though the newest grasp proposal is trained.
-2. PickCube brittle-grasp profile is intentionally constructed.
-3. Current video/action selectors may exploit candidate-family regularities.
-4. Current phenomenon does not prove temporal world modeling because shuffle-time controls remain strong.
-5. Need a full low-level policy-generated candidate source or official benchmark demonstrations for external validity.
-6. Need a harder fusion benchmark because current action/video critics each solve the slice independently.
-7. Need uncertainty-aware gate calibration; StackCube mixed-rank shows a conservative gate can preserve a failing rank0.
-8. RoboCasa365 now gives a stronger three-task story, but the current rank0 prior is still a conservative replay prior rather than a learned policy likelihood.
+1. Current RoboCasa365 candidates still use a conservative replay prior rather than a learned policy likelihood.
+2. Current video/action selectors may exploit candidate-family regularities.
+3. Current phenomenon does not prove temporal world modeling because shuffle-time controls remain strong.
+4. Need a full low-level policy-generated candidate source or official benchmark demonstrations for external validity.
+5. Need a harder fusion benchmark because current action/video critics each solve the slice independently.
+6. Need uncertainty-aware gate calibration; mixed-rank settings can make a conservative gate preserve a failing rank0.
+7. The benchmark stack must stay inside the 2025-2026 robotics window; the newly installed VideoZeroBench side track was removed and should not become part of the active ICLR evidence.
 
 ## Next Experiments
 
 Priority order:
 
 1. Make RoboCasa365 the headline benchmark layer and scale beyond the current four-task probe.
-2. Add shuffle-robust and endpoint-dropout calibration for the Faucet/Microwave gap: no-demo oracle is 7/8 on Faucet and 6/8 on Microwave, ordered compact action statistics under-recover both, shuffled-time statistics are strongest in four-task multitask evaluation, and multi-pseudo-endpoints are a partial method-shaped approximation.
+2. Add shuffle-robust and endpoint-dropout calibration for the Faucet/Microwave gap: no-demo oracle is 7/8 on Faucet and 6/8 on Microwave, ordered compact action statistics under-recover both, shuffled-time statistics are strongest in four-task multitask evaluation, and one unordered pseudo-endpoint pair is a stable method-shaped approximation at 20,20,20/32 while four unordered pairs are less stable.
 3. Replace the diagnostic replay prior with BC/diffusion-policy top-k samples where a 2025-2026 benchmark provides usable policy or demonstration sources.
 4. Add uncertainty-aware calibration to the gate and evaluate under mixed proposal qualities.
-5. Use RoboTwin 2.0, RoboMIND 2.0, or 2026 robotic world-model diagnostics as the next benchmark layer; do not make legacy LIBERO/CALVIN/D4RL the main evidence.
+5. Use only verified 2025-2026 robotics benchmarks as the next layer, such as RoboTwin 2.0, RoboMIND 2.0, or 2026 robotic world-model diagnostics; do not make legacy LIBERO/CALVIN/D4RL or unrelated side tracks part of the main evidence.
 
 ## Implemented Files
 
