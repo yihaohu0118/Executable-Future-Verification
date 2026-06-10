@@ -142,3 +142,18 @@ The key ablation is whether the trained action-world critic helps only when used
 RoboWM-Bench code is now accessible at `https://github.com/fffstrong/RoboWM-Bench`, so it should become the main second-layer benchmark. RoboTwin 2.0 remains the executable-simulation fallback if IsaacSim/IsaacLab setup blocks RoboWM-Bench.
 
 The concrete RoboWM-Bench code audit and adapter plan is in `docs/robowm_bench_code_audit.md`. The converter `robowm_bench_actions_to_manifest.py` turns evaluated RoboWM-Bench action JSON roots into the shared executable-future manifest.
+
+Current RoboWM-Bench status on dev2:
+
+- The manifest adapter and validator already work on synthetic RoboWM eval logs.
+- IsaacSim 5.1 / IsaacLab v2.3.0 are installed in a dedicated `robowmbench_env` Docker container because host glibc is too old for IsaacSim wheels.
+- Full camera-enabled replay is blocked on dev2's H100 graphics/Vulkan limitation, not on Python imports.
+- A physics-only Pick shim, which disables task cameras but keeps action replay and object-state success checking, runs on H100.
+- GT `Franka-pick` smoke is not a perfect oracle: the first 10 GT episodes replay at 7/10 success, and a repeat run fails the same episodes. This means the RoboWM layer should first report task-wise GT replay ceilings before using any generated futures.
+
+Updated RoboWM next step:
+
+1. Turn the temporary Pick physics-only shim into a reproducible helper patch or documented benchmark fork diff.
+2. Verify whether other target tasks can safely disable cameras for success-only replay.
+3. Build a GT-ceiling table across `pick`, `put_on_plate`, `press_button`, and one articulated-object task.
+4. Only after GT ceilings are known, evaluate corrupted GT candidates and any generated/IDM action candidates through the manifest protocol.
