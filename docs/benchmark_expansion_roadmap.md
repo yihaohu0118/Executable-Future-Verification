@@ -10,6 +10,8 @@ The current RoboCasa365 claim is sharper and more defensible:
 
 Current 2026 RoboCasa365 numbers:
 
+Ordinary no-demo replay pool:
+
 | Setting | Success |
 | --- | ---: |
 | Rank0 conservative replay prior | 0/64 |
@@ -20,6 +22,17 @@ Current 2026 RoboCasa365 numbers:
 | One unordered endpoint pair, mean over 5 seeds | 27.4/64 |
 | Bag action-envelope selector, mean over 5 seeds | 28.6/64 |
 | Deterministic max mean-absolute-action heuristic | 28/64 |
+
+Energy-matched hard-negative pool with rollout state traces:
+
+| Setting | Success |
+| --- | ---: |
+| Rank0 conservative replay prior | 0/32 |
+| Oracle-best original action trace | 32/32 |
+| Deterministic action energy/magnitude/smoothness heuristics | 0/32 |
+| Action-only endpoint-free stats selector, mean over 5 seeds | 8.2/32 |
+| Low-dimensional state-trace selector, mean over 5 seeds | 30.4/32 |
+| State trace + endpoint-free action stats, mean over 5 seeds | 30.0/32 |
 
 ## 2025-2026 External-Benchmark Plan
 
@@ -67,7 +80,7 @@ Local finding on the remote machine:
 - Expanded n16 result: four tasks were expanded to sixteen target episodes per task, giving 64 no-demo cases with oracle-best 41/64 and rank0 0/64. Across five seeds, raw ordered statistics recover 21.6/64 on average, shuffled-time recovers 25.2/64, endpoint-free stats recover 25.8/64, one unordered endpoint pair recovers 27.4/64, and bag action-envelope moments recover 28.6/64. This supersedes the small-sample shuffle story: the stronger mechanism is endpoint-free action-envelope calibration.
 - Deterministic heuristic control: max mean absolute action recovers 28/64 without training, nearly matching the learned bag critic. This exposes the main shortcut risk and the main paper opportunity: the conservative policy prior is under-actuated, and action-envelope calibration fixes that prior surprisingly well. The next evidence layer must use energy-matched hard negatives to show whether the critic understands more than action magnitude.
 - Energy-matched hard-negative control: on four tasks with four target episodes each, original demonstration actions succeed in 16/16 while time-reverse, temporal-roll, time-shuffle, block-swap, xyz-flip, and gripper-flip corruptions all fail. Magnitude/energy/smoothness heuristics collapse to 0/16. Learned action-only selectors recover only 5-6/16 on average, with endpoint-free stats at 6.2/16 and shuffled-time at 6.0/16. This is the strongest current evidence that action-envelope calibration is useful for under-actuation but insufficient for contact-timing correctness without visual/contact context.
-- State-trace proxy control: the same energy-matched pool was regenerated with low-dimensional RoboCasa rollout observation traces. A zero control remains 0/16, the best action-only selector remains 6.2/16, while a state-trace selector recovers 13,15,14,14,15/16 across five seeds (mean 14.2/16). Adding action stats to state traces slightly hurts at 13.6/16. This makes the method direction clearer: action-envelope calibration detects under-actuation, but hard-negative discrimination comes from rollout state/contact evidence.
+- State-trace proxy control: the same energy-matched pool was regenerated with low-dimensional RoboCasa rollout observation traces and then scaled to eight target episodes per task. On 32 hard cases, a zero control remains 0/32, deterministic energy/magnitude/smoothness heuristics remain 0/32, and the action-only endpoint-free selector averages 8.2/32. A state-trace selector recovers 30,31,31,30,30/32 across five seeds (mean 30.4/32), while adding action stats to state traces is slightly worse at 30.0/32. This makes the method direction clearer: action-envelope calibration detects under-actuation, but hard-negative discrimination comes from rollout state/contact evidence.
 
 First RoboCasa365 milestone:
 
@@ -93,7 +106,7 @@ Use newer benchmark layers only after RoboCasa365 has a stronger table:
 The paper-quality result should not be framed as "we improve PushT" or "we solve a legacy tabletop diagnostic." The target claim should be:
 
 1. RoboCasa365 shows a recoverable failure mode on a current 2026 kitchen-manipulation benchmark.
-2. Energy-matched hard negatives show that action magnitude is a real shortcut; after that shortcut is removed, low-dimensional rollout state traces recover most of the oracle gap while action-only selectors do not.
+2. Energy-matched hard negatives show that action magnitude is a real shortcut; after that shortcut is removed, low-dimensional rollout state traces recover 30.4/32 while action-only selectors recover only 8.2/32.
 3. Any second benchmark must pass the 2025-2026 scope gate and add stress-test value beyond RoboCasa365, rather than serving as an easier legacy control.
 
 The key ablation is whether the trained action-world critic helps only when used as a gated override. If global ActionWorld is worse than static progress but the gate is better, that is a stronger and more counterintuitive story.

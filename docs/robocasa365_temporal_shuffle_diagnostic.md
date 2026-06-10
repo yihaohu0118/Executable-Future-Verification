@@ -188,7 +188,7 @@ Learned case-heldout selectors:
 | one unordered pseudo-endpoint pair, no length | 0,1,2,3,4 | 4,5,7,5,5 | 5.2 | 0.8 | 2.0 | 0.2 | 2.2 |
 | shuffled-time action statistics | 0,1,2,3,4 | 7,4,5,7,7 | 6.0 | 0.6 | 2.6 | 0.2 | 2.6 |
 
-This is the current most important diagnostic. The magnitude heuristic that nearly matched the learned bag critic on the n16 pool collapses from 28/64 to 0/16 under energy-matched negatives. Learned action-only selectors recover only 5-6/16 on average, so they are not just magnitude heuristics, but they are far from the 16/16 oracle. The bottleneck is now visible: endpoint-free action-envelope calibration fixes under-actuation, but distinguishing correct contact timing and direction from energy-matched corruptions likely requires visual state, contact context, or a stronger temporal model.
+This is the first hard-negative diagnostic. The magnitude heuristic that nearly matched the learned bag critic on the n16 pool collapses from 28/64 to 0/16 under energy-matched negatives. Learned action-only selectors recover only 5-6/16 on average, so they are not just magnitude heuristics, but they are far from the 16/16 oracle. The bottleneck is now visible: endpoint-free action-envelope calibration fixes under-actuation, but distinguishing correct contact timing and direction from energy-matched corruptions likely requires visual state, contact context, or a stronger temporal model.
 
 ## State-Trace Proxy on Energy-Matched Negatives
 
@@ -216,11 +216,45 @@ This converts the hard-negative result from a pure limitation into a method dire
 
 The remaining errors are concentrated in `OpenCabinet:ep_0000` and `TurnOnSinkFaucet:ep_0002`, which suggests the next useful feature is finer visual/contact evidence rather than a larger action MLP.
 
+### n8 Scale-Up
+
+The state-trace stress test was then doubled to eight target episodes per task by generating episodes 4-7 and merging them with the original n4 manifests:
+
+- `/tmp/robocasa365_energy_state_pick_n8_s17/PickPlaceCounterToCabinet_candidate_manifest.jsonl`
+- `/tmp/robocasa365_energy_state_faucet_n8_s17/TurnOnSinkFaucet_candidate_manifest.jsonl`
+- `/tmp/robocasa365_energy_state_opencab_n8_s17/OpenCabinet_candidate_manifest.jsonl`
+- `/tmp/robocasa365_energy_state_microwave_n8_s17/TurnOnMicrowave_candidate_manifest.jsonl`
+
+Oracle ceiling is 32/32 and conservative rank0 remains 0/32. The original demonstration trace is still placed at `cand_07`, so `planner_rank_max` is only a construction check, not a valid baseline.
+
+Held-out selectors:
+
+| Feature | Seeds | Overall success | Mean | Std | Seed-0 by task |
+| --- | --- | ---: | ---: | ---: | --- |
+| zero state control | 0,1,2,3,4 | 0,0,0,0,0 | 0.0 | 0.0 | 0/8 each |
+| action-only endpoint-free stats | 0,1,2,3,4 | 10,8,7,8,8 | 8.2 | 0.98 | not state-conditioned |
+| low-dimensional state trace | 0,1,2,3,4 | 30,31,31,30,30 | 30.4 | 0.49 | Pick 8, Faucet 7, OpenCabinet 7, Microwave 8 |
+| state trace + endpoint-free action stats | 0,1,2,3,4 | 30,31,29,30,30 | 30.0 | 0.63 | Pick 8, Faucet 7, OpenCabinet 7, Microwave 8 |
+
+Deterministic action controls on the same n8 state-trace manifests:
+
+| Heuristic | Success |
+| --- | ---: |
+| max/min action energy variants | 0/32 |
+| max mean absolute action | 0/32 |
+| max action standard deviation | 0/32 |
+| max action range | 0/32 |
+| max/min smoothness | 0/32 |
+| conservative prior variants | 0/32 |
+| planner rank max | 32/32, invalid construction check |
+
+The n8 result strengthens the mechanism. The energy/magnitude heuristic family remains exactly 0/32, action-only learning recovers only 8.2/32, and state traces recover 30.4/32. Adding action stats to the state trace again does not help and is slightly worse. This makes the counterintuitive method target sharper: after magnitude is controlled, the bottleneck is not a richer action summary but contact-conditioned state evidence.
+
 ## Interpretation
 
 The current evidence supports this mechanism:
 
-> For action critics on RoboCasa365 replay candidates, temporal detail can be an anti-feature in ordinary no-demo pools: ordered first/last summaries overfit to endpoint artifacts, while endpoint-free action-envelope statistics preserve candidate-level action calibration better. But once action magnitude is matched, compact action-only summaries recover only limited signal; low-dimensional rollout state traces recover most of the oracle gap, so the next method should condition action adequacy on visual/contact state rather than action envelope alone.
+> For action critics on RoboCasa365 replay candidates, temporal detail can be an anti-feature in ordinary no-demo pools: ordered first/last summaries overfit to endpoint artifacts, while endpoint-free action-envelope statistics preserve candidate-level action calibration better. But once action magnitude is matched, compact action-only summaries recover only limited signal; low-dimensional rollout state traces recover 30.4/32 on the n8 hard-negative pool, so the next method should condition action adequacy on visual/contact state rather than action envelope alone.
 
 This is a useful ICLR-style diagnostic because it contradicts the default assumption that more temporal structure is always better for action-conditioned evaluation.
 
@@ -238,7 +272,7 @@ The next method should not be "always shuffle actions." A safer direction is:
 ## Reviewer Caveats
 
 - Candidate generation is still replay perturbation, not a learned policy.
-- The strongest deterministic heuristic on ordinary no-demo pools is action magnitude; the energy-matched hard-negative pool shows that this shortcut collapses, and the state-trace proxy shows that most of the remaining gap is recoverable from rollout state/context.
+- The strongest deterministic heuristic on ordinary no-demo pools is action magnitude; the energy-matched hard-negative pool shows that this shortcut collapses, and the n8 state-trace proxy shows that most of the remaining gap is recoverable from rollout state/context.
 - The action traces are sparse snapshots stored with stride 25, so this diagnostic does not rule out high-frequency temporal information.
 - The strongest current table uses four tasks and sixteen episodes per task. It is stronger than the original 32-case diagnostic, but still needs more RoboCasa365 tasks or a learned proposal source before becoming a headline benchmark table.
 - The shuffled controls should be presented as a warning against overclaiming temporal world modeling, not as proof that action order is irrelevant.
