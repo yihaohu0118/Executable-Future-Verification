@@ -23,6 +23,7 @@ from umm_reward_evaluator.benchmarks.train_multitask_action_sequence_selector im
 
 STATE_FEATURE_MODES = ("state", "state_action", "zero")
 STATE_SUMMARY_MODES = ("full", "endpoint", "terminal", "delta", "distribution", "path", "no_endpoint")
+FOLD_MODES = ("case", "task")
 
 
 @dataclass(frozen=True)
@@ -364,6 +365,7 @@ def evaluate(
     action_mode: str,
     summary_mode: str,
     task_mode: str,
+    fold_mode: str,
     include_state_keys: set[str] | None,
     exclude_state_keys: set[str] | None,
     hidden: int,
@@ -371,6 +373,8 @@ def evaluate(
     lr: float,
     seed: int,
 ) -> tuple[dict[str, Any], list[dict[str, Any]], list[dict[str, Any]]]:
+    if fold_mode == "task" and task_mode == "per_task_head":
+        raise ValueError("task-fold evaluation cannot use per_task_head because the held-out task head is untrained")
     state_spec = build_state_spec(rows, include_keys=include_state_keys, exclude_keys=exclude_state_keys)
     tasks = sorted({str(row["task_label"]) for row in rows})
     grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
@@ -378,9 +382,20 @@ def evaluate(
         grouped.setdefault((str(row["task_label"]), str(row["case_id"])), []).append(row)
 
     scored: list[dict[str, Any]] = []
-    for fold, (task, case_id) in enumerate(sorted(grouped)):
-        test_rows = grouped[(task, case_id)]
-        if task_mode == "independent":
+    if fold_mode == "case":
+        folds = [(task, case_id, grouped[(task, case_id)]) for task, case_id in sorted(grouped)]
+    elif fold_mode == "task":
+        folds = [
+            (task, "__all_cases__", [row for (other_task, _), case_rows in grouped.items() if other_task == task for row in case_rows])
+            for task in tasks
+        ]
+    else:
+        raise ValueError(f"Unknown fold mode {fold_mode}")
+
+    for fold, (task, case_id, test_rows) in enumerate(folds):
+        if fold_mode == "task":
+            train_rows = [row for (other_task, _), case_rows in grouped.items() if other_task != task for row in case_rows]
+        elif task_mode == "independent":
             train_rows = [
                 row
                 for (other_task, other_case_id), case_rows in grouped.items()
@@ -388,7 +403,12 @@ def evaluate(
                 for row in case_rows
             ]
         else:
-            train_rows = [row for other_key, case_rows in grouped.items() if other_key != (task, case_id) for row in case_rows]
+            train_rows = [
+                row
+                for other_key, case_rows in grouped.items()
+                if other_key != (task, case_id)
+                for row in case_rows
+            ]
         if task_mode == "per_task_head":
             scored.extend(
                 train_task_head_fold(
@@ -428,6 +448,7 @@ def evaluate(
     summary["action_mode"] = action_mode
     summary["state_summary_mode"] = summary_mode
     summary["task_mode"] = task_mode
+    summary["fold_mode"] = fold_mode
     summary["state_keys"] = list(state_spec.keys)
     summary["state_dims"] = state_spec.dims
     summary["include_state_keys"] = sorted(include_state_keys) if include_state_keys is not None else None
@@ -444,6 +465,7 @@ def main() -> None:
     parser.add_argument("--action-mode", default="stats_no_endpoints_no_length")
     parser.add_argument("--state-summary-mode", default="full", choices=list(STATE_SUMMARY_MODES))
     parser.add_argument("--task-mode", default="per_task_head", choices=["shared_onehot", "per_task_head", "independent"])
+    parser.add_argument("--fold-mode", default="case", choices=list(FOLD_MODES))
     parser.add_argument("--state-key", action="append", help="Restrict state features to this key. Can repeat.")
     parser.add_argument("--exclude-state-key", action="append", help="Drop this state key. Can repeat.")
     parser.add_argument("--hidden", type=int, default=32)
@@ -459,6 +481,7 @@ def main() -> None:
         action_mode=args.action_mode,
         summary_mode=args.state_summary_mode,
         task_mode=args.task_mode,
+        fold_mode=args.fold_mode,
         include_state_keys=set(args.state_key) if args.state_key else None,
         exclude_state_keys=set(args.exclude_state_key) if args.exclude_state_key else None,
         hidden=args.hidden,
