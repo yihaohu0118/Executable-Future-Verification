@@ -408,6 +408,8 @@ Summary results:
 | State distribution nearest-positive, all-task | 8/15 |
 | Gripper distribution nearest-positive, same-task | 11/15 |
 | Gripper distribution nearest-positive, all-task | 12/15 |
+| Phase-gripper distribution nearest-positive, same-task | 13/15 |
+| Phase-gripper distribution nearest-positive, all-task | 12/15 |
 | Candidate ID `full_gripper_aware` | 15/15 |
 
 The candidate-ID row is an ID-leak upper-bound sanity check, not a method. It
@@ -426,17 +428,23 @@ Additional centroid controls were run on the same manifest:
 
 The counterintuitive mechanism is that a tiny nearest-positive memory over only
 left/right gripper trace distribution beats action statistics and simple
-centroids. Averaging successful traces is harmful, suggesting successful
-execution envelopes are multi-modal or phase-specific rather than described by
-a single "success centroid."
+centroids. Adding three coarse temporal phases improves the best real selector
+to 13/15, while phase-aware joint or joint+gripper features stay at 10-12/15.
+This suggests the useful signal is not "more robot state is always better";
+coarse gripper contact timing is currently the cleanest low-dimensional
+execution-envelope signal.
 
-The main boundary is `open_laptop`: the all-task gripper nearest-positive
-selector gets only 2/5 on that articulated-object task, while it gets 5/5 on
-`stack_blocks_two` and 5/5 on `stamp_seal`. This is useful rather than fatal:
-it says gripper timing alone is not enough when success depends on contact
-direction and articulated geometry. The next selector should add compact
-EEF/contact-direction trace features and a K-shot calibration curve instead of
-claiming universal gripper-only transfer.
+Averaging successful traces is harmful, suggesting successful execution
+envelopes are multi-modal or phase-specific rather than described by a single
+"success centroid."
+
+The main boundary is `open_laptop`: plain all-task gripper nearest-positive
+gets only 2/5 on that articulated-object task, and phase-aware gripper improves
+it only to 3/5. This is useful rather than fatal: it says gripper timing alone
+is not enough when success depends on contact direction and articulated
+geometry. The next selector should add compact EEF/contact-direction trace
+features and a K-shot calibration curve instead of claiming universal
+gripper-only transfer.
 
 ## Why It Fits The Current Story
 

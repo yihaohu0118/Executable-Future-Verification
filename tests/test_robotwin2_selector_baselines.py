@@ -75,6 +75,17 @@ class RoboTwin2SelectorBaselinesTest(unittest.TestCase):
         self.assertEqual(prototype["overall"]["selector_oracle_match"], 4)
         self.assertEqual(len(prototype["scored_rows"]), len(self.rows))
 
+    def test_phase_gripper_feature_is_fixed_width_across_trace_lengths(self):
+        rows = list(self.rows)
+        rows[1] = make_row("stack", "seed=0", "full", 1, True, [[1.0], [1.0], [1.0]], [1.0, 1.0, 1.0])
+        prototype = evaluate_prototype(
+            rows,
+            feature_mode="phase_gripper_distribution",
+            scope="same_task",
+            prototype_mode="nearest_positive",
+        )
+        self.assertEqual(prototype["overall"]["selector_success"], 4)
+
 
 if __name__ == "__main__":
     unittest.main()

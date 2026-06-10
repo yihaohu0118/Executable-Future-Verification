@@ -24,7 +24,14 @@ HEURISTICS = (
     "length_min",
 )
 
-PROTOTYPE_FEATURES = ("action_distribution", "state_distribution", "gripper_distribution")
+PROTOTYPE_FEATURES = (
+    "action_distribution",
+    "state_distribution",
+    "gripper_distribution",
+    "phase_gripper_distribution",
+    "phase_joint_distribution",
+    "phase_joint_gripper_distribution",
+)
 PROTOTYPE_SCOPES = ("same_task", "all_tasks")
 PROTOTYPE_MODES = ("nearest_positive", "pos_neg_centroid", "pos_centroid")
 
@@ -226,6 +233,34 @@ def trace_distribution_features(trace: list[dict[str, Any]], keys: list[str], di
     return np.concatenate(parts).astype(np.float32) if parts else np.zeros((1,), dtype=np.float32)
 
 
+def phase_trace_distribution_features(
+    trace: list[dict[str, Any]],
+    keys: list[str],
+    dims: dict[str, int],
+    *,
+    num_phases: int = 3,
+) -> np.ndarray:
+    snapshots = trace if trace else [{}]
+    parts: list[np.ndarray] = []
+    for indexes in np.array_split(np.arange(len(snapshots)), num_phases):
+        phase = [snapshots[int(index)] for index in indexes] if len(indexes) else [snapshots[-1]]
+        for key in keys:
+            dim = dims[key]
+            x = np.stack(
+                [
+                    padded(snapshot.get(key), dim) if isinstance(snapshot, dict) else np.zeros(dim, dtype=np.float32)
+                    for snapshot in phase
+                ]
+            )
+            parts.extend([x.mean(axis=0), x.std(axis=0), x.min(axis=0), x.max(axis=0)])
+    for key in keys:
+        dim = dims[key]
+        first = padded(snapshots[0].get(key), dim) if isinstance(snapshots[0], dict) else np.zeros(dim, dtype=np.float32)
+        last = padded(snapshots[-1].get(key), dim) if isinstance(snapshots[-1], dict) else np.zeros(dim, dtype=np.float32)
+        parts.append(last - first)
+    return np.concatenate(parts).astype(np.float32) if parts else np.zeros((1,), dtype=np.float32)
+
+
 def feature_vector(row: dict[str, Any], feature_mode: str, *, dims: dict[str, int] | None = None) -> np.ndarray:
     if feature_mode == "action_distribution":
         actions = action_array(row)
@@ -236,6 +271,15 @@ def feature_vector(row: dict[str, Any], feature_mode: str, *, dims: dict[str, in
     if feature_mode == "gripper_distribution":
         keys = ["left_gripper", "right_gripper"]
         return trace_distribution_features(state_trace(row), keys, dims or state_dims([row], keys))
+    if feature_mode == "phase_gripper_distribution":
+        keys = ["left_gripper", "right_gripper"]
+        return phase_trace_distribution_features(state_trace(row), keys, dims or state_dims([row], keys))
+    if feature_mode == "phase_joint_distribution":
+        keys = ["joint_action_vector"]
+        return phase_trace_distribution_features(state_trace(row), keys, dims or state_dims([row], keys))
+    if feature_mode == "phase_joint_gripper_distribution":
+        keys = ["joint_action_vector", "left_gripper", "right_gripper"]
+        return phase_trace_distribution_features(state_trace(row), keys, dims or state_dims([row], keys))
     raise ValueError(f"unknown prototype feature mode: {feature_mode}")
 
 
