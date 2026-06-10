@@ -1,0 +1,80 @@
+import unittest
+
+from umm_reward_evaluator.benchmarks.robotwin2_selector_baselines import (
+    evaluate_heuristic,
+    evaluate_prototype,
+    evaluate_random_expected,
+    evaluate_rank0,
+)
+
+
+def make_row(task, case, candidate, rank, success, actions, left_gripper, right_gripper=None):
+    if right_gripper is None:
+        right_gripper = left_gripper
+    return {
+        "benchmark": "robotwin2",
+        "suite": "unit",
+        "task_name": task,
+        "case_id": case,
+        "candidate_id": candidate,
+        "candidate_rank_by_planner": rank,
+        "actions": actions,
+        "oracle_success": success,
+        "metadata": {
+            "state_trace": [
+                {
+                    "joint_action_vector": action,
+                    "left_gripper": [left],
+                    "right_gripper": [right],
+                }
+                for action, left, right in zip(actions, left_gripper, right_gripper, strict=True)
+            ],
+        },
+    }
+
+
+class RoboTwin2SelectorBaselinesTest(unittest.TestCase):
+    def setUp(self):
+        self.rows = [
+            make_row("stack", "seed=0", "rank0", 0, False, [[0.0], [0.0]], [0.0, 0.0]),
+            make_row("stack", "seed=0", "full", 1, True, [[1.0], [1.0]], [1.0, 1.0]),
+            make_row("stack", "seed=0", "reverse", 2, False, [[2.0], [2.0]], [0.4, 0.4]),
+            make_row("stack", "seed=1", "rank0", 0, False, [[0.0], [0.0]], [0.0, 0.0]),
+            make_row("stack", "seed=1", "full", 1, True, [[1.1], [1.1]], [1.0, 1.0]),
+            make_row("stack", "seed=1", "reverse", 2, False, [[2.0], [2.0]], [0.4, 0.4]),
+            make_row("stamp", "seed=0", "rank0", 0, False, [[0.0], [0.0]], [0.0, 0.0]),
+            make_row("stamp", "seed=0", "full", 1, True, [[0.2], [0.2]], [0.7, 0.7]),
+            make_row("stamp", "seed=0", "reverse", 2, False, [[1.0], [1.0]], [0.2, 0.2]),
+            make_row("stamp", "seed=1", "rank0", 0, False, [[0.0], [0.0]], [0.0, 0.0]),
+            make_row("stamp", "seed=1", "full", 1, True, [[0.3], [0.3]], [0.7, 0.7]),
+            make_row("stamp", "seed=1", "reverse", 2, False, [[1.0], [1.0]], [0.2, 0.2]),
+        ]
+
+    def test_rank0_and_random_expected_summarize_case_headroom(self):
+        rank0 = evaluate_rank0(self.rows)
+        self.assertEqual(rank0["overall"]["cases"], 4)
+        self.assertEqual(rank0["overall"]["rank0_success"], 0)
+        self.assertEqual(rank0["overall"]["oracle_success"], 4)
+
+        random_expected = evaluate_random_expected(self.rows)
+        self.assertAlmostEqual(random_expected["overall"]["tie_expected_success"], 4 / 3)
+
+    def test_action_heuristic_uses_tie_expected_success(self):
+        heuristic = evaluate_heuristic(self.rows, "energy_mean_max")
+        self.assertEqual(heuristic["overall"]["selector_success"], 0)
+        self.assertEqual(heuristic["overall"]["oracle_success"], 4)
+
+    def test_gripper_nearest_positive_recovers_leave_one_case_successes(self):
+        prototype = evaluate_prototype(
+            self.rows,
+            feature_mode="gripper_distribution",
+            scope="same_task",
+            prototype_mode="nearest_positive",
+        )
+        self.assertEqual(prototype["overall"]["selector_success"], 4)
+        self.assertEqual(prototype["overall"]["selector_oracle_match"], 4)
+        self.assertEqual(len(prototype["scored_rows"]), len(self.rows))
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -238,6 +238,39 @@ source-only/no-task-ID, and K-shot calibrated selectors. `handover_block` should
 remain a one-seed bimanual mechanism example until we decide to spend the extra
 runtime for its K=5 table.
 
+First RoboTwin2 selector baselines now exist for the three-task K=5 table:
+
+| Selector | Success |
+| --- | ---: |
+| Rank0 | 0/15 |
+| Uniform random expected | 4.17/15 |
+| Best action heuristic, `smoothness_max` | 6/15 |
+| Action distribution nearest-positive, same-task | 8/15 |
+| State distribution nearest-positive, same-task/all-task | 8/15 |
+| Gripper distribution nearest-positive, same-task | 11/15 |
+| Gripper distribution nearest-positive, all-task | 12/15 |
+| Candidate ID `full_gripper_aware` upper bound | 15/15 |
+
+The candidate-ID row is an oracle-like ID leak and should never be reported as
+the method. The useful finding is that a non-neural nearest-positive selector
+over only left/right gripper trace distributions beats action statistics and
+simple action heuristics. Centroid controls are a strong negative result:
+gripper positive centroids get 0/15, gripper positive-negative centroids get
+0-2/15, and state positive-negative centroids get 1-2/15. This supports the
+counterintuitive claim that successful execution envelopes are multi-modal or
+phase-specific; averaging successful futures can erase the contact signal.
+
+Updated RoboTwin2 next step:
+
+1. Add compact EEF/contact-direction features to close the `open_laptop`
+   boundary, where gripper-only nearest-positive is only 2/5.
+2. Randomize candidate IDs/ranks or generate a candidate pool whose successful
+   future is not always named `full_gripper_aware`.
+3. Add K-shot calibration curves on RoboTwin2 and compare against no-task-ID
+   source-only transfer.
+4. Keep `handover_block` as a one-seed bimanual mechanism example unless the
+   next table needs a fourth task for reviewer-facing breadth.
+
 Updated RoboWM next step:
 
 1. Turn the reset-compatibility shim and Vulkan/EGL setup into a reproducible helper patch or documented benchmark fork diff.

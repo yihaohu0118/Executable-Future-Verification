@@ -382,6 +382,62 @@ Interpretation:
   add learned selector baselines and action-only/magnitude/smoothness controls
   on the same K=5 protocol.
 
+## K=5 Selector Baseline Smoke
+
+The first scaled RoboTwin2 selector evidence uses the same three-task K=5
+manifest above. Pure-numpy selector baselines are implemented in
+`src/umm_reward_evaluator/benchmarks/robotwin2_selector_baselines.py`.
+
+The main baseline run is:
+
+```bash
+PYTHONPATH=src python3 -m umm_reward_evaluator.benchmarks.robotwin2_selector_baselines \
+  --manifest /private/tmp/robotwin2_k5/robotwin2_three_task_k5_manifest.jsonl \
+  --output-dir /private/tmp/robotwin2_k5/selectors/pure_numpy_baselines
+```
+
+Summary results:
+
+| Selector | Success |
+| --- | ---: |
+| Rank0 | 0/15 |
+| Uniform random expected | 4.17/15 |
+| Best simple action heuristic, `smoothness_max` | 6/15 |
+| Action distribution nearest-positive, same-task | 8/15 |
+| State distribution nearest-positive, same-task | 8/15 |
+| State distribution nearest-positive, all-task | 8/15 |
+| Gripper distribution nearest-positive, same-task | 11/15 |
+| Gripper distribution nearest-positive, all-task | 12/15 |
+| Candidate ID `full_gripper_aware` | 15/15 |
+
+The candidate-ID row is an ID-leak upper-bound sanity check, not a method. It
+should not be reported as a learned or deployable selector.
+
+Additional centroid controls were run on the same manifest:
+
+| Selector | Success |
+| --- | ---: |
+| Gripper positive centroid, same-task | 0/15 |
+| Gripper positive centroid, all-task | 0/15 |
+| Gripper positive-negative centroid, same-task | 2/15 |
+| Gripper positive-negative centroid, all-task | 0/15 |
+| State positive-negative centroid, same-task | 2/15 |
+| State positive-negative centroid, all-task | 1/15 |
+
+The counterintuitive mechanism is that a tiny nearest-positive memory over only
+left/right gripper trace distribution beats action statistics and simple
+centroids. Averaging successful traces is harmful, suggesting successful
+execution envelopes are multi-modal or phase-specific rather than described by
+a single "success centroid."
+
+The main boundary is `open_laptop`: the all-task gripper nearest-positive
+selector gets only 2/5 on that articulated-object task, while it gets 5/5 on
+`stack_blocks_two` and 5/5 on `stamp_seal`. This is useful rather than fatal:
+it says gripper timing alone is not enough when success depends on contact
+direction and articulated geometry. The next selector should add compact
+EEF/contact-direction trace features and a K-shot calibration curve instead of
+claiming universal gripper-only transfer.
+
 ## Why It Fits The Current Story
 
 RoboCasa365 already shows that action-envelope calibration can recover conservative-prior failures, but hard negatives require compact robot execution-envelope/contact evidence. RoboTwin 2.0 adds:
