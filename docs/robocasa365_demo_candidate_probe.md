@@ -255,6 +255,19 @@ Four-task no-demo multitask selector results:
 | Multiview meta: raw + one unordered endpoint | per-task head | 0,1,2 | 20,19,16 / 32 | 6,6,6 / 8 | 3,3,2 / 8 | 6,6,6 / 8 | 5,4,2 / 8 | 25/32 |
 | Multiview meta: one unordered endpoint + shuffled-time | per-task head | 0,1,2 | 21,20,20 / 32 | 6,6,6 / 8 | 4,5,5 / 8 | 6,6,6 / 8 | 5,3,3 / 8 | 25/32 |
 
+Expanded four-task no-demo multitask selector results:
+
+The n16 manifests merge the original eight target episodes with newly generated episodes 8-15 under the same random no-demo candidate protocol. Rank0 remains 0/64 and oracle-best is 41/64.
+
+| Feature | Task mode | Seeds | Overall success | Mean | Pick mean | Faucet mean | OpenCabinet mean | Microwave mean | Oracle ceiling |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Raw action statistics, no length | per-task head | 0,1,2,3,4 | 24,20,20,22,22 / 64 | 21.6 | 5.0 | 3.8 | 7.0 | 5.8 | 41/64 |
+| Endpoint-free stats, no length | per-task head | 0,1,2,3,4 | 25,27,27,24,26 / 64 | 25.8 | 6.4 | 6.0 | 7.8 | 5.6 | 41/64 |
+| Bag action-envelope moments, no length | per-task head | 0,1,2,3,4 | 31,27,27,30,28 / 64 | 28.6 | 6.4 | 5.8 | 8.8 | 7.6 | 41/64 |
+| One unordered pseudo-endpoint pair, no length | per-task head | 0,1,2,3,4 | 25,27,26,29,30 / 64 | 27.4 | 7.0 | 6.8 | 7.8 | 5.8 | 41/64 |
+| Shuffled-time action statistics | per-task head | 0,1,2,3,4 | 26,24,25,25,26 / 64 | 25.2 | 5.6 | 7.4 | 7.2 | 5.0 | 41/64 |
+| Multiview meta: one unordered endpoint + shuffled-time | per-task head | 0,1,2 | 26,25,24 / 64 | 25.0 | 5.7 | 7.3 | 7.0 | 5.0 | 41/64 |
+
 ## Observation
 
 The surprising part is the action calibration cliff:
@@ -271,9 +284,10 @@ The surprising part is the action calibration cliff:
 - Across three tasks, with-demo selectors recover all 24 rank0 failures. In no-demo, raw ordered action statistics recover only 13-14/24 against a 19/24 oracle ceiling, while shuffled-time statistics recover 16-17/24. The gain is concentrated in `TurnOnSinkFaucet`.
 - Phase features do not fix Faucet when temporal order is preserved. Counterintuitively, phase features after time shuffling perform better than ordered phase features. Simple bag-of-actions moments also fail to match shuffle, so the effect is not explained by generic order-invariant statistics alone.
 - Multi-pseudo-endpoint features nearly match shuffled-time statistics on the three-task no-demo setting: 16,16,17/24 vs 17,16,17/24. This makes endpoint-dropout calibration the cleanest method-shaped version of the shuffle diagnostic so far. See `docs/robocasa365_temporal_shuffle_diagnostic.md`.
-- `TurnOnMicrowave` adds a second button-style task. It has the same rank0 failure pattern and a 6/8 no-demo oracle ceiling. In single-task training, multi-pseudo-endpoints recover 5,3,5/8, better than raw 3,2,3/8. In four-task multitask training, shuffled-time remains the strongest and most stable overall feature, while pseudo-endpoints become a partial explanation rather than a complete replacement.
+- `TurnOnMicrowave` adds a second button-style task. It has the same rank0 failure pattern and a 6/8 no-demo oracle ceiling. In single-task training, multi-pseudo-endpoints recover 5,3,5/8, better than raw 3,2,3/8. In the initial 32-case four-task multitask training, shuffled-time remains the strongest and most stable overall feature, while pseudo-endpoints become a partial explanation rather than a complete replacement.
 - Unordered pseudo-endpoints sharpen the mechanism. One stable permutation-derived endpoint pair gets 20,20,20/32 in four-task no-demo multitask evaluation, but four such pairs drop to 17,19,20/32. This is a useful negative result: adding more randomized endpoint evidence can hurt stability, so the method should learn when to trust temporal/detail features rather than simply add more of them.
 - Multiview calibration partially turns the diagnostic into a method. An outer-isolated logistic calibrator over one unordered endpoint view plus shuffled-time view reaches 21,20,20/32, compared with 22,19,19/32 for shuffled-time alone and 20,20,20/32 for unordered endpoints alone. Simple rank aggregation of the same views stays at 20,19,19/32, so the useful effect is learned stabilization rather than agreement voting.
+- The 64-case expansion changes the strongest mechanism. Bag action-envelope moments reach a 28.6/64 mean and one unordered endpoint pair reaches 27.4/64, both above shuffled-time at 25.2/64 and raw ordered summaries at 21.6/64. Endpoint-free stats without energy already reach 25.8/64, so removing brittle first/last endpoints is a major source of the gain; adding energy/envelope moments gives the best current result.
 
 This suggests that for RoboCasa-style long-horizon manipulation, the failure mode may be less about generic action noise and more about systematic action-scale or temporal-completion errors. That is aligned with the failure-gated critic story: a useful critic should detect physically plausible but under-executed candidates, not just visually plausible endpoints.
 
@@ -284,7 +298,7 @@ This probe is not yet sufficient as a final benchmark result:
 - Rank0 is intentionally brittle.
 - The fixed probe has candidate identity shortcuts; the randomized probe reduces but does not eliminate action-energy shortcut concerns.
 - `demo_original` is an oracle-like candidate source if presented as a policy output.
-- The largest randomized selector result so far uses eight episodes per task on four RoboCasa tasks, so it should be treated as a direction check, not a final benchmark table.
+- The largest randomized selector result so far uses sixteen episodes per task on four RoboCasa tasks. It is stronger than the original direction check, but still not enough for a final benchmark table without more tasks or a learned proposal source.
 - Current ranking prior is intentionally conservative and non-oracle; the next version should compare against an actual learned policy likelihood or BC proposal.
 - The no-demo Faucet result shows the current compact action statistic critic is not enough for articulated-fixture interaction. This is a weakness, but it is also the strongest evidence that the final method needs task-conditioned or contact-conditioned failure modeling.
 

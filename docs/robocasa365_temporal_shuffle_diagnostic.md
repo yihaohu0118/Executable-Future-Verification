@@ -14,6 +14,7 @@ This is not evidence that robot actions are order-invariant. It is evidence that
 
 New feature modes:
 
+- `stats_no_endpoints_no_length`: remove first/last endpoints and keep only mean, standard deviation, min, max, and absolute mean.
 - `bag_no_length`: order-invariant action-envelope moments without first/last endpoints.
 - `sampled_endpoints_no_length`: replace true first/last endpoints with one deterministic pseudo-endpoint pair sampled from the trajectory.
 - `multi_sampled_endpoints_no_length`: replace true first/last endpoints with four deterministic pseudo-endpoint pairs sampled from the trajectory.
@@ -108,27 +109,48 @@ Single-task `TurnOnSinkFaucet` remains harder for unordered endpoints: one unord
 
 The multiview results separate two mechanisms. Simple rank aggregation of unordered endpoints and shuffled-time scores is weak at 20,19,19/32, so the gain is not from naive agreement voting. An outer-isolated logistic calibrator over the same two views reaches 21,20,20/32. This trades away the best shuffled-time seed but reduces the low-seed drop from 19 to 20 and slightly improves over the stable unordered-endpoint view on seed 0. Adding raw or bag views is weaker, which supports the negative finding that ordered/raw temporal summaries can still drag down calibration.
 
+## Four-Task No-Demo, 16 Episodes Per Task
+
+The same four tasks were expanded from 8 to 16 target episodes per task by generating only episodes 8-15 with the same random no-demo candidate protocol and merging them with the original n8 manifests.
+
+Oracle ceiling: 41/64. Conservative rank0 remains 0/64.
+
+| Feature | Seeds | Overall success | Mean | Pick mean | Faucet mean | OpenCabinet mean | Microwave mean |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| raw action statistics, no length | 0,1,2,3,4 | 24,20,20,22,22 | 21.6 | 5.0 | 3.8 | 7.0 | 5.8 |
+| endpoint-free stats, no length | 0,1,2,3,4 | 25,27,27,24,26 | 25.8 | 6.4 | 6.0 | 7.8 | 5.6 |
+| bag action-envelope moments, no length | 0,1,2,3,4 | 31,27,27,30,28 | 28.6 | 6.4 | 5.8 | 8.8 | 7.6 |
+| one unordered pseudo-endpoint pair, no length | 0,1,2,3,4 | 25,27,26,29,30 | 27.4 | 7.0 | 6.8 | 7.8 | 5.8 |
+| shuffled-time action statistics | 0,1,2,3,4 | 26,24,25,25,26 | 25.2 | 5.6 | 7.4 | 7.2 | 5.0 |
+| multiview meta: one unordered endpoint + shuffled-time | 0,1,2 | 26,25,24 | 25.0 | 5.7 | 7.3 | 7.0 | 5.0 |
+
+The n16 result changes the interpretation. On 32 cases, shuffled-time looked like the strongest diagnostic. On 64 cases, simple action-envelope moments are strongest on average, and one unordered endpoint pair is second. Raw ordered summaries remain much worse. The new endpoint-free stats control shows that removing first/last endpoints explains a large part of the gain: 25.8/64 mean versus 21.6/64 for raw. Adding the full bag energy/envelope moments raises this to 28.6/64.
+
+This creates a stronger counterintuitive claim than the original shuffle diagnostic:
+
+> On expanded RoboCasa365 replay candidates, preserving true temporal endpoints hurts more than it helps; coarse action-envelope calibration is more reliable than ordered first/last summaries and even more reliable than shuffled-time diagnostics.
+
 ## Interpretation
 
 The current evidence supports this mechanism:
 
-> For small-data action critics on RoboCasa365 replay candidates, temporal order can be an anti-feature: ordered summaries overfit to endpoint or phase artifacts, while deterministic shuffle perturbations act like an anti-overfitting control that preserves candidate-level action calibration.
+> For action critics on RoboCasa365 replay candidates, temporal detail can be an anti-feature: ordered first/last summaries overfit to endpoint artifacts, while endpoint-free action-envelope statistics preserve candidate-level action calibration better.
 
 This is a useful ICLR-style diagnostic because it contradicts the default assumption that more temporal structure is always better for action-conditioned evaluation.
 
-The negative bag result matters. If ordinary order-invariant moments were enough, `bag_no_length` should have matched `shuffle_time`; it did not. The pseudo-endpoint result narrows the mechanism further: replacing brittle true endpoints with deterministic pseudo-endpoints nearly matches shuffled-time performance in the three-task setting. The four-task `TurnOnMicrowave` result adds a boundary: one unordered pseudo-endpoint pair is stable at 20/32, but four unordered pairs are less stable and shuffled-time remains the strongest single-view diagnostic. More pseudo-endpoints are not automatically better.
+The earlier negative bag result matters as a small-sample warning: on 24-32 cases, bag moments did not explain the full shuffle-time gain. After expanding to 64 cases, however, bag moments become the strongest single-view selector. This suggests the original shuffle result was a high-variance diagnostic of endpoint overfitting, while the more scalable mechanism is endpoint-free action-envelope calibration.
 
-The strongest current method-shaped result is not "always shuffle." It is a two-view temporal-dropout calibrator: one view keeps a stable unordered endpoint-dropout summary, the other view uses shuffled-time calibration, and an outer-isolated meta selector learns how to combine their within-case ranks. This is still diagnostic-scale and only a small improvement in stability, but it is more defensible than presenting shuffle as a final policy.
+The strongest current method-shaped result is not "always shuffle." It is an endpoint-free envelope critic: remove brittle first/last temporal anchors and score candidates from action-distribution statistics. Unordered endpoint dropout remains useful, but the n16 result shows that the simplest envelope moments are the strongest current baseline.
 
 The next method should not be "always shuffle actions." A safer direction is:
 
 1. learn when temporal order is reliable;
-2. use endpoint-dropout and temporal-dropout views as conservative failure detectors, but keep shuffle-robust controls as a diagnostic baseline;
+2. use endpoint-free envelope and endpoint-dropout views as conservative failure detectors, but keep shuffle-robust controls as a diagnostic baseline;
 3. add contact-conditioned features for Faucet-style interactions where successful candidates exist but compact statistics still miss them.
 
 ## Reviewer Caveats
 
 - Candidate generation is still replay perturbation, not a learned policy.
 - The action traces are sparse snapshots stored with stride 25, so this diagnostic does not rule out high-frequency temporal information.
-- The task count is four tasks and eight episodes per task; the result should be used as a mechanism-finding diagnostic before becoming a headline benchmark table.
+- The strongest current table uses four tasks and sixteen episodes per task. It is stronger than the original 32-case diagnostic, but still needs more RoboCasa365 tasks or a learned proposal source before becoming a headline benchmark table.
 - The shuffled controls should be presented as a warning against overclaiming temporal world modeling, not as proof that action order is irrelevant.

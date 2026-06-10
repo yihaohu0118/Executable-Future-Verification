@@ -51,6 +51,7 @@ Status:
 - `TurnOnMicrowave` adds a fourth target task and a second button-style fixture interaction. Conservative-prior rank0 gets 0/8 and oracle-best gets 8/8 with original demos; removing original demos leaves oracle-best at 6/8. In four-task no-demo multitask evaluation, raw ordered features recover 16-18/32 against a 25/32 oracle ceiling, shuffled-time recovers 19-22/32, and multi-pseudo-endpoints recover 16-19/32.
 - Unordered permutation-endpoint features add a cleaner counterfactual to the shuffle diagnostic. A single stable unordered endpoint pair recovers 20,20,20/32 in four-task no-demo multitask evaluation, while four unordered pairs recover 17,19,20/32 without length and 16,20,19/32 with length. This suggests endpoint dropout is useful, but adding more pseudo-endpoints can destabilize small-data calibration.
 - A multiview temporal-dropout calibrator gives the cleanest method-shaped four-task no-demo result so far: one unordered endpoint view plus shuffled-time view, combined by an outer-isolated logistic calibrator, recovers 21,20,20/32. Simple rank aggregation of the same views recovers only 20,19,19/32, so the effect is learned stabilization rather than naive voting.
+- The expanded n16 table is now the strongest evidence layer. With sixteen episodes per task, oracle-best is 41/64 and rank0 is 0/64. Over five seeds, raw ordered summaries recover 21.6/64 on average, shuffled-time recovers 25.2/64, endpoint-free stats recover 25.8/64, one unordered endpoint pair recovers 27.4/64, and bag action-envelope moments recover 28.6/64. This makes endpoint-free action-envelope calibration the current best method-shaped result.
 
 ## Smoke Command
 
@@ -122,6 +123,6 @@ The key evidence is a consistent gap:
 - oracle-best shows real candidate-set headroom;
 - ordered learned scoring can overfit or mis-rank;
 - shuffle-robust calibration can be stronger than preserving true temporal endpoints in the current small-data regime;
-- endpoint-dropout is a promising method-shaped approximation, especially with one unordered pseudo-endpoint pair, but the four-task result shows it is not yet a full replacement for shuffle-robust calibration;
-- multiview temporal-dropout calibration can improve the stability of the strongest diagnostic view, but the current gain is small and must be scaled beyond 32 cases;
+- endpoint-free action-envelope calibration is stronger than raw ordered summaries, shuffled-time diagnostics, and endpoint dropout on the expanded 64-case table;
+- endpoint-dropout remains a useful second-best mechanism and supports the claim that brittle first/last anchors are harmful;
 - a failure-gated critic recovers hard cases with less damage to easy cases.

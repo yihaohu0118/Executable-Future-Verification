@@ -237,6 +237,7 @@ def build_pool(
     *,
     task_name: str,
     suite: str,
+    start_episode: int,
     num_episodes: int,
     profiles: tuple[ActionProfile, ...],
     profile_mode: str,
@@ -248,13 +249,17 @@ def build_pool(
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     _, lerobot_utils, _ = _import_robocasa_playback()
     episodes = lerobot_utils.get_episodes(dataset)
+    if start_episode < 0:
+        raise ValueError("start_episode must be non-negative")
+    episodes = episodes[start_episode:]
     if num_episodes > 0:
         episodes = episodes[:num_episodes]
 
     env, env_meta = _make_env(dataset)
     rows: list[dict[str, Any]] = []
     try:
-        for episode_index, episode in enumerate(episodes):
+        for local_episode_index, episode in enumerate(episodes):
+            episode_index = start_episode + local_episode_index
             actions = _episode_actions(dataset, episode_index)
             initial_state = _initial_state(dataset, episode_index)
             instruction = _episode_instruction(dataset, episode_index)
@@ -328,6 +333,7 @@ def build_pool(
             "task_name": task_name,
             "dataset": str(dataset),
             "profile_mode": profile_mode,
+            "start_episode": start_episode,
             "num_profiles": num_candidates if profile_mode == "random" else len(profiles),
             "include_original": include_original,
             "ranking_prior": "conservative_action_energy",
@@ -341,6 +347,7 @@ def main() -> None:
     parser.add_argument("--dataset", type=Path, required=True)
     parser.add_argument("--task-name", required=True)
     parser.add_argument("--suite", default="target-human")
+    parser.add_argument("--start-episode", type=int, default=0)
     parser.add_argument("--num-episodes", type=int, default=5)
     parser.add_argument("--profile-mode", choices=["fixed", "random"], default="fixed")
     parser.add_argument("--num-candidates", type=int, default=8)
@@ -355,6 +362,7 @@ def main() -> None:
         args.dataset,
         task_name=args.task_name,
         suite=args.suite,
+        start_episode=args.start_episode,
         num_episodes=args.num_episodes,
         profiles=DEFAULT_PROFILES,
         profile_mode=args.profile_mode,

@@ -230,7 +230,7 @@ The common framing is to build a stronger planner, larger world model, or global
 - a trained proposal can rank likely samples well while still missing physical execution failures that a rollout critic detects;
 - the critic can recover failures caused by small action-geometry mistakes;
 - action/video signals can expose failure even when the candidate appears plausible;
-- in the current slice, temporal order is not just less important than expected; shuffled-time action summaries can outperform ordered summaries on Faucet-style failures, plain bag-of-actions moments do not reproduce the gain, and a multiview temporal-dropout calibrator slightly stabilizes the strongest shuffle diagnostic in a four-task setting.
+- in the current slice, temporal order is not just less important than expected; on the expanded 64-case RoboCasa365 table, endpoint-free action-envelope moments outperform raw ordered summaries, shuffled-time diagnostics, and endpoint-dropout views.
 
 ## Current Weaknesses
 
@@ -249,7 +249,7 @@ These must be addressed before this is paper-ready:
 Priority order:
 
 1. Make RoboCasa365 the headline benchmark layer and scale beyond the current four-task probe.
-2. Scale the multiview temporal-dropout calibrator for the Faucet/Microwave gap: no-demo oracle is 7/8 on Faucet and 6/8 on Microwave, ordered compact action statistics under-recover both, shuffled-time statistics reach 22,19,19/32, one unordered pseudo-endpoint pair is stable at 20,20,20/32, and the outer-isolated endpoint-dropout + shuffled-time calibrator reaches 21,20,20/32.
+2. Scale the endpoint-free action-envelope critic for the Faucet/Microwave gap: in the expanded 64-case no-demo table, oracle-best is 41/64, raw ordered summaries average 21.6/64, shuffled-time averages 25.2/64, endpoint-free stats average 25.8/64, one unordered endpoint pair averages 27.4/64, and bag action-envelope moments average 28.6/64.
 3. Replace the diagnostic replay prior with BC/diffusion-policy top-k samples where a 2025-2026 benchmark provides usable policy or demonstration sources.
 4. Add uncertainty-aware calibration to the gate and evaluate under mixed proposal qualities.
 5. Use only verified 2025-2026 robotics benchmarks as the next layer, such as RoboTwin 2.0, RoboMIND 2.0, or 2026 robotic world-model diagnostics; do not make legacy LIBERO/CALVIN/D4RL or unrelated side tracks part of the main evidence.
@@ -267,6 +267,7 @@ Priority order:
 - `src/umm_reward_evaluator/benchmarks/maniskill_bc_policy_pool.py`
 - `src/umm_reward_evaluator/benchmarks/maniskill_learned_grasp_proposal_pool.py`
 - `src/umm_reward_evaluator/benchmarks/shuffle_manifest_rows.py`
+- `src/umm_reward_evaluator/benchmarks/merge_candidate_manifests.py`
 - `src/umm_reward_evaluator/benchmarks/robocasa365_smoke.py`
 - `src/umm_reward_evaluator/benchmarks/robocasa_demo_candidate_pool.py`
 - `src/umm_reward_evaluator/benchmarks/filter_candidate_manifest.py`
