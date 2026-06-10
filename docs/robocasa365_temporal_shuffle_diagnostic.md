@@ -401,7 +401,7 @@ This is the main external-validity boundary for the current probe. The strong re
 
 ### Few-Shot Target-Task Calibration
 
-To quantify how much target-task calibration is needed, the selector was extended with `--max-train-cases-per-task`, which caps the number of calibration cases available in each held-out fold. The cap is deterministic per seed and keeps all candidates from the selected training cases.
+To quantify how much target-task calibration is needed, the selector was extended with `--max-train-cases-per-task`, which caps the number of calibration cases available in each held-out fold. The cap is deterministic per seed and keeps all candidates from the selected training cases. `--train-case-cap-scope target_task` adds the stricter adaptation protocol: for each held-out target case, all source-task cases remain in training, but only K non-held-out target-task cases are available.
 
 For independent EEF+gripper distribution selectors:
 
@@ -423,13 +423,27 @@ For balanced shared-onehot EEF+gripper distribution selectors, where every task 
 | 4 | 0,1,2,3,4 | 54,55,62,60,54 | 57.0 | 3.35 |
 | 8 | 0,1,2,3,4 | 60,59,60,60,64 | 60.6 | 1.74 |
 
-This gives a more specific sample-efficiency story. One independent target-task calibration case is too brittle because the selected case may not cover the relevant contact regime. Balanced cross-task sharing with task one-hot fixes much of this one-shot brittleness, improving K=1 from 24.2/64 to 41.2/64. The gain mostly disappears by K=4-K=8, where independent same-task calibration already saturates. The method should therefore be framed as few-shot task/contact calibration with useful low-shot cross-task regularization, not zero-shot transfer or task-agnostic thresholding.
+For the stricter full-source plus target-K adaptation protocol:
+
+| Target-task cases, source tasks full | Mode | Seeds | Overall success | Mean | Std |
+| ---: | --- | --- | ---: | ---: | ---: |
+| 0 | shared one-hot | 0,1,2,3,4 | 0,0,0,0,0 | 0.0 | 0.0 |
+| 1 | shared one-hot | 0,1,2,3,4 | 44,46,49,47,44 | 46.0 | 1.90 |
+| 2 | shared one-hot | 0,1,2,3,4 | 52,48,57,55,58 | 54.0 | 3.63 |
+| 4 | shared one-hot | 0,1,2,3,4 | 61,57,60,60,58 | 59.2 | 1.47 |
+| 8 | shared one-hot | 0,1,2,3,4 | 64,62,62,61,62 | 62.2 | 0.98 |
+| 1 | per-task head | 0,1,2,3,4 | 48,44,47,40,46 | 45.0 | 2.83 |
+| 2 | per-task head | 0,1,2,3,4 | 53,52,52,50,55 | 52.4 | 1.62 |
+| 4 | per-task head | 0,1,2,3,4 | 58,56,58,60,57 | 57.8 | 1.33 |
+| 8 | per-task head | 0,1,2,3,4 | 61,61,63,63,62 | 62.0 | 0.89 |
+
+This gives a more specific sample-efficiency story. One independent target-task calibration case is too brittle because the selected case may not cover the relevant contact regime. Balanced cross-task sharing with task one-hot fixes much of this one-shot brittleness, improving K=1 from 24.2/64 to 41.2/64. The stricter adaptation protocol is stronger: keeping all source tasks and adding only one target-task case reaches 46.0/64, two cases reach 54.0/64, and eight cases reach 62.2/64. Source-only adaptation still collapses to 0/64, so the gain is not zero-shot transfer. A task-specific head is not better in the low-shot adaptation setting; shared one-hot is slightly stronger at K=1-K=4 and effectively tied at K=8. The method should therefore be framed as few-shot task/contact calibration with useful low-shot cross-task regularization, not zero-shot transfer, task-agnostic thresholding, or necessarily task-specific heads.
 
 ## Interpretation
 
 The current evidence supports this mechanism:
 
-> For action critics on RoboCasa365 replay candidates, temporal detail can be an anti-feature in ordinary no-demo pools: ordered first/last summaries overfit to endpoint artifacts, while endpoint-free action-envelope statistics preserve candidate-level action calibration better. But once action magnitude is matched, compact action-only summaries recover only limited signal; on the n16 fully regenerated hard-negative pool, action-only reaches 28.4/64 while robot-only rollout traces reach 64/64 and proprio-only reaches 63.0/64. A finer key ablation shows that EEF/gripper traces without the broad proprio vector still reach 62.2/64, and an EEF summary ablation shows that endpoint-free distributional execution envelopes reach 63.4-63.6/64 while endpoint-only summaries stay near 33-43/64. Non-neural same-task prototype matching reaches 59/64, but leave-one-task-out MLP drops to 25.6/64. Balanced shared-onehot one-shot calibration reaches 41.2/64 versus 24.2/64 for independent one-shot training, while independent four-shot and eight-shot target calibration recover 56.8/64 and 61.0/64. The next method should condition action adequacy on compact, few-shot task/contact-calibrated execution-envelope feedback rather than action envelope, temporal detail, endpoint state, object-state shortcuts, or zero-shot cross-task assumptions.
+> For action critics on RoboCasa365 replay candidates, temporal detail can be an anti-feature in ordinary no-demo pools: ordered first/last summaries overfit to endpoint artifacts, while endpoint-free action-envelope statistics preserve candidate-level action calibration better. But once action magnitude is matched, compact action-only summaries recover only limited signal; on the n16 fully regenerated hard-negative pool, action-only reaches 28.4/64 while robot-only rollout traces reach 64/64 and proprio-only reaches 63.0/64. A finer key ablation shows that EEF/gripper traces without the broad proprio vector still reach 62.2/64, and an EEF summary ablation shows that endpoint-free distributional execution envelopes reach 63.4-63.6/64 while endpoint-only summaries stay near 33-43/64. Non-neural same-task prototype matching reaches 59/64, but leave-one-task-out MLP drops to 25.6/64. In full-source adaptation, zero target cases collapse to 0/64, but one target case reaches 46.0/64 and eight reach 62.2/64; per-task heads do not improve over shared one-hot. The next method should condition action adequacy on compact, few-shot task/contact-calibrated execution-envelope feedback rather than action envelope, temporal detail, endpoint state, object-state shortcuts, zero-shot cross-task assumptions, or mandatory task-specific heads.
 
 This is a useful ICLR-style diagnostic because it contradicts the default assumption that more temporal structure is always better for action-conditioned evaluation.
 

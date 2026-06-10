@@ -24,6 +24,7 @@ from umm_reward_evaluator.benchmarks.train_multitask_action_sequence_selector im
 STATE_FEATURE_MODES = ("state", "state_action", "zero")
 STATE_SUMMARY_MODES = ("full", "endpoint", "terminal", "delta", "distribution", "path", "no_endpoint")
 FOLD_MODES = ("case", "task")
+TRAIN_CASE_CAP_SCOPES = ("all_tasks", "target_task")
 
 
 @dataclass(frozen=True)
@@ -162,11 +163,25 @@ def cap_train_cases_per_task(
     *,
     max_cases_per_task: int | None,
     seed: int,
+    target_task: str | None = None,
 ) -> list[dict[str, Any]]:
     if max_cases_per_task is None:
         return rows
+    if max_cases_per_task < 0:
+        raise ValueError("--max-train-cases-per-task must be non-negative")
+    if target_task is not None:
+        source_rows = [row for row in rows if str(row["task_label"]) != target_task]
+        target_rows = [row for row in rows if str(row["task_label"]) == target_task]
+        if max_cases_per_task == 0:
+            return source_rows
+        return source_rows + cap_train_cases_per_task(
+            target_rows,
+            max_cases_per_task=max_cases_per_task,
+            seed=seed,
+            target_task=None,
+        )
     if max_cases_per_task <= 0:
-        raise ValueError("--max-train-cases-per-task must be positive")
+        raise ValueError("--max-train-cases-per-task must be positive for all-task capping")
     grouped_cases: dict[tuple[str, str], list[dict[str, Any]]] = {}
     for row in rows:
         grouped_cases.setdefault((str(row["task_label"]), str(row["case_id"])), []).append(row)
@@ -404,9 +419,12 @@ def evaluate(
     lr: float,
     seed: int,
     max_train_cases_per_task: int | None,
+    train_case_cap_scope: str,
 ) -> tuple[dict[str, Any], list[dict[str, Any]], list[dict[str, Any]]]:
     if fold_mode == "task" and task_mode == "per_task_head":
         raise ValueError("task-fold evaluation cannot use per_task_head because the held-out task head is untrained")
+    if fold_mode == "task" and train_case_cap_scope == "target_task":
+        raise ValueError("--train-case-cap-scope target_task is only defined for case-fold evaluation")
     state_spec = build_state_spec(rows, include_keys=include_state_keys, exclude_keys=exclude_state_keys)
     tasks = sorted({str(row["task_label"]) for row in rows})
     grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
@@ -445,6 +463,7 @@ def evaluate(
             train_rows,
             max_cases_per_task=max_train_cases_per_task,
             seed=seed + fold,
+            target_task=task if train_case_cap_scope == "target_task" else None,
         )
         if task_mode == "per_task_head":
             scored.extend(
@@ -489,6 +508,7 @@ def evaluate(
     summary["state_keys"] = list(state_spec.keys)
     summary["state_dims"] = state_spec.dims
     summary["max_train_cases_per_task"] = max_train_cases_per_task
+    summary["train_case_cap_scope"] = train_case_cap_scope
     summary["include_state_keys"] = sorted(include_state_keys) if include_state_keys is not None else None
     summary["exclude_state_keys"] = sorted(exclude_state_keys) if exclude_state_keys is not None else None
     summary["tasks"] = tasks
@@ -511,6 +531,7 @@ def main() -> None:
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--max-train-cases-per-task", type=int)
+    parser.add_argument("--train-case-cap-scope", default="all_tasks", choices=list(TRAIN_CASE_CAP_SCOPES))
     args = parser.parse_args()
 
     rows = load_labeled_rows(args.manifest)
@@ -528,6 +549,7 @@ def main() -> None:
         lr=args.lr,
         seed=args.seed,
         max_train_cases_per_task=args.max_train_cases_per_task,
+        train_case_cap_scope=args.train_case_cap_scope,
     )
     args.output_dir.mkdir(parents=True, exist_ok=True)
     (args.output_dir / "summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
