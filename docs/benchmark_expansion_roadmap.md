@@ -290,15 +290,28 @@ selector result:
 
 This is the table to cite before adding new RoboTwin2 features.
 
+RoboTwin2 K-shot calibration now matches the RoboCasa story. Under the same
+anonymous remap protocol, source-plus-target K-shot nearest-positive selectors
+give:
+
+| Feature | K=0 | K=1 | K=2 | K=4 |
+| --- | ---: | ---: | ---: | ---: |
+| Gripper distribution | 3.0/15 | 6.0/15 | 8.3/15 | 9.7/15 |
+| Phase-gripper distribution | 2.4/15 | 3.8/15 | 5.46/15 | 8.1/15 |
+| Phase-joint distribution | 0.0/15 | 2.6/15 | 6.2/15 | 12.0/15 |
+| Phase-joint+gripper distribution | 2.0/15 | 3.4/15 | 6.8/15 | 12.0/15 |
+
+This is a useful reviewer-facing boundary: the verifier is not strong
+zero-shot cross-task, but a few-shot task/contact-calibrated execution-envelope
+selector.
+
 Updated RoboTwin2 next step:
 
 1. Add compact EEF/contact-direction features to close the `open_laptop`
    boundary, where phase-aware gripper nearest-positive is still only 3/5.
 2. Generate a candidate pool whose successful future is not always the full
    expert trace, then re-run the selector table.
-3. Add K-shot calibration curves on RoboTwin2 and compare against no-task-ID
-   source-only transfer.
-4. Keep `handover_block` as a one-seed bimanual mechanism example unless the
+3. Keep `handover_block` as a one-seed bimanual mechanism example unless the
    next table needs a fourth task for reviewer-facing breadth.
 
 Updated RoboWM next step:

@@ -520,6 +520,41 @@ The remaining weakness is still `open_laptop`: the best remapped all-task
 phase-joint selectors average 3/5 there, while `stack_blocks_two` is 4/5 and
 `stamp_seal` is 5/5.
 
+### K-Shot Calibration Sweep
+
+RoboTwin2 now has a K-shot calibration sweep:
+
+```bash
+PYTHONPATH=src python3 -m umm_reward_evaluator.benchmarks.robotwin2_kshot_calibration_sweep \
+  --manifest /private/tmp/robotwin2_k5/robotwin2_three_task_k5_manifest.jsonl \
+  --output /private/tmp/robotwin2_k5/selectors/kshot_default_seed0_9_support0_4.json \
+  --num-rank-seeds 10 \
+  --rank-seed-start 0 \
+  --num-support-seeds 5 \
+  --support-seed-start 0 \
+  --remap-candidate-ids
+```
+
+The sweep holds out each case, trains on all source-task cases plus K support
+cases from the target task, and evaluates under anonymous candidate-ID/rank
+randomization. Mean success over 10 rank seeds and 5 support seeds:
+
+| Feature | K=0 | K=1 | K=2 | K=4 |
+| --- | ---: | ---: | ---: | ---: |
+| Gripper distribution | 3.0/15 | 6.0/15 | 8.3/15 | 9.7/15 |
+| Phase-gripper distribution | 2.4/15 | 3.8/15 | 5.46/15 | 8.1/15 |
+| Phase-joint distribution | 0.0/15 | 2.6/15 | 6.2/15 | 12.0/15 |
+| Phase-joint+gripper distribution | 2.0/15 | 3.4/15 | 6.8/15 | 12.0/15 |
+
+Interpretation:
+
+- Source-only transfer is weak, especially for phase-joint features.
+- Adding target-task support produces a clear calibration curve.
+- K=4 recovers the same 12.0/15 reviewer-safe result as the all-task
+  anonymous-remap selector because it uses all other target cases.
+- The result should be framed as few-shot task/contact calibration, not
+  zero-shot cross-task generalization.
+
 ## Why It Fits The Current Story
 
 RoboCasa365 already shows that action-envelope calibration can recover conservative-prior failures, but hard negatives require compact robot execution-envelope/contact evidence. RoboTwin 2.0 adds:

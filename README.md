@@ -56,6 +56,8 @@ smoke has 15 cases and six candidates per case:
   candidate-ID/rank remap;
 - nearest-positive gripper/phase/joint trace selectors: up to 13/15 in fixed
   order and 12.0/15 mean over 10 anonymous remap seeds.
+- K-shot calibration on anonymous remap shows a clear boundary: phase-joint
+  source-only is 0.0/15, K=2 reaches 6.2/15, and K=4 reaches 12.0/15.
 
 The important control is that candidate-ID lookup collapses to 0/15 after
 anonymous remapping, while trace-based selectors remain above rank0 and simple
@@ -127,6 +129,17 @@ PYTHONPATH=src python -m umm_reward_evaluator.benchmarks.randomize_planner_rank 
   --remap-candidate-ids
 ```
 
+Run the K-shot target-task calibration sweep:
+
+```bash
+PYTHONPATH=src python -m umm_reward_evaluator.benchmarks.robotwin2_kshot_calibration_sweep \
+  --manifest /path/to/robotwin2_manifest.jsonl \
+  --output /path/to/kshot_sweep.json \
+  --num-rank-seeds 10 \
+  --num-support-seeds 5 \
+  --remap-candidate-ids
+```
+
 Run the local test suite:
 
 ```bash
@@ -139,7 +152,8 @@ PYTHONPATH=src python -m unittest discover -s tests
 2. Add compact EEF/contact-direction features for the `open_laptop` boundary.
 3. Build candidate pools where the successful future is not always the full
    expert trace.
-4. Add RoboTwin2 K-shot calibration curves.
+4. Build the next RoboTwin2 candidate pool where success is not always the full
+   expert trace.
 5. Keep RoboWM-Bench as a world-model-specific diagnostic layer until its
    public evaluator ceiling is clarified.
 

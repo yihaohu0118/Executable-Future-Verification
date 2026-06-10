@@ -7,6 +7,7 @@ from umm_reward_evaluator.benchmarks.robotwin2_selector_baselines import (
     evaluate_rank0,
 )
 from umm_reward_evaluator.benchmarks.robotwin2_rank_randomization_sweep import parse_prototype_config, run_sweep
+from umm_reward_evaluator.benchmarks.robotwin2_kshot_calibration_sweep import run_kshot_sweep
 
 
 def make_row(task, case, candidate, rank, success, actions, left_gripper, right_gripper=None):
@@ -115,6 +116,23 @@ class RoboTwin2SelectorBaselinesTest(unittest.TestCase):
         self.assertNotIn("heuristic:energy_sum_max", selectors)
         self.assertEqual(summary["heuristics"], ["smoothness_max"])
         self.assertEqual(summary["prototypes"], ["gripper_distribution:same_task:nearest_positive"])
+
+    def test_kshot_sweep_reports_source_plus_target_calibration(self):
+        summary = run_kshot_sweep(
+            self.rows,
+            rank_seeds=[0],
+            support_seeds=[0],
+            k_values=[0, 1],
+            feature_modes=("gripper_distribution",),
+            mode="failure_rank0_shuffle_rest",
+            remap_candidate_ids=True,
+            include_source_tasks=True,
+        )
+        aggregate = {row["selector"]: row for row in summary["aggregate"]["selectors"]}
+        self.assertIn("kshot:gripper_distribution:source_plus_target:k0", aggregate)
+        self.assertIn("kshot:gripper_distribution:source_plus_target:k1", aggregate)
+        self.assertEqual(summary["k_values"], [0, 1])
+        self.assertEqual(summary["feature_modes"], ["gripper_distribution"])
 
 
 if __name__ == "__main__":

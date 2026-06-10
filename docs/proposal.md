@@ -128,6 +128,21 @@ Interpretation: the signal survives candidate-ID removal, but the fixed-order
 claim is 12.0/15 under anonymous candidate-ID/rank randomization, with rank0
 and candidate-ID lookup both at 0/15.
 
+K-shot target-task calibration under the same anonymous remap protocol:
+
+| Selector | K=0 | K=1 | K=2 | K=4 |
+| --- | ---: | ---: | ---: | ---: |
+| Gripper distribution | 3.0 | 6.0 | 8.3 | 9.7 |
+| Phase-gripper distribution | 2.4 | 3.8 | 5.46 | 8.1 |
+| Phase-joint distribution | 0.0 | 2.6 | 6.2 | 12.0 |
+| Phase-joint+gripper distribution | 2.0 | 3.4 | 6.8 | 12.0 |
+
+Each cell is mean success out of 15 over 10 anonymous rank seeds and 5 support
+seeds. K=0 uses source tasks only; K=4 uses all other target-task cases. The
+curve supports the same boundary seen in RoboCasa: this is not a universal
+zero-shot verifier, but a task/contact-calibrated verifier that improves as
+target-task support appears.
+
 ## Target Paper Story
 
 Provisional title:
@@ -168,8 +183,8 @@ Recommended contribution shape:
    boundary.
 2. Build a candidate pool where success is not always exactly the full expert
    trace.
-3. Add K-shot calibration curves on RoboTwin2 and compare source-only,
-   no-task-ID, same-task prototype, and task-conditioned variants.
+3. Build a less nameable RoboTwin2 candidate pool where success is not always
+   exactly the full expert trace.
 4. Keep `handover_block` as a one-seed bimanual mechanism example unless a
    fourth K=5 task is needed for breadth.
 
