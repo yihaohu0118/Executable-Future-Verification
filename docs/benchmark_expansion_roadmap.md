@@ -147,13 +147,13 @@ Current RoboWM-Bench status on dev2:
 
 - The manifest adapter and validator already work on synthetic RoboWM eval logs.
 - IsaacSim 5.1 / IsaacLab v2.3.0 are installed in a dedicated `robowmbench_env` Docker container because host glibc is too old for IsaacSim wheels.
-- Full camera-enabled replay is blocked on dev2's H100 graphics/Vulkan limitation, not on Python imports.
-- A physics-only Pick shim, which disables task cameras but keeps action replay and object-state success checking, runs on H100.
-- GT `Franka-pick` smoke is not a perfect oracle: the first 10 GT episodes replay at 7/10 success, and a repeat run fails the same episodes. This means the RoboWM layer should first report task-wise GT replay ceilings before using any generated futures.
+- Full camera-enabled replay initially failed because the container lacked a NVIDIA Vulkan ICD and GLVND EGL runtime. This was fixed by adding a Vulkan ICD JSON for `libEGL_nvidia.so.0` and installing `libegl1`, `libgles2`, `libnvidia-egl-wayland1`, `libvulkan1`, `vulkan-tools`, and `libglu1-mesa`.
+- The official GitHub `main` branch still has a Pick/eval API mismatch: `scripts/robot/eval_franka.py` calls `env.reset(pose_name=...)`, while `Task00_Pick/pick.py` implements `_reset_idx(...)` but no matching `reset(...)` override.
+- With camera-enabled replay and a minimal reset-compatibility shim, GT `Franka-pick` smoke is not a perfect oracle: the first 10 GT episodes replay at 7/10 success, failing `000003`, `000005`, and `000007`. This should be treated as a current-public-evaluator finding, not as a claim that the authors' internal evaluator necessarily has the same ceiling.
 
 Updated RoboWM next step:
 
-1. Turn the temporary Pick physics-only shim into a reproducible helper patch or documented benchmark fork diff.
-2. Verify whether other target tasks can safely disable cameras for success-only replay.
+1. Turn the reset-compatibility shim and Vulkan/EGL setup into a reproducible helper patch or documented benchmark fork diff.
+2. Verify whether other target tasks have the same `reset(...)` mismatch or already implement task-specific reset.
 3. Build a GT-ceiling table across `pick`, `put_on_plate`, `press_button`, and one articulated-object task.
 4. Only after GT ceilings are known, evaluate corrupted GT candidates and any generated/IDM action candidates through the manifest protocol.

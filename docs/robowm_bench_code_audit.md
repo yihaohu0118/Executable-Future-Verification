@@ -94,8 +94,10 @@ Current dev2 status:
 - The working path is a dedicated Docker container, `robowmbench_env`, based on an Ubuntu 22.04 / glibc 2.35 image with GPU passthrough.
 - The container has `isaacsim==5.1.0`, IsaacLab v2.3.0 core packages, `isaaclab_tasks`, `isaaclab_assets`, `lehome`, and `lerobot` installed. The optional IsaacLab mimic extra failed on `egl_probe` because its CMake file is incompatible with the installed CMake policy defaults, but core RoboWM replay does not require that extra.
 - The container was committed locally as `robowmbench:isaacsim51-isaaclab23` to avoid reinstalling the large IsaacSim/IsaacLab stack.
-- PyTorch CUDA works in the container on H100 (`torch 2.7.0+cu128`, CUDA available), but IsaacSim graphics/Vulkan does not expose a usable graphics device on the H100 machine. Official camera-enabled replay fails with `vkCreateInstance failed` / `GPU Foundation is not initialized`.
-- `libGLU.so.1` was missing and was fixed by installing `libglu1-mesa`; this removes one loader error but does not solve the H100 Vulkan graphics-device limitation.
+- PyTorch CUDA works in the container on H100 (`torch 2.7.0+cu128`, CUDA available).
+- IsaacSim graphics initially failed with `vkCreateInstance failed` / `GPU Foundation is not initialized` because the container had NVIDIA GL/EGL libraries but no Vulkan ICD JSON. Installing `vulkan-tools`/`libvulkan1` and adding `/etc/vulkan/icd.d/nvidia_icd.json` pointing at `libEGL_nvidia.so.0` made `vulkaninfo --summary` enumerate all 8 H100 GPUs.
+- `libGLU.so.1` was missing and was fixed by installing `libglu1-mesa`.
+- GLVND EGL runtime was also incomplete; installing `libegl1`, `libgles2`, and `libnvidia-egl-wayland1` fixed the earlier crash at `Could not get required EGL context creation functions`. Camera-enabled IsaacSim now starts and renders far enough to run Pick replay, though it still logs non-fatal `eglInitialize failed`, DLSS, and NuRec missing-field warnings.
 - Headless import of `pynput.keyboard` fails unless `PYNPUT_BACKEND=dummy` is set, because `lehome.devices` imports keyboard backends even during offline replay.
 - The RoboWM manifest converter was smoke-tested on dev2 with `/tmp/RoboWM-Bench/GT/pick`, two synthetic candidate eval logs, and episodes 0-1. The validator passed with 4 rows, 2 cases, 2 candidates per case, rank0 success 0/2, oracle success 1/2, and no metadata errors.
 - Disk cleanup on dev2 removed explicitly approved HuggingFace cache entries only: SenseNova-U1-8B-MoT, Qwen2.5-14B-Instruct, Qwen3-VL-8B-Instruct, ToolACE-2-Llama-3.1-8B, and Qwen2.5-7B-Instruct. The HF hub cache dropped from about 138GB to 32GB and filesystem free space rose to about 249-257GB. VideoZeroBench data/cache was not deleted.
@@ -117,15 +119,16 @@ If this GT replay succeeds, the benchmark path is viable. If it fails because Is
 
 The first real dev2 smoke exposed several code-level assumptions that are easy to miss from the paper or README:
 
-- Camera dependency is unconditional in task code. `Task00_Pick/pick.py` constructs `TiledCamera` objects inside `_setup_scene` and registers them in `self.scene.sensors` even when `eval_franka.py` is not saving a dataset. On H100, camera-enabled replay hangs because IsaacSim requires a Vulkan graphics device.
+- Camera dependency is unconditional in task code. `Task00_Pick/pick.py` constructs `TiledCamera` objects inside `_setup_scene` and registers them in `self.scene.sensors` even when `eval_franka.py` is not saving a dataset. This made the initial setup sensitive to Vulkan/EGL container configuration even for success-only replay.
 - For success-only replay, the camera is not semantically required. `eval_franka.py` only calls `_get_observations()` when `--save_dataset` is enabled. The Pick success function uses `success_checker_pick(self.object_A, self.ori_z)`, which depends on simulated object state, not rendered RGB.
 - A temporary `LEHOME_PHYSICS_ONLY=1` patch to Pick skipped camera construction/registration and made `_get_observations()` return action/state only. This allowed headless H100 replay to run without changing action replay or success logic.
 - The official eval script calls `env.reset(pose_name=..., pose_xyz=..., pose_quat_wxyz=...)`, but the current Pick task implements `_reset_idx(...)` and does not implement a compatible `reset(...)`. A small compatibility shim mapping those pose arguments to `_reset_idx` was required for replay to proceed. This is a benchmark code/API mismatch, not a method issue.
 - `--part_scores` is not uniformly supported. `eval_franka.py` assumes `env.get_part_scores()` exists, but `PickEnv` has no such method. Pick must be evaluated by success rate only unless the benchmark code is hardened.
-- With the temporary physics-only Pick shim, the official GT action replay completed on dev2. A single GT episode (`episode_000000`) succeeded.
-- A deterministic 10-episode GT smoke on `GT/pick` produced 7/10 success. Repeating the same 10 episodes produced the same result: episodes `000003`, `000005`, and `000007` failed in both runs.
+- With the temporary physics-only Pick shim, GT action replay completed on dev2. A single GT episode (`episode_000000`) succeeded.
+- After fixing Vulkan/EGL and restoring camera-enabled replay, a minimal Pick `reset(...)` compatibility shim was still required because the current public main branch has no Pick reset override but `eval_franka.py` calls `env.reset(pose_name=...)`.
+- With camera-enabled replay and a more faithful reset shim that calls `_reset_idx`, `scene.write_data_to_sim()`, `sim.forward()`, and reset-time render, the first 10 `GT/pick` episodes still produced 7/10 success. The stable failed episodes are `000003`, `000005`, and `000007`.
 
-The last point is an important research signal: even the provided GT action JSON is not a perfect oracle under the current public evaluation stack, at least for this pinned IsaacSim/IsaacLab/H100 physics-only replay. Before reporting RoboWM-Bench numbers, the paper must treat GT replay success as an empirical upper bound, not an assumed 100% oracle.
+The last point is an important research signal, but it must be phrased carefully: the current public main branch cannot run Pick replay completely unmodified because of the `reset(...)` API mismatch. Under the minimal compatibility patch, the provided GT action JSON is not a perfect oracle for the first 10 Pick cases. Before reporting RoboWM-Bench numbers, the paper must treat GT replay success as an empirical ceiling measured under a pinned evaluator patch, not an assumed 100% oracle.
 
 ## Research Consequences
 
