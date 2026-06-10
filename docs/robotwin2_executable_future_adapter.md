@@ -74,6 +74,100 @@ The least invasive patch is inside RoboTwin `script/eval_policy.py`:
 
 This records the proposal as the policy actually executed it, after the same expert-valid seed filter used by the official benchmark.
 
+Do not record the expert-valid seed filtering trajectory as a candidate. The
+candidate pool starts only inside the policy-evaluation loop after a seed has
+passed `TASK_ENV.plan_success and TASK_ENV.check_success()`.
+
+### Concrete Patch Skeleton
+
+Add these helpers near the top of `script/eval_policy.py`:
+
+```python
+import json
+from pathlib import Path
+
+import numpy as np
+
+
+def _jsonable_array(value, max_items=256):
+    if value is None:
+        return None
+    array = np.asarray(value, dtype=np.float32).reshape(-1)
+    if array.size > max_items:
+        array = array[:max_items]
+    return array.tolist()
+
+
+def _compact_robot_state(task_env):
+    obs = getattr(task_env, "now_obs", None)
+    if not isinstance(obs, dict):
+        return {}
+    out = {}
+    for key in ("qpos", "endpose", "left_arm_qpos", "right_arm_qpos", "left_endpose", "right_endpose"):
+        if key in obs:
+            out[key] = _jsonable_array(obs[key])
+    return out
+```
+
+Then wrap each policy rollout:
+
+```python
+candidate_actions = []
+candidate_state_trace = []
+original_take_action = TASK_ENV.take_action
+
+
+def traced_take_action(action, action_type="qpos"):
+    candidate_actions.append(_jsonable_array(action, max_items=128))
+    candidate_state_trace.append(_compact_robot_state(TASK_ENV))
+    return original_take_action(action, action_type=action_type)
+
+
+TASK_ENV.take_action = traced_take_action
+try:
+    # existing official policy loop:
+    # while TASK_ENV.take_action_cnt < TASK_ENV.step_lim:
+    #     observation = TASK_ENV.get_obs()
+    #     eval_func(TASK_ENV, model, observation)
+    pass
+finally:
+    TASK_ENV.take_action = original_take_action
+```
+
+After the rollout finishes and `succ` has been computed, write one JSON object:
+
+```python
+trace_record = {
+    "task_name": args["task_name"],
+    "task_config": args.get("task_config", "demo_randomized"),
+    "seed": now_seed,
+    "instruction": instruction,
+    "policy_name": args["policy_name"],
+    "ckpt_setting": str(ckpt_setting),
+    "candidate_seed": candidate_seed,
+    "candidate_rank_by_planner": candidate_rank,
+    "video_path": TASK_ENV.eval_video_path,
+    "actions": candidate_actions,
+    "success": bool(succ),
+    "action_type": args.get("action_type", "qpos"),
+    "metadata": {
+        "future_source": "policy_rollout",
+        "future_representation": "actions_and_state_trace",
+        "verification_target": "task_success",
+        "state_trace": candidate_state_trace,
+    },
+}
+output_path = Path(save_dir) / "umm_candidate_traces.jsonl"
+with output_path.open("a", encoding="utf-8") as f:
+    f.write(json.dumps(trace_record, sort_keys=True) + "\n")
+```
+
+`candidate_seed` and `candidate_rank` should be assigned by the candidate
+generation wrapper. For stochastic policies, use the sampling seed as
+`candidate_seed`; for checkpoint variants, use the checkpoint order as the
+planner rank. For pure action-noise candidates, keep rank 0 as the unperturbed
+policy and assign larger ranks to perturbations before running any selector.
+
 ## First Experiment Matrix
 
 Use 4-6 tasks chosen to stress different contact regimes:
@@ -91,6 +185,16 @@ For each task:
 - candidates per seed: 4-8;
 - rank0: default policy/checkpoint/planner score;
 - candidates: checkpoint variants, stochastic policy samples, action-noise samples, or generated future rollouts if a world-model source is available.
+
+The first smoke should be deliberately small:
+
+1. one task, five expert-valid seeds, four candidates per seed;
+2. convert traces with `robotwin2_trace_to_manifest.py`;
+3. validate with `--require-future-metadata`;
+4. report only rank0, oracle-best, and candidate-count histogram.
+
+Scale only if oracle-best improves over rank0. If the smoke has no headroom,
+switch tasks or candidate-generation source before training any selector.
 
 ## Required Controls
 

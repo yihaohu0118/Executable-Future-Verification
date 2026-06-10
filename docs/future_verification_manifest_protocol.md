@@ -23,6 +23,10 @@ Each row is one candidate future.
 | `actions` | Executable action sequence, or an extracted/proxy action sequence for generated futures. |
 | `oracle_success` | Whether this candidate completes the task under benchmark execution/scoring. |
 
+`case_id` only needs to be unique within a task. All shared tooling groups
+candidates by `(task_name, case_id)`, so benchmarks that reuse seed IDs across
+tasks do not accidentally mix candidates from different tasks.
+
 Recommended existing fields:
 
 | Field | Meaning |

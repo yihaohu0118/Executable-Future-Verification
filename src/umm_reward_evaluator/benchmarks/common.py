@@ -61,10 +61,14 @@ def oracle_key(row: dict[str, Any]) -> tuple[float, float, float]:
     return success, float(progress), float(ret)
 
 
+def case_group_key(row: dict[str, Any]) -> tuple[str, str]:
+    return str(row.get("task_name", row.get("task_label", "<missing_task>"))), str(row["case_id"])
+
+
 def annotate_oracle_best(rows: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
-    grouped: dict[str, list[dict[str, Any]]] = {}
+    grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
     for row in rows:
-        grouped.setdefault(str(row["case_id"]), []).append(dict(row))
+        grouped.setdefault(case_group_key(row), []).append(dict(row))
 
     annotated: list[dict[str, Any]] = []
     for case_rows in grouped.values():
@@ -77,9 +81,9 @@ def annotate_oracle_best(rows: Iterable[dict[str, Any]]) -> list[dict[str, Any]]
 
 
 def summarize_headroom(rows: Iterable[dict[str, Any]]) -> dict[str, float | int]:
-    grouped: dict[str, list[dict[str, Any]]] = {}
+    grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
     for row in rows:
-        grouped.setdefault(str(row["case_id"]), []).append(row)
+        grouped.setdefault(case_group_key(row), []).append(row)
 
     cases = 0
     rank0_success = 0

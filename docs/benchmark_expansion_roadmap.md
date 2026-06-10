@@ -68,6 +68,8 @@ Scope gate:
 - VideoZeroBench is not part of the active ICLR benchmark stack because it is outside the current robotics benchmark scope. Do not delete its training/data cache when it already exists; keep it available for unrelated video-reasoning work or later restoration.
 - The active remote robotics benchmark setup is RoboCasa365 plus its required robosuite dependency.
 
+The active multi-benchmark portfolio is tracked in `docs/benchmark_portfolio_2026.md`. The minimum paper-quality target is RoboCasa365 plus at least two additional 2025-2026 benchmarks, with RoboTwin 2.0 as the next executable manipulation layer and MiraBench/RoboTrustBench as world-model diagnostic layers when data is available.
+
 ### 1. RoboCasa365 First
 
 RoboCasa365 is the primary benchmark because it is a 2026 benchmark for generalist household manipulation and substantially closer to modern Physical AI/VLA evaluation than legacy tabletop suites. It covers hundreds of kitchen manipulation tasks and supports Gymnasium-style environment construction through the official RoboCasa/robosuite stack.
@@ -137,9 +139,13 @@ The paper-quality result should not be framed as "we improve PushT" or "we solve
 
 The key ablation is whether the trained action-world critic helps only when used as a gated override. If global ActionWorld is worse than static progress but the gate is better, that is a stronger and more counterintuitive story.
 
-## RoboTwin 2.0 Next Step
+## RoboTwin 2.0 And RoboWM-Bench Next Steps
 
-RoboWM-Bench code is now accessible at `https://github.com/fffstrong/RoboWM-Bench`, so it should become the main second-layer benchmark. RoboTwin 2.0 remains the executable-simulation fallback if IsaacSim/IsaacLab setup blocks RoboWM-Bench.
+RoboTwin 2.0 should be the current second executable benchmark because its
+official policy-evaluation path can be instrumented without changing the
+success function. RoboWM-Bench remains the closest 2026 world-model benchmark
+conceptually, but it should be conditional for headline evidence until the
+public Pick reset path and GT replay ceiling are clarified.
 
 The concrete RoboWM-Bench code audit and adapter plan is in `docs/robowm_bench_code_audit.md`. The converter `robowm_bench_actions_to_manifest.py` turns evaluated RoboWM-Bench action JSON roots into the shared executable-future manifest.
 
@@ -150,6 +156,17 @@ Current RoboWM-Bench status on dev2:
 - Full camera-enabled replay initially failed because the container lacked a NVIDIA Vulkan ICD and GLVND EGL runtime. This was fixed by adding a Vulkan ICD JSON for `libEGL_nvidia.so.0` and installing `libegl1`, `libgles2`, `libnvidia-egl-wayland1`, `libvulkan1`, `vulkan-tools`, and `libglu1-mesa`.
 - The official GitHub `main` branch still has a Pick/eval API mismatch: `scripts/robot/eval_franka.py` calls `env.reset(pose_name=...)`, while `Task00_Pick/pick.py` implements `_reset_idx(...)` but no matching `reset(...)` override.
 - With camera-enabled replay and a minimal reset-compatibility shim, GT `Franka-pick` smoke is not a perfect oracle: the first 10 GT episodes replay at 7/10 success, failing `000003`, `000005`, and `000007`. This should be treated as a current-public-evaluator finding, not as a claim that the authors' internal evaluator necessarily has the same ceiling.
+
+Updated RoboTwin 2.0 next step:
+
+1. Patch `script/eval_policy.py` only to trace policy actions, compact robot
+   state summaries, video path, instruction, seed, and success.
+2. Convert traces with `robotwin2_trace_to_manifest.py` and validate with
+   `--require-future-metadata`.
+3. Run one-task/five-seed/four-candidate smoke first. Scale only if oracle-best
+   beats rank0.
+4. Build a 4-6 task table with action-only, EEF/gripper state-trace, no-task-ID,
+   and few-shot target-calibration controls.
 
 Updated RoboWM next step:
 
