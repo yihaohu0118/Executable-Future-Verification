@@ -350,6 +350,31 @@ next run should use this preset on the three existing tasks first, then add a
 fourth task only if the anti-template gates show real diverse successes and
 matched failures.
 
+Anti-template K=5 rerun result:
+
+| Split | Rank0 | Oracle | Diverse non-full success | Matched low-DTW negative |
+| --- | ---: | ---: | ---: | ---: |
+| stack_blocks_two | 0/5 | 5/5 | 5/5 | 0/5 |
+| open_laptop | 0/5 | 5/5 | 5/5 | 2/5 |
+| stamp_seal | 0/5 | 5/5 | 4/5 | 4/5 |
+| combined | 0/15 | 15/15 | 14/15 | 6/15 |
+
+Combined selector sweep over 10 anonymous remap seeds:
+
+| Selector | Success |
+| --- | ---: |
+| random expected | 7.36/15 |
+| best action heuristic | 10.0/15 |
+| phase-gripper nearest-positive, same-task | 13.4 +/- 0.66 / 15 |
+| gripper nearest-positive, same-task | 13.3 +/- 0.64 / 15 |
+| DTW gripper nearest-positive | 13.5 +/- 0.50 / 15 |
+| DTW joint+gripper nearest-positive | 13.0/15 |
+
+This is a better benchmark pool than the earlier full-expert pool, but it is
+not yet a decisive method win: DTW remains competitive. The next pool should
+increase matched negatives, especially in `stack_blocks_two`, where the current
+anti-template negatives are not close enough to successful traces.
+
 Updated RoboWM next step:
 
 1. Turn the reset-compatibility shim and Vulkan/EGL setup into a reproducible helper patch or documented benchmark fork diff.

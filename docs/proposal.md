@@ -147,6 +147,16 @@ non-full success cases and 0/15 matched low-DTW negative cases. This confirms
 that the current RoboTwin2 result is a template-confound detector, not yet a
 hard executability benchmark.
 
+The first anti-template K=5 rerun improves this substantially. Across
+`stack_blocks_two`, `open_laptop`, and `stamp_seal`, rank0 remains 0/15 and
+oracle remains 15/15, but diverse non-full-expert successes increase to 14/15
+and matched low-DTW negatives appear in 6/15 cases. The result is still not a
+finished method table: DTW and gripper-based nearest-positive baselines remain
+strong at 13-13.5/15, while the best compact phase/gripper prototype reaches
+13.4/15. The useful paper claim is therefore not "we beat DTW"; it is that the
+anti-template pool exposes task-dependent contact/timing sensitivity and
+requires few-shot task/contact calibration.
+
 K-shot target-task calibration under the same anonymous remap protocol:
 
 | Selector | K=0 | K=1 | K=2 | K=4 |
@@ -205,6 +215,9 @@ Recommended contribution shape:
 - Current nominal non-full successes are not diverse under executed-trace DTW.
   The anti-template diagnostic reports 0/15 diverse non-full successes and
   0/15 matched low-DTW failures.
+- The new anti-template K=5 pool fixes most hard-positive coverage but not the
+  strongest baseline problem. DTW is no longer oracle, but it is still close to
+  the best selector.
 - We have no real robot; the paper must be framed as executable-future
   verification in modern simulated/world-model benchmarks, not deployment.
 - RoboWM-Bench remains conceptually ideal, but current public-code friction
@@ -228,6 +241,11 @@ Implementation status: `robotwin2_gripper_aware_trace.py` now has an
 and contact-segment perturbation probes with explicit `candidate_source`
 metadata. The next remote run should use this preset and filter by official
 task success to discover real hard positives and matched hard negatives.
+
+Latest remote result: see `docs/robotwin2_antitemplate_k5_results.md`. The next
+candidate-generation pass should make matched negatives harder, especially by
+keeping joint/gripper DTW close while changing contact direction or terminal
+task completion.
 
 ## Legacy Direction
 

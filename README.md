@@ -63,6 +63,10 @@ smoke has 15 cases and six candidates per case:
 - Anti-template diagnostics show the current pool has 10/15 nominal non-full
   successes, but 0/15 diverse non-full successes under joint+gripper DTW and
   0/15 matched low-DTW negative cases.
+- A new anti-template K=5 run fixes the hard-positive side: combined
+  `stack_blocks_two`, `open_laptop`, and `stamp_seal` now have rank0 0/15,
+  oracle 15/15, diverse non-full successes 14/15, and matched low-DTW
+  negatives 6/15. DTW is no longer oracle but remains strong at 13-13.5/15.
 
 The important control is that candidate-ID lookup collapses to 0/15 after
 anonymous remapping, while trace-based selectors remain above rank0 and simple
@@ -80,6 +84,8 @@ learned executability beyond template matching.
   experiments.
 - `docs/robotwin2_executable_future_adapter.md`: RoboTwin2 setup, trace
   adapter, K=5 results, selector controls.
+- `docs/robotwin2_antitemplate_k5_results.md`: latest anti-template RoboTwin2
+  K=5 results and interpretation.
 - `docs/reviewer_risk_antitemplate_plan.md`: reviewer-risk assessment and the
   next anti-template experiments required for a stronger paper claim.
 - `docs/future_verification_manifest_protocol.md`: shared candidate JSONL
