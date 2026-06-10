@@ -272,11 +272,26 @@ Held-out selectors on the rank/candidate-id randomized n8 manifests:
 
 The state-trace result is unchanged under candidate-position randomization, which directly weakens the fixed-`cand_07` leakage objection. Some deterministic action heuristics become nonzero after rank/candidate-id remapping because score ties now break differently, but they remain weak: energy/magnitude/range variants reach only 4-7/32, smoothness reaches 1-5/32, and planner-rank max reaches 4/32.
 
+### Fully Regenerated Random-Position Pool
+
+The stronger control regenerates the physical rollouts with `--energy-original-placement random_nonzero`, rather than postprocessing an existing manifest. This keeps rank0 as a failed corruption while placing the original action trace at a nonzero rank per episode. With seed 29 and eight episodes per task, the original rank distribution is identical across the four tasks because the same episode-index seed schedule is used: rank 1 for two cases, rank 5 for one case, and rank 7 for five cases. Each task has oracle 8/8 and rank0 0/8, for a combined 32/32 oracle and 0/32 rank0.
+
+Held-out selectors on the fully regenerated random-position n8 manifests:
+
+| Feature | Seeds | Overall success | Mean | Std |
+| --- | --- | ---: | ---: | ---: |
+| zero state control | 0,1,2,3,4 | 0,0,0,0,0 | 0.0 | 0.0 |
+| action-only endpoint-free stats | 0,1,2,3,4 | 10,9,7,8,8 | 8.4 | 1.02 |
+| low-dimensional state trace | 0,1,2,3,4 | 30,31,31,30,30 | 30.4 | 0.49 |
+| state trace + endpoint-free action stats | 0,1,2,3,4 | 30,31,29,30,30 | 30.0 | 0.63 |
+
+Deterministic action heuristics remain weak on the regenerated pool: energy/magnitude/range variants reach only 1-3/32, smoothness reaches 0-4/32, and conservative-prior variants reach 0-2/32. `planner_rank_max` reaches 20/32 because random_nonzero still places the original at high rank in five of eight episodes per task; this is a construction diagnostic, not a valid action or state baseline. The learned state-trace result is unchanged from both the fixed-position and manifest-randomized controls.
+
 ## Interpretation
 
 The current evidence supports this mechanism:
 
-> For action critics on RoboCasa365 replay candidates, temporal detail can be an anti-feature in ordinary no-demo pools: ordered first/last summaries overfit to endpoint artifacts, while endpoint-free action-envelope statistics preserve candidate-level action calibration better. But once action magnitude is matched, compact action-only summaries recover only limited signal; low-dimensional rollout state traces recover 30.4/32 on the n8 hard-negative pool, even after rank/candidate-id randomization, so the next method should condition action adequacy on visual/contact state rather than action envelope alone.
+> For action critics on RoboCasa365 replay candidates, temporal detail can be an anti-feature in ordinary no-demo pools: ordered first/last summaries overfit to endpoint artifacts, while endpoint-free action-envelope statistics preserve candidate-level action calibration better. But once action magnitude is matched, compact action-only summaries recover only limited signal; low-dimensional rollout state traces recover 30.4/32 on the n8 hard-negative pool, even after fully regenerating the pool with randomized original-candidate placement, so the next method should condition action adequacy on visual/contact state rather than action envelope alone.
 
 This is a useful ICLR-style diagnostic because it contradicts the default assumption that more temporal structure is always better for action-conditioned evaluation.
 
