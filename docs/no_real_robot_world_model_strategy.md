@@ -107,3 +107,5 @@ Try to obtain and smoke-test RoboWM-Bench. If unavailable, start RoboTwin 2.0 se
 2. verifier score out: probability of executable task completion;
 3. calibration mode: no-task-ID, task one-hot, per-task head, and few-shot target adaptation;
 4. metrics: executable success, rank0 failure recovery, oracle gap, and calibration sample efficiency.
+
+The concrete adapter contract is `docs/future_verification_manifest_protocol.md`. New benchmark adapters should emit that candidate JSONL schema before any method-specific training code is added.

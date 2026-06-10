@@ -10,6 +10,8 @@ The current RoboCasa365 claim is sharper and more defensible:
 
 Because we do not have physical robot access, the submission should be framed as a world-model / executable-future verification paper rather than a real-robot deployment paper. The detailed claim boundary is in `docs/no_real_robot_world_model_strategy.md`.
 
+All future benchmark adapters should target the shared candidate JSONL contract in `docs/future_verification_manifest_protocol.md`, then pass `validate_future_verification_manifest.py` before method evaluation.
+
 Current 2026 RoboCasa365 numbers:
 
 Ordinary no-demo replay pool:
