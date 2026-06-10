@@ -8,6 +8,8 @@ The current RoboCasa365 claim is sharper and more defensible:
 
 > A conservative manipulation prior is often under-actuated. Endpoint-free action-envelope calibration recovers many failures, but its deterministic magnitude shortcut collapses under energy-matched hard negatives; the useful method must therefore separate action adequacy from action magnitude.
 
+Because we do not have physical robot access, the submission should be framed as a world-model / executable-future verification paper rather than a real-robot deployment paper. The detailed claim boundary is in `docs/no_real_robot_world_model_strategy.md`.
+
 Current 2026 RoboCasa365 numbers:
 
 Ordinary no-demo replay pool:

@@ -249,6 +249,7 @@ These must be addressed before this is paper-ready:
 9. Need a harder fusion benchmark because current action/video critics each solve the slice independently.
 10. Need uncertainty-aware gate calibration; mixed-rank settings can make a conservative gate preserve a failing rank0.
 11. The benchmark stack must stay inside the 2025-2026 robotics window; VideoZeroBench should remain inactive for this ICLR evidence chain, but existing VideoZeroBench data/cache should be preserved for unrelated video-reasoning work.
+12. We do not have physical robot access. The paper should therefore follow the no-real-robot strategy in `docs/no_real_robot_world_model_strategy.md`: claim executable-future verification on modern benchmarks, not real-robot deployment.
 
 ## Next Experiments
 
@@ -262,6 +263,7 @@ Priority order:
 6. Replace the diagnostic replay prior with BC/diffusion-policy top-k samples where a 2025-2026 benchmark provides usable policy or demonstration sources.
 7. Add uncertainty-aware calibration to the gate and evaluate under mixed proposal qualities.
 8. Use only verified 2025-2026 robotics benchmarks as the next layer, such as RoboTwin 2.0, RoboMIND 2.0, or 2026 robotic world-model diagnostics; do not make legacy LIBERO/CALVIN/D4RL or unrelated side tracks part of the main evidence.
+9. Prioritize RoboWM-Bench if its code/data become accessible, because it directly evaluates whether generated manipulation futures are physically executable; use RoboTwin 2.0 as the executable-simulation fallback.
 
 ## Implemented Files
 
