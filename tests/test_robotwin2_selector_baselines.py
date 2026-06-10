@@ -152,6 +152,26 @@ class RoboTwin2SelectorBaselinesTest(unittest.TestCase):
         self.assertEqual(len(by_id["delete_contact_step"].actions), len(actions) - 1)
         self.assertEqual(len(by_id["gripper_contact_pulse"].actions), len(actions))
 
+    def test_targeted_energy_matched_candidate_preset_adds_long_failure_probes(self):
+        actions = [[float(step + dim) for dim in range(14)] for step in range(6)]
+        candidates = build_candidates(actions, "targeted_energy_matched")
+        by_id = {candidate.candidate_id: candidate for candidate in candidates}
+        self.assertIn("repeat_contact_long", by_id)
+        self.assertIn("long_gripper_contact_pulse", by_id)
+        self.assertIn("long_contact_joint_perturb_strong", by_id)
+        self.assertIn("long_gripper_late_1", by_id)
+        self.assertIn("long_reverse_contact", by_id)
+        self.assertEqual(
+            by_id["long_gripper_contact_pulse"].candidate_source,
+            "energy_matched_gripper_contact_negative_probe",
+        )
+        self.assertEqual(
+            by_id["long_contact_joint_perturb_strong"].candidate_source,
+            "energy_matched_contact_negative_probe",
+        )
+        self.assertGreater(len(by_id["long_gripper_contact_pulse"].actions), len(by_id["repeat_contact_long"].actions))
+        self.assertGreater(len(by_id["long_reverse_contact"].actions), len(by_id["repeat_contact_long"].actions))
+
     def test_selector_failure_analysis_tracks_sources_after_remap(self):
         rows = []
         for row in self.rows:

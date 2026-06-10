@@ -71,6 +71,10 @@ smoke has 15 cases and six candidates per case:
   contact-offset perturbations, and gripper-contact pulses. A `stamp_seal`
   seed-0 smoke produced both nearby successes and nearby failures, which is the
   setting needed to test whether selectors beat expert-template matching.
+- The `stamp_seal` K=5 targeted-hard run keeps rank0 at 0/5 and oracle at 5/5,
+  with 5/5 diverse non-full successes and 5/5 matched low-DTW negatives, but
+  energy/length heuristics still reach 5/5. The next preset,
+  `targeted_energy_matched`, adds long failed probes to remove that shortcut.
 
 The important control is that candidate-ID lookup collapses to 0/15 after
 anonymous remapping, while trace-based selectors remain above rank0 and simple
@@ -186,7 +190,8 @@ PYTHONPATH=/path/to/Executable-Future-Verification/src python -m umm_reward_eval
 ```
 
 Use `--candidate-preset targeted_hard` for the newer near-neighbor
-success/failure probes.
+success/failure probes. Use `--candidate-preset targeted_energy_matched` when
+testing whether length and energy shortcuts survive longer failed futures.
 
 Run the local test suite:
 
@@ -205,7 +210,9 @@ PYTHONPATH=src python -m unittest discover -s tests
    of contact direction, closing timing, or task constraints.
 5. Scale the RoboTwin2 `targeted_hard` preset beyond the current one-case smoke
    and compare against DTW/template baselines.
-6. Keep RoboWM-Bench as a world-model-specific diagnostic layer until its
+6. Run `targeted_energy_matched` on `stamp_seal` to determine whether the
+   current energy/length shortcut can be removed.
+7. Keep RoboWM-Bench as a world-model-specific diagnostic layer until its
    public evaluator ceiling is clarified.
 
 ## Rename Status

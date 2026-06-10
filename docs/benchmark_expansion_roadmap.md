@@ -399,6 +399,15 @@ critique, but it is still only a one-case smoke. The next gate is a K=5
 `stamp_seal` targeted-hard table with selector baselines; only then should the
 pool be expanded to the other RoboTwin2 tasks.
 
+The K=5 `stamp_seal` targeted-hard table passed the anti-template gate but
+failed the heuristic-shortcut gate: rank0 is 0/5, oracle is 5/5, diverse
+non-full success is 5/5, and matched low-DTW negative is 5/5, yet
+`energy_sum_max` and `length_max` both remain 5/5. The next candidate preset is
+therefore `targeted_energy_matched`, which adds longer failed gripper/contact,
+late-gripper, and reverse-contact probes. This is a stricter gate: it should
+make energy/length baselines fail before we claim that execution-envelope
+features are doing more than action-budget selection.
+
 Updated RoboWM next step:
 
 1. Turn the reset-compatibility shim and Vulkan/EGL setup into a reproducible helper patch or documented benchmark fork diff.

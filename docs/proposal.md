@@ -166,6 +166,14 @@ cases. The useful observation is not the score itself; it is that very nearby
 trace edits split into successes and failures, which is the setting needed to
 test whether a verifier is doing more than expert-template matching.
 
+The first `stamp_seal` K=5 targeted-hard table confirms the near-neighbor part
+but also reveals a new shortcut: `energy_sum_max` and `length_max` are still
+5/5 because the longest contact-repeat candidate succeeds in every case. A
+new `targeted_energy_matched` preset adds longer failed gripper/contact/reverse
+probes specifically to test whether the selector advantage survives when failed
+futures are at least as long and high-energy as the successful time-warp
+futures.
+
 K-shot target-task calibration under the same anonymous remap protocol:
 
 | Selector | K=0 | K=1 | K=2 | K=4 |
@@ -229,6 +237,9 @@ Recommended contribution shape:
   the best selector.
 - The `targeted_hard` preset has only a one-case smoke so far. It must be
   scaled before any claim about beating template matching is safe.
+- The `stamp_seal` targeted-hard K=5 run exposes an energy/length shortcut:
+  `energy_sum_max` and `length_max` are 5/5. This must be controlled before the
+  result can be used as a reviewer-safe method win.
 - We have no real robot; the paper must be framed as executable-future
   verification in modern simulated/world-model benchmarks, not deployment.
 - RoboWM-Bench remains conceptually ideal, but current public-code friction
@@ -249,13 +260,16 @@ Recommended contribution shape:
 6. Scale `--candidate-preset targeted_hard` from the current `stamp_seal`
    seed-0 smoke to K=5, then decide whether it should replace or supplement the
    anti-template main table.
+7. Run `--candidate-preset targeted_energy_matched` on `stamp_seal` to verify
+   that energy/length heuristics collapse when long failed futures are added.
 
 Implementation status: `robotwin2_gripper_aware_trace.py` now has an
 `--candidate-preset anti_template` mode that adds time-warp, gripper-timing,
 and contact-segment perturbation probes with explicit `candidate_source`
 metadata. It also has an experimental `--candidate-preset targeted_hard` mode
 for the near-neighbor success/failure pairs needed to test template-matching
-baselines.
+baselines, plus a `targeted_energy_matched` mode for the stricter
+length/energy-shortcut control.
 
 Latest remote result: see `docs/robotwin2_antitemplate_k5_results.md`. The next
 candidate-generation pass should make matched negatives harder, especially by

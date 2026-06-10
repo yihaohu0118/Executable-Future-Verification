@@ -184,6 +184,20 @@ Detailed candidate outcomes show the desired near-neighbor structure:
 one-case smoke, not a main-table result, but it confirms the new preset can
 generate mixed success/failure pairs near the expert trace.
 
+The K=5 `stamp_seal` targeted-hard run keeps this diagnostic structure:
+rank0 is `0/5`, oracle is `5/5`, diverse non-full success is `5/5`, and matched
+low-DTW negative is `5/5`. However, it also exposes a remaining shortcut:
+`energy_sum_max` and `length_max` both select successful futures in `5/5`
+cases because the longest contact-repeat candidate is always successful. This
+means `targeted_hard` fixes the template-matching critique but not yet the
+length/energy shortcut critique.
+
+A follow-up `--candidate-preset targeted_energy_matched` mode therefore adds
+longer gripper-pulse, strong-contact-perturb, late-gripper, and reverse-contact
+probes. Its purpose is not to increase oracle headroom; it is to check whether
+energy/length heuristics collapse once failed futures have comparable or larger
+action length and energy than the successful contact-repeat futures.
+
 ## Current Interpretation
 
 This result is stronger than the previous RoboTwin2 smoke because it creates
@@ -193,4 +207,6 @@ strong. The next experiment should create harder matched negatives where
 joint/gripper DTW and gripper timing are close to successful trajectories but
 contact or task completion fails. The `targeted_hard` smoke is the first pass
 at that next pool; the next remote run should scale it to K=5 before treating
-it as evidence.
+it as evidence. The newer `targeted_energy_matched` preset is the next
+shortcut-control step after the K=5 run showed that energy and length still
+solve `stamp_seal`.

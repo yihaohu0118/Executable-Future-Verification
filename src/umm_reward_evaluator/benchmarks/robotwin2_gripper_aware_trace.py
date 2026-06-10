@@ -480,6 +480,48 @@ def build_targeted_hard_candidates(actions: list[list[float]]) -> list[Candidate
     return candidates
 
 
+def build_targeted_energy_matched_candidates(actions: list[list[float]]) -> list[CandidateSpec]:
+    candidates = build_targeted_hard_candidates(actions)
+    if not actions:
+        return candidates
+    next_rank = max(candidate.rank for candidate in candidates) + 1
+    long_repeats = 6
+    energy_matched = [
+        CandidateSpec(
+            "long_gripper_contact_pulse",
+            next_rank,
+            repeat_at_fraction(gripper_contact_pulse(actions, fraction=0.6, width=1), fraction=0.6, repeats=long_repeats),
+            "energy_matched_gripper_contact_negative_probe",
+        ),
+        CandidateSpec(
+            "long_gripper_contact_pulse_wide",
+            next_rank + 1,
+            repeat_at_fraction(gripper_contact_pulse(actions, fraction=0.6, width=2), fraction=0.6, repeats=long_repeats),
+            "energy_matched_gripper_contact_negative_probe",
+        ),
+        CandidateSpec(
+            "long_contact_joint_perturb_strong",
+            next_rank + 2,
+            repeat_at_fraction(perturb_contact_segment(actions, scale=0.18), fraction=0.6, repeats=long_repeats),
+            "energy_matched_contact_negative_probe",
+        ),
+        CandidateSpec(
+            "long_gripper_late_1",
+            next_rank + 3,
+            repeat_at_fraction(shifted_gripper(actions, shift=1), fraction=0.6, repeats=long_repeats),
+            "energy_matched_gripper_timing_negative_probe",
+        ),
+        CandidateSpec(
+            "long_reverse_contact",
+            next_rank + 4,
+            repeat_at_fraction(list(reversed(actions)), fraction=0.6, repeats=long_repeats),
+            "energy_matched_time_reverse_negative_probe",
+        ),
+    ]
+    candidates.extend(energy_matched)
+    return candidates
+
+
 def build_candidates(actions: list[list[float]], preset: str) -> list[CandidateSpec]:
     if preset == "default":
         return build_default_candidates(actions)
@@ -487,6 +529,8 @@ def build_candidates(actions: list[list[float]], preset: str) -> list[CandidateS
         return build_antitemplate_candidates(actions)
     if preset == "targeted_hard":
         return build_targeted_hard_candidates(actions)
+    if preset == "targeted_energy_matched":
+        return build_targeted_energy_matched_candidates(actions)
     raise ValueError(f"unknown candidate preset: {preset}")
 
 
@@ -557,7 +601,11 @@ def main() -> None:
     parser.add_argument("--max-seeds", type=int)
     parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--skip-existing", action="store_true")
-    parser.add_argument("--candidate-preset", choices=["default", "anti_template", "targeted_hard"], default="default")
+    parser.add_argument(
+        "--candidate-preset",
+        choices=["default", "anti_template", "targeted_hard", "targeted_energy_matched"],
+        default="default",
+    )
     args = parser.parse_args()
 
     instruction = args.instruction or args.task_name.replace("_", " ")
