@@ -177,6 +177,33 @@ Updated RoboTwin 2.0 next step:
 4. Build a 4-6 task table with action-only, EEF/gripper state-trace, no-task-ID,
    and few-shot target-calibration controls.
 
+RoboTwin 2.0 kill line:
+
+- Continue only if at least four RoboTwin2 tasks show stable oracle headroom.
+- The main selector must beat rank0, random, action-only, and simple
+  magnitude/energy/smoothness controls.
+- At least one multi-stage task must show the current `stack_blocks_two`
+  mechanism at scale: endpoint-only reconstruction fails, but gripper-aware
+  execution trace recovers a successful future.
+- Few-shot target calibration should improve from K=1 to K=4/K=8. It does not
+  need to match RoboCasa exactly, but source-only/no-task-ID should remain a
+  meaningful negative control.
+- If RoboTwin2 cannot satisfy these conditions after the focused instrumentation
+  window, downgrade the project to a RoboCasa365 mechanism paper plus
+  world-model diagnostic analysis instead of expanding benchmarks.
+
+Current RoboTwin2 mechanism smoke:
+
+- `press_stapler`: first-endpoint rank0 fails, expert endpoints succeed,
+  drop-last fails, noop fails, reverse succeeds. This gives under-execution
+  headroom but weak temporal-order evidence.
+- `stack_blocks_two`: endpoint-only candidates all fail, including full expert
+  endpoints, proving that official pre-motion pkl endpoints do not contain
+  enough gripper semantics.
+- `stack_blocks_two` gripper-aware trace: first-action rank0 fails, full
+  gripper-aware trace succeeds, first-half fails, reverse fails, noop fails,
+  and manifest validation gives rank0 0/1, oracle 1/1, oracle_better 1/1.
+
 Updated RoboWM next step:
 
 1. Turn the reset-compatibility shim and Vulkan/EGL setup into a reproducible helper patch or documented benchmark fork diff.

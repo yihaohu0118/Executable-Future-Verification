@@ -124,6 +124,128 @@ order-insensitive for the main reranking table. The next RoboTwin task should
 be more contact/order-sensitive, such as `press_stapler`, `stamp_seal`,
 `open_laptop`, `handover_block`, or `stack_blocks_two`.
 
+## Harder Task Candidate Findings
+
+Two additional clean one-seed probes were run after `click_bell`.
+
+### `press_stapler`
+
+Expert seed collection:
+
+```text
+simulate data episode 0 fail! (seed = 0)
+Error: target_pose cannot be None for move action.
+simulate data episode 0 success! (seed = 1)
+Complete simulation, failed 1 times / 2 tries
+```
+
+Candidate pool from expert pre-motion endpoints:
+
+| Candidate | Planner rank | Success |
+| --- | ---: | --- |
+| `first_endpoint_rank0` | 0 | false |
+| `expert_endpoints` | 1 | true |
+| `drop_last_endpoint` | 2 | false |
+| `reverse_endpoints` | 3 | true |
+| `noop` | 4 | false |
+
+Manifest validation passed with 5 rows, 1 case, no schema errors:
+
+```json
+{
+  "rank0_success": 0,
+  "oracle_success": 1,
+  "oracle_better": 1
+}
+```
+
+Interpretation: `press_stapler` is useful for under-execution headroom, but not
+ideal for temporal-order evidence because the reversed endpoint candidate can
+still hit the contact success condition.
+
+### `stack_blocks_two`
+
+Expert seed collection:
+
+```text
+simulate data episode 0 success! (seed = 0)
+Complete simulation, failed 0 times / 1 tries
+```
+
+Endpoint-only candidate pool:
+
+| Candidate | Planner rank | Success |
+| --- | ---: | --- |
+| `first_endpoint_rank0` | 0 | false |
+| `expert_endpoints_const_gripper` | 1 | false |
+| `first_half` | 2 | false |
+| `drop_last_endpoint` | 3 | false |
+| `reverse_endpoints` | 4 | false |
+| `noop` | 5 | false |
+
+Manifest validation passed with 6 rows, 1 case, no schema errors, but oracle
+success was 0/1.
+
+Interpretation: this is an important negative smoke. The official
+`_traj_data/episode0.pkl` stores arm joint paths but not enough gripper
+open/close semantics to reconstruct a successful stack candidate from endpoints
+alone. For multi-stage placement tasks, the RoboTwin2 candidate source must be
+either:
+
+1. real policy `take_action(...)` traces from `script/eval_policy.py`; or
+2. a deeper expert instrumentation layer that records gripper-aware qpos actions
+   during `Base_Task.move(...)`, not just planned joint endpoints.
+
+This is exactly why `script/eval_policy.py` tracing is the right main path for
+RoboTwin2 evidence.
+
+### `stack_blocks_two` Gripper-Aware Trace
+
+A second `stack_blocks_two` probe recorded the endpoint of every
+`Base_Task.take_dense_action(control_seq)` call during the expert rollout:
+
+```text
+expert_record actions 16 success True
+info: {"{A}": "red block", "{B}": "green block", "{a}": "left", "{b}": "left"}
+```
+
+Each recorded action is a qpos target with both gripper values:
+
+```text
+[left_arm_qpos(6), left_gripper, right_arm_qpos(6), right_gripper]
+```
+
+Candidate results:
+
+| Candidate | Planner rank | Success |
+| --- | ---: | --- |
+| `first_action_rank0` | 0 | false |
+| `full_gripper_aware` | 1 | true |
+| `first_half` | 2 | false |
+| `drop_last` | 3 | true |
+| `reverse` | 4 | false |
+| `noop` | 5 | false |
+
+Manifest validation passed with 6 rows, 1 case, no schema errors:
+
+```json
+{
+  "rank0_success": 0,
+  "oracle_success": 1,
+  "oracle_better": 1
+}
+```
+
+This is the first RoboTwin2 mechanism result that matches the RoboCasa story:
+
+> Endpoint-only futures fail on a multi-stage task, while a compact
+> gripper-aware execution trace recovers a successful future; reversing the
+> trace fails.
+
+The `drop_last` success is also useful: some post-success retreat actions are
+not necessary, so future corruptions should distinguish task-critical contact
+and release phases from redundant cleanup motions.
+
 ## Why It Fits The Current Story
 
 RoboCasa365 already shows that action-envelope calibration can recover conservative-prior failures, but hard negatives require compact robot execution-envelope/contact evidence. RoboTwin 2.0 adds:
