@@ -1,125 +1,179 @@
-# Proposal: UMM as Reward Evaluator for World Models
+# Proposal: Executable-Future Verification for Robot World-Action Candidates
 
-## Motivation
+## Working Thesis
 
-Action-conditioned world models are usually evaluated with visual metrics such
-as PSNR, LPIPS, FVD, or next-frame prediction loss. These metrics are useful for
-low-level reconstruction quality, but they often fail to measure the properties
-that matter for planning and robot control:
+Future generation is becoming cheap, but future selection is still brittle.
+Given multiple candidate robot futures for the same initial state and
+instruction, the useful question is not which future looks most plausible, but
+which future is physically executable and task-completing.
 
-- whether the rollout completes the task;
-- whether the generated state changes are consistent with the action sequence;
-- whether physical interactions are plausible;
-- whether identity and layout remain stable over long horizons;
-- whether generated futures are useful for selecting actions.
+The current hypothesis is:
 
-Unified multimodal models provide a natural evaluator because they can jointly
-condition on language instructions, visual observations, action descriptions,
-goal images, and generated rollout videos.
+> Generated or proposed futures often contain a successful candidate, but
+> default ranking and simple action heuristics fail to identify it. A compact
+> task/contact-conditioned execution-envelope verifier over robot traces can
+> recover executable futures, while shortcut controls expose when apparent
+> gains come from action magnitude, candidate IDs, or fixed rank ordering.
 
-## Research Hypothesis
+## Current Method Boundary
 
-A UMM-based reward evaluator can score world-model rollouts in ways that better
-correlate with downstream task success than pixel-level metrics, and the same
-score can improve rollout selection or planning.
+This project is not currently proposing a new world model, a new robot policy,
+or a real-robot deployment system.
 
-## System Definition
+It is a generator-agnostic candidate verifier:
 
-Given:
+- input: several candidate futures for the same task case;
+- candidate representations: action sequences, robot state traces, gripper
+  traces, optional videos or world-model outputs;
+- output: a selected future expected to execute successfully;
+- evaluation target: benchmark task success or executable-future label.
 
-- task instruction;
-- initial observation or context frames;
-- optional goal image;
-- action sequence;
-- generated rollout video from a world model;
+This framing keeps the contribution compatible with policy samples, demo
+retrieval, world-model video-to-action rollouts, planner rollouts, or corrupted
+expert futures.
 
-the evaluator predicts:
+## Core Counterintuitive Claims
 
-- scalar reward;
-- task success score;
-- progress score;
-- action consistency score;
-- temporal consistency score;
-- physical plausibility score;
-- memory or identity consistency score;
-- optional natural-language critique.
+1. More action detail is not always better.
+   On hard controls, action-only selectors and action magnitude heuristics can
+   fail while compact robot execution traces work.
 
-## Base Implementation
+2. Object state is not the main signal in the strongest RoboCasa result.
+   Robot-only, proprio-only, and EEF/gripper traces recover most successes,
+   while object-only traces are much weaker.
 
-Use `nano-world-model` as the initial rollout generator because it already
-supports action-conditioned video rollout and planning-style evaluation.
+3. Averaging successful futures can erase contact signal.
+   On RoboTwin2, nearest-positive prototype memory works much better than
+   positive or positive-negative centroids.
 
-Use ideas from `Echo-Memory` to design consistency stress tests:
+4. Gripper timing can beat richer action statistics.
+   A tiny nearest-positive selector over low-dimensional gripper trace
+   distributions beats action distribution features and simple action
+   heuristics on the current RoboTwin2 K=5 smoke.
 
-- revisit consistency;
-- object identity persistence;
-- layout persistence;
-- view or camera consistency;
-- long-horizon drift.
+5. Fixed candidate naming and rank order are dangerous.
+   Candidate-ID and rank remap controls are required before any selector result
+   is safe enough for a main table.
 
-The first implementation does not need to train a new UMM. It can use prompted
-closed-source or open-source VLM/UMM evaluators as teachers, then optionally
-distill them into a smaller reward model.
+## Evidence So Far
 
-## Method
+### RoboCasa365
 
-1. Generate candidate rollouts from NanoWM for the same initial state and task.
-2. Create positive and hard-negative rollout pairs.
-3. Score rollouts with candidate UMM evaluators.
-4. Compare evaluator scores with oracle success and human preference labels.
-5. Use evaluator rewards for reranking candidate actions or rollouts.
+RoboCasa365 is the primary 2026 benchmark layer. The current strongest result
+is the regenerated random-position n16 hard-negative pool:
 
-## Hard Negatives
+| Setting | Success |
+| --- | ---: |
+| Rank0 conservative replay prior | 0/64 |
+| Oracle-best | 64/64 |
+| Action-only endpoint-free selector, mean over 5 seeds | 28.4/64 |
+| Object-only trace selector | 31.0/64 |
+| Proprio-only selector | 63.0/64 |
+| Robot-only selector | 64.0/64 |
+| EEF+gripper distribution-only selector | 63.6/64 |
+| Same-task nearest-positive EEF+gripper prototype | 59/64 |
+| Source-only no-task-ID transfer | 25.6/64 |
+| Full-source plus one-shot target calibration | 46.0/64 |
+| Full-source plus four-shot target calibration | 59.2/64 |
+| Full-source plus eight-shot target calibration | 62.2/64 |
 
-The benchmark should include rollouts that look visually plausible but are bad
-for planning:
+Interpretation: the useful signal is a few-shot task/contact-conditioned robot
+execution envelope, not a universal zero-shot verifier, object-state leakage,
+or an action magnitude shortcut.
 
-- action shuffle: the video is plausible, but mismatched with the action;
-- temporal shuffle: frames are reordered;
-- object swap: target identity changes;
-- layout drift: scene geometry changes over time;
-- false success: final frame looks close to goal but the process is invalid;
-- no-op hallucination: actions are large but state barely changes;
-- contact violation: object moves before contact or ignores contact.
+### RoboTwin2
 
-## Contributions
+RoboTwin2 is the second executable benchmark layer because it is a 2025
+dual-arm manipulation benchmark with official task success checks.
 
-Potential paper contributions:
+Current three-task K=5 mechanism table:
 
-1. A benchmark for semantic and action-aware evaluation of world-model rollouts.
-2. A UMM reward evaluator with interpretable sub-scores.
-3. Evidence that UMM reward correlates better with task success than pixel
-   metrics.
-4. A planning or reranking demonstration showing improved downstream behavior.
+| Setting | Success |
+| --- | ---: |
+| Rank0 | 0/15 |
+| Oracle-best | 15/15 |
+| Full gripper-aware trace | 15/15 |
+| First action | 0/15 |
+| First half | 0/15 |
+| Reverse | 0/15 |
+| Noop | 0/15 |
+| Drop last | 10/15 |
 
-## Risks
+Current fixed-order selector table:
 
-### Reward Hacking
+| Selector | Success |
+| --- | ---: |
+| Uniform random expected | 4.17/15 |
+| Best action heuristic, smoothness max | 6/15 |
+| Action distribution nearest-positive | 8/15 |
+| Gripper distribution nearest-positive, all-task | 12/15 |
+| Phase-gripper nearest-positive, same-task | 13/15 |
 
-The evaluator may reward videos that look successful but are not physically or
-causally valid. Hard negatives and action mismatch tests are essential.
+Anonymous candidate-ID/rank remap control:
 
-### Weak Temporal Reasoning
+| Selector | Success |
+| --- | ---: |
+| Rank0 | 0/15 |
+| Candidate ID full-trace lookup | 0/15 |
+| Best action heuristic, smoothness max | 5/15 |
+| Gripper distribution nearest-positive, same-task | 11/15 |
+| Phase-joint nearest-positive, all-task | 12/15 |
+| Phase-joint+gripper nearest-positive, all-task | 12/15 |
 
-Many VLMs are stronger on static images than videos. The benchmark should test
-multi-frame and action-conditioned reasoning explicitly.
+Interpretation: the signal survives candidate-ID removal, but the fixed-order
+13/15 result is not yet the reviewer-safe headline. The next table must average
+over multiple anonymous rank-randomization seeds.
 
-### Cost
+## Target Paper Story
 
-Closed-source UMMs are expensive for large-scale rollout scoring. A practical
-system may require caching, pairwise scoring, or distillation.
+Provisional title:
 
-### Domain Gap
+> Executable-Future Verification for Robot World-Action Candidates
 
-UMM scores may work on visually rich data but fail on simple simulated states.
-This should be tested across PushT, PointMaze, and a real-robot-like dataset
-such as RT-1 if feasible.
+Main claim:
 
-## Recommended First Target
+> Generated futures often contain executable candidates, but default ranking,
+> visual plausibility proxies, action magnitude, and averaged success
+> prototypes are brittle. Few-shot execution-envelope verification over compact
+> robot traces recovers executable futures under shortcut-controlled negatives.
 
-Start with a small benchmark and offline correlation study:
+Recommended contribution shape:
 
-> Can UMM reward predict true task success of NanoWM rollouts better than PSNR,
-> LPIPS, or FVD?
+1. A benchmark-agnostic executable-future manifest protocol.
+2. A controlled RoboCasa365 mechanism study showing action shortcut failure and
+   robot execution-envelope recovery.
+3. A RoboTwin2 2025 benchmark study showing the same recoverable-future problem
+   under dual-arm task success checks.
+4. Diagnostic controls: action magnitude, candidate-ID/rank randomization,
+   object-state ablation, centroid-vs-nearest-positive prototypes, and K-shot
+   calibration.
 
-If this works, move to reward-guided rollout reranking and MPC/CEM planning.
+## Main Risks
+
+- The current RoboTwin2 table is small: 15 cases across three tasks.
+- Candidate pools still contain an obvious full expert trace; this must be
+  replaced or supplemented with less nameable successful futures.
+- We have no real robot; the paper must be framed as executable-future
+  verification in modern simulated/world-model benchmarks, not deployment.
+- RoboWM-Bench remains conceptually ideal, but current public-code friction
+  makes it risky as the main table until the evaluator ceiling is clarified.
+
+## Immediate Next Experiments
+
+1. Run RoboTwin2 anonymous rank/candidate-ID remap over several random seeds and
+   report mean/std selector success.
+2. Add compact EEF/contact-direction features to address the `open_laptop`
+   boundary.
+3. Build a candidate pool where success is not always exactly the full expert
+   trace.
+4. Add K-shot calibration curves on RoboTwin2 and compare source-only,
+   no-task-ID, same-task prototype, and task-conditioned variants.
+5. Keep `handover_block` as a one-seed bimanual mechanism example unless a
+   fourth K=5 task is needed for breadth.
+
+## Legacy Direction
+
+The earlier UMM/NanoWM reward-evaluator proposal is preserved in
+`docs/umm_reward_evaluator_proposal.md`. It is no longer the active ICLR main
+story, although video/world-model evaluation can still become a later diagnostic
+layer if RoboWM-Bench, MiraBench, or RoboTrustBench data become available.

@@ -1,39 +1,82 @@
-# UMM Reward Evaluator for World Models
+# Executable-Future Verification
 
-This repository is a research workspace for studying unified multimodal models
-(UMMs) as evaluators and reward models for action-conditioned world-model
-rollouts.
+This repository is a research workspace for executable-future verification in
+robot world-action benchmarks.
 
-The initial target project is:
+The active question is:
 
-> NanoWM + UMM Reward Evaluator
+> Given several proposed futures for the same robot task, which future is
+> physically executable and task-completing?
 
-Use `nano-world-model` as the rollout generator, borrow long-horizon
-consistency ideas from `Echo-Memory`, and evaluate whether a multimodal
-evaluator can score rollouts more usefully than pixel-level metrics.
+The project started as a UMM reward-evaluator workspace, so the Python package
+is still named `umm_reward_evaluator` for compatibility. The current research
+direction is broader and more concrete: generator-agnostic candidate selection
+over actions, robot traces, gripper/contact envelopes, optional videos, and
+world-model outputs.
 
-## Core Question
+## Current Thesis
 
-Can a multimodal evaluator predict task success, action consistency, temporal
-consistency, and memory consistency of generated world-model rollouts well
-enough to improve model selection, rollout reranking, or planning?
+Future generation is becoming cheap, but future selection remains brittle.
+Default rankers, action magnitude, visual plausibility, and averaged success
+prototypes can all fail under shortcut-controlled negatives.
 
-## Initial Milestones
+The current evidence supports a narrower claim:
 
-1. Build a benchmark of positive and negative world-model rollouts.
-2. Prompt or adapt UMM/VLM evaluators to score rollout quality.
-3. Compare UMM rewards against pixel metrics and oracle task success.
-4. Use UMM reward for rollout reranking or MPC/CEM planning.
+> Few-shot task/contact-conditioned execution-envelope verification over compact
+> robot traces can recover executable futures that rank0 and simple action
+> heuristics miss.
+
+## Active Benchmark Evidence
+
+### RoboCasa365
+
+RoboCasa365 is the main 2026 benchmark layer. Current n16 hard-negative results
+show:
+
+- rank0 conservative prior: 0/64;
+- oracle-best: 64/64;
+- action-only endpoint-free selector: 28.4/64;
+- object-only trace selector: 31.0/64;
+- EEF+gripper distribution-only selector: 63.6/64;
+- four-shot target calibration: 59.2/64;
+- eight-shot target calibration: 62.2/64.
+
+This supports the mechanism that robot execution envelopes, not object-state
+leakage or action magnitude, carry the useful signal.
+
+### RoboTwin2
+
+RoboTwin2 is the current 2025 executable manipulation layer. The three-task K=5
+smoke has 15 cases and six candidates per case:
+
+- rank0: 0/15;
+- oracle-best: 15/15;
+- uniform random expected: 4.17/15;
+- best simple action heuristic: 6/15 in fixed order, 5/15 after anonymous
+  candidate-ID/rank remap;
+- nearest-positive gripper/phase/joint trace selectors: up to 13/15 in fixed
+  order and 12/15 under anonymous remap.
+
+The important control is that candidate-ID lookup collapses to 0/15 after
+anonymous remapping, while trace-based selectors remain above rank0 and simple
+heuristics.
 
 ## Repository Layout
 
-- `docs/proposal.md`: research proposal and method design.
-- `docs/experiment_plan.md`: concrete experiments, baselines, and metrics.
-- `docs/code_survey.md`: code-level notes from NanoWM and Echo-Memory.
-- `docs/implementation_plan.md`: current implementation plan and CLI flow.
-- `src/`: evaluator, hard-negative, manifest, and analysis code.
-- `configs/`: model and experiment config templates.
-- `data/`: local metadata or small synthetic benchmark manifests.
+- `docs/proposal.md`: active paper proposal and current evidence.
+- `docs/benchmark_expansion_roadmap.md`: benchmark status, results, and next
+  experiments.
+- `docs/robotwin2_executable_future_adapter.md`: RoboTwin2 setup, trace
+  adapter, K=5 results, selector controls.
+- `docs/future_verification_manifest_protocol.md`: shared candidate JSONL
+  protocol.
+- `docs/repository_reorganization_plan.md`: staged rename and architecture
+  plan.
+- `docs/umm_reward_evaluator_proposal.md`: archived legacy UMM/NanoWM proposal.
+- `src/umm_reward_evaluator/benchmarks/`: current benchmark adapters,
+  validators, selector baselines, and controls.
+- `tests/`: lightweight tests for manifest conversion, controls, and selector
+  baselines.
 
 ## Quick Start
 
@@ -43,56 +86,57 @@ Install the local package:
 pip install -e .
 ```
 
-Convert NanoWM planning outputs to a rollout manifest:
+Validate a candidate-future manifest:
 
 ```bash
-python -m umm_reward_evaluator.exporters.nanowm_planning \
-  --planning-dir /path/to/planning_results \
-  --output outputs/manifests/pusht_rollouts.jsonl \
-  --extract-frames-root outputs/frames/pusht
+PYTHONPATH=src python -m umm_reward_evaluator.benchmarks.validate_future_verification_manifest \
+  --manifest /path/to/candidates.jsonl \
+  --require-future-metadata
 ```
 
-Given a rollout manifest, create hard negatives:
+Run RoboTwin2 pure-numpy selector baselines:
 
 ```bash
-python -m umm_reward_evaluator.hard_negatives \
-  --manifest outputs/manifests/pusht_rollouts.jsonl \
-  --output outputs/manifests/pusht_hard_negatives.jsonl \
-  --include-originals
+PYTHONPATH=src python -m umm_reward_evaluator.benchmarks.robotwin2_selector_baselines \
+  --manifest /path/to/robotwin2_manifest.jsonl \
+  --output-dir /path/to/selector_outputs
 ```
 
-Compute pixel baselines:
+Randomize rank0 and anonymize candidate IDs for shortcut controls:
 
 ```bash
-python -m umm_reward_evaluator.metrics.pixel \
-  --manifest outputs/manifests/pusht_hard_negatives.jsonl \
-  --output outputs/scores/pixel_scores.jsonl
+PYTHONPATH=src python -m umm_reward_evaluator.benchmarks.randomize_planner_rank \
+  --manifest /path/to/robotwin2_manifest.jsonl \
+  --output /path/to/robotwin2_rankrand_remap.jsonl \
+  --mode failure_rank0_shuffle_rest \
+  --seed 0 \
+  --remap-candidate-ids
 ```
 
-Score rollouts with an OpenAI-compatible multimodal endpoint:
+Run the local test suite:
 
 ```bash
-python -m umm_reward_evaluator.evaluator.openai_compatible \
-  --manifest outputs/manifests/pusht_hard_negatives.jsonl \
-  --output outputs/scores/umm_scores.jsonl \
-  --api-base http://127.0.0.1:8000/v1 \
-  --model Qwen/Qwen2.5-VL-72B-Instruct
+PYTHONPATH=src python -m unittest discover -s tests
 ```
 
-Analyze evaluator usefulness:
+## Current Next Steps
 
-```bash
-python -m umm_reward_evaluator.analysis.correlate --scores outputs/scores/umm_scores.jsonl
-python -m umm_reward_evaluator.analysis.pairwise_negatives --scores outputs/scores/umm_scores.jsonl
-python -m umm_reward_evaluator.analysis.rerank --scores outputs/scores/umm_scores.jsonl
+1. Run RoboTwin2 anonymous candidate-ID/rank randomization over multiple seeds.
+2. Add compact EEF/contact-direction features for the `open_laptop` boundary.
+3. Build candidate pools where the successful future is not always the full
+   expert trace.
+4. Add RoboTwin2 K-shot calibration curves.
+5. Keep RoboWM-Bench as a world-model-specific diagnostic layer until its
+   public evaluator ceiling is clarified.
+
+## Rename Status
+
+Recommended future repository name:
+
+```text
+executable-future-verifier
 ```
 
-For UMM-vs-VLM comparisons, run the same manifest through multiple evaluator
-configs and compare their outputs with the analysis scripts.
-
-## Reference Projects
-
-- Nano World Model: https://github.com/simchowitzlabpublic/nano-world-model
-- Echo Memory: https://github.com/Echo-Team-Joy-Future-Academy-JD/Echo-Memory
-- World-Env: https://github.com/OpenDriveLab/World-Env
-- RoboMeter: https://github.com/robometer/robometer
+The package name remains `umm_reward_evaluator` for now so existing scripts,
+remote commands, and pushed experiment code keep working. See
+`docs/repository_reorganization_plan.md` for the staged migration.
