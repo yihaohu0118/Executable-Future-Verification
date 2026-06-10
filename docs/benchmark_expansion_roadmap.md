@@ -287,8 +287,16 @@ selector result:
 | Phase-gripper distribution nearest-positive, same-task | 11.4 +/- 0.49 / 15 |
 | Phase-joint distribution nearest-positive, all-task | 12.0 +/- 0.00 / 15 |
 | Phase-joint+gripper distribution nearest-positive, all-task | 12.0 +/- 0.00 / 15 |
+| DTW action nearest-positive, same-task | 12.0 +/- 0.00 / 15 |
+| DTW gripper nearest-positive, same-task | 11.4 +/- 0.66 / 15 |
+| DTW joint nearest-positive, all-task | 12.0 +/- 0.00 / 15 |
+| DTW joint+gripper nearest-positive, all-task | 14.0 +/- 0.00 / 15 |
 
-This is the table to cite before adding new RoboTwin2 features.
+This is the table to cite before adding new RoboTwin2 features, but it should be
+framed as a diagnostic rather than a final method table. The DTW
+joint+gripper row is stronger than the phase-distribution prototype, which
+means the current pool can mostly be solved by nearest-expert trajectory
+similarity.
 
 RoboTwin2 K-shot calibration now matches the RoboCasa story. Under the same
 anonymous remap protocol, source-plus-target K-shot nearest-positive selectors
@@ -307,11 +315,15 @@ selector.
 
 Updated RoboTwin2 next step:
 
-1. Add compact EEF/contact-direction features to close the `open_laptop`
-   boundary, where phase-aware gripper nearest-positive is still only 3/5.
-2. Generate a candidate pool whose successful future is not always the full
+1. Generate a candidate pool whose successful future is not always the full
    expert trace, then re-run the selector table.
-3. Keep `handover_block` as a one-seed bimanual mechanism example unless the
+2. Add hard positives that succeed with different timing, intermediate
+   trajectory, or contact strategy from the expert trace.
+3. Add matched hard negatives that keep low joint/gripper DTW distance but fail
+   because of contact direction, gripper timing, or task constraints.
+4. Add compact EEF/contact-direction features to close the `open_laptop`
+   boundary only after the anti-template pool exists.
+5. Keep `handover_block` as a one-seed bimanual mechanism example unless the
    next table needs a fourth task for reviewer-facing breadth.
 
 Updated RoboWM next step:

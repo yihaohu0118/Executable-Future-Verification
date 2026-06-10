@@ -122,11 +122,22 @@ Anonymous candidate-ID/rank remap control, averaged over 10 seeds:
 | Phase-gripper nearest-positive, same-task | 11.4 +/- 0.49 / 15 |
 | Phase-joint nearest-positive, all-task | 12.0 +/- 0.00 / 15 |
 | Phase-joint+gripper nearest-positive, all-task | 12.0 +/- 0.00 / 15 |
+| DTW action nearest-positive, same-task | 12.0 +/- 0.00 / 15 |
+| DTW joint nearest-positive, all-task | 12.0 +/- 0.00 / 15 |
+| DTW joint+gripper nearest-positive, all-task | 14.0 +/- 0.00 / 15 |
 
 Interpretation: the signal survives candidate-ID removal, but the fixed-order
 13/15 result is not the reviewer-safe headline. The safer current RoboTwin2
 claim is 12.0/15 under anonymous candidate-ID/rank randomization, with rank0
 and candidate-ID lookup both at 0/15.
+
+The new DTW control changes the interpretation. A strong nearest-expert
+trajectory-distance baseline reaches 14/15, which means the current RoboTwin2
+pool is not sufficient evidence for executability beyond expert-template
+matching. This is a useful diagnostic, not a final main-table result. The next
+RoboTwin2 pool must include successful futures that are not simply the full
+expert trace and matched negatives that are close in joint/gripper DTW but fail
+because of contact or task constraints.
 
 K-shot target-task calibration under the same anonymous remap protocol:
 
@@ -154,7 +165,15 @@ Main claim:
 > Generated futures often contain executable candidates, but default ranking,
 > visual plausibility proxies, action magnitude, and averaged success
 > prototypes are brittle. Few-shot execution-envelope verification over compact
-> robot traces recovers executable futures under shortcut-controlled negatives.
+> robot traces recovers executable futures under shortcut-controlled negatives
+> only when the candidate pool breaks expert-template shortcuts.
+
+Novelty boundary relative to action-level test-time verifiers such as RoVer:
+this project should not be written as a generic robot reward model. The safer
+claim is trajectory/future-level selection over candidate futures, generator
+agnostic inputs, and explicit diagnostics for template matching, candidate-ID
+leakage, rank leakage, action magnitude, object-state leakage, and weak
+baselines.
 
 Recommended contribution shape:
 
@@ -172,6 +191,9 @@ Recommended contribution shape:
 - The current RoboTwin2 table is small: 15 cases across three tasks.
 - Candidate pools still contain an obvious full expert trace; this must be
   replaced or supplemented with less nameable successful futures.
+- A strong DTW nearest-positive baseline reaches 14/15 on the current RoboTwin2
+  table. Until hard positives and matched hard negatives are added, the result
+  is vulnerable to the critique that the selector is expert-trace matching.
 - We have no real robot; the paper must be framed as executable-future
   verification in modern simulated/world-model benchmarks, not deployment.
 - RoboWM-Bench remains conceptually ideal, but current public-code friction
@@ -179,13 +201,15 @@ Recommended contribution shape:
 
 ## Immediate Next Experiments
 
-1. Add compact EEF/contact-direction features to address the `open_laptop`
-   boundary.
-2. Build a candidate pool where success is not always exactly the full expert
-   trace.
-3. Build a less nameable RoboTwin2 candidate pool where success is not always
-   exactly the full expert trace.
-4. Keep `handover_block` as a one-seed bimanual mechanism example unless a
+1. Build a RoboTwin2 anti-template pool where at least one successful candidate
+   per case is not the full expert trace.
+2. Add hard positives: successful trajectories with different timing,
+   intermediate joint path, or contact timing than the expert trace.
+3. Add matched hard negatives: low DTW distance to successful traces but failed
+   contact direction, gripper timing, or task completion.
+4. Re-run rank0, random, action heuristic, phase prototype, DTW nearest-expert,
+   and learned binary/contrastive selector baselines.
+5. Keep `handover_block` as a one-seed bimanual mechanism example unless a
    fourth K=5 task is needed for breadth.
 
 ## Legacy Direction

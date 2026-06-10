@@ -58,10 +58,17 @@ smoke has 15 cases and six candidates per case:
   order and 12.0/15 mean over 10 anonymous remap seeds.
 - K-shot calibration on anonymous remap shows a clear boundary: phase-joint
   source-only is 0.0/15, K=2 reaches 6.2/15, and K=4 reaches 12.0/15.
+- DTW nearest-positive trajectory-distance control reaches 14.0/15 with
+  joint+gripper traces under the same anonymous remap protocol.
 
 The important control is that candidate-ID lookup collapses to 0/15 after
 anonymous remapping, while trace-based selectors remain above rank0 and simple
 heuristics.
+
+The DTW control is also a warning: the current RoboTwin2 pool can largely be
+solved by expert-trajectory similarity. It is useful as a mechanism diagnostic,
+but it is not yet strong enough as a main-table claim that the verifier has
+learned executability beyond template matching.
 
 ## Repository Layout
 
@@ -70,6 +77,8 @@ heuristics.
   experiments.
 - `docs/robotwin2_executable_future_adapter.md`: RoboTwin2 setup, trace
   adapter, K=5 results, selector controls.
+- `docs/reviewer_risk_antitemplate_plan.md`: reviewer-risk assessment and the
+  next anti-template experiments required for a stronger paper claim.
 - `docs/future_verification_manifest_protocol.md`: shared candidate JSONL
   protocol.
 - `docs/repository_reorganization_plan.md`: staged rename and architecture
@@ -149,11 +158,12 @@ PYTHONPATH=src python -m unittest discover -s tests
 ## Current Next Steps
 
 1. Run RoboTwin2 anonymous candidate-ID/rank randomization over multiple seeds.
-2. Add compact EEF/contact-direction features for the `open_laptop` boundary.
-3. Build candidate pools where the successful future is not always the full
+2. Build candidate pools where the successful future is not always the full
    expert trace.
-4. Build the next RoboTwin2 candidate pool where success is not always the full
-   expert trace.
+3. Add hard positives: successful but non-expert-like futures with different
+   timing, intermediate poses, or contact strategies.
+4. Add matched hard negatives: similar joint/gripper traces that fail because
+   of contact direction, closing timing, or task constraints.
 5. Keep RoboWM-Bench as a world-model-specific diagnostic layer until its
    public evaluator ceiling is clarified.
 

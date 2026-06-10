@@ -34,6 +34,13 @@ PROTOTYPE_FEATURES = (
 )
 PROTOTYPE_SCOPES = ("same_task", "all_tasks")
 PROTOTYPE_MODES = ("nearest_positive", "pos_neg_centroid", "pos_centroid")
+TRACE_DISTANCE_FEATURES = (
+    "dtw_action",
+    "dtw_joint",
+    "dtw_gripper",
+    "dtw_joint_gripper",
+)
+TRACE_DISTANCE_SCOPES = ("same_task", "all_tasks")
 
 
 def case_key(row: dict[str, Any]) -> tuple[str, str]:
@@ -310,6 +317,87 @@ def prototype_scores(x_train: np.ndarray, y_train: np.ndarray, x_test: np.ndarra
     raise ValueError(f"unknown prototype mode: {mode}")
 
 
+def trace_sequence(row: dict[str, Any], feature_mode: str, *, dims: dict[str, int] | None = None) -> np.ndarray:
+    if feature_mode == "dtw_action":
+        return action_array(row).astype(np.float32)
+
+    if feature_mode == "dtw_joint":
+        keys = ["joint_action_vector"]
+    elif feature_mode == "dtw_gripper":
+        keys = ["left_gripper", "right_gripper"]
+    elif feature_mode == "dtw_joint_gripper":
+        keys = ["joint_action_vector", "left_gripper", "right_gripper"]
+    else:
+        raise ValueError(f"unknown trace-distance feature mode: {feature_mode}")
+
+    local_dims = dims or state_dims([row], keys)
+    snapshots = state_trace(row) or [{}]
+    frames = []
+    for snapshot in snapshots:
+        if not isinstance(snapshot, dict):
+            snapshot = {}
+        frames.append(np.concatenate([padded(snapshot.get(key), local_dims[key]) for key in keys]))
+    return np.stack(frames).astype(np.float32) if frames else np.zeros((1, 1), dtype=np.float32)
+
+
+def normalize_sequences(
+    train_sequences: list[np.ndarray],
+    test_sequences: list[np.ndarray],
+) -> tuple[list[np.ndarray], list[np.ndarray]]:
+    dim = max([seq.shape[1] for seq in train_sequences + test_sequences] or [1])
+
+    def pad_dim(seq: np.ndarray) -> np.ndarray:
+        if seq.shape[1] == dim:
+            return seq
+        out = np.zeros((seq.shape[0], dim), dtype=np.float32)
+        out[:, : seq.shape[1]] = seq
+        return out
+
+    train_padded = [pad_dim(seq) for seq in train_sequences]
+    test_padded = [pad_dim(seq) for seq in test_sequences]
+    reference = np.concatenate(train_padded, axis=0) if train_padded else np.zeros((1, dim), dtype=np.float32)
+    mean = reference.mean(axis=0, keepdims=True)
+    std = reference.std(axis=0, keepdims=True) + 1e-6
+    return [(seq - mean) / std for seq in train_padded], [(seq - mean) / std for seq in test_padded]
+
+
+def dtw_distance(a: np.ndarray, b: np.ndarray) -> float:
+    n, m = int(a.shape[0]), int(b.shape[0])
+    prev = np.full((m + 1,), np.inf, dtype=np.float32)
+    curr = np.full((m + 1,), np.inf, dtype=np.float32)
+    prev[0] = 0.0
+    for i in range(1, n + 1):
+        curr[0] = np.inf
+        ai = a[i - 1]
+        for j in range(1, m + 1):
+            cost = float(np.linalg.norm(ai - b[j - 1]))
+            curr[j] = cost + min(prev[j], curr[j - 1], prev[j - 1])
+        prev, curr = curr, prev
+    return float(prev[m] / max(n + m, 1))
+
+
+def trace_distance_scores(
+    train_rows: list[dict[str, Any]],
+    test_rows: list[dict[str, Any]],
+    *,
+    feature_mode: str,
+    dims: dict[str, int] | None = None,
+) -> np.ndarray:
+    positive_rows = [row for row in train_rows if row["oracle_success"]]
+    if not positive_rows:
+        return np.zeros((len(test_rows),), dtype=np.float32)
+    train_sequences = [trace_sequence(row, feature_mode, dims=dims) for row in train_rows]
+    test_sequences = [trace_sequence(row, feature_mode, dims=dims) for row in test_rows]
+    train_sequences, test_sequences = normalize_sequences(train_sequences, test_sequences)
+    positive_indexes = [index for index, row in enumerate(train_rows) if row["oracle_success"]]
+    positive_sequences = [train_sequences[index] for index in positive_indexes]
+    scores = []
+    for test_sequence in test_sequences:
+        best = min(dtw_distance(test_sequence, positive_sequence) for positive_sequence in positive_sequences)
+        scores.append(-best)
+    return np.asarray(scores, dtype=np.float32)
+
+
 def evaluate_prototype(rows: list[dict[str, Any]], *, feature_mode: str, scope: str, prototype_mode: str) -> dict[str, Any]:
     grouped = group_cases(rows)
     all_keys = ["joint_action_vector", "left_gripper", "right_gripper"]
@@ -343,6 +431,34 @@ def evaluate_prototype(rows: list[dict[str, Any]], *, feature_mode: str, scope: 
     return result
 
 
+def evaluate_trace_distance(rows: list[dict[str, Any]], *, feature_mode: str, scope: str) -> dict[str, Any]:
+    grouped = group_cases(rows)
+    dims = state_dims(rows, ["joint_action_vector", "left_gripper", "right_gripper"])
+    selected = {}
+    scored_rows: list[dict[str, Any]] = []
+    for key, test_rows in sorted(grouped.items()):
+        task, _case_id = key
+        if scope == "same_task":
+            train_rows = [row for other_key, case_rows in grouped.items() if other_key != key and other_key[0] == task for row in case_rows]
+        elif scope == "all_tasks":
+            train_rows = [row for other_key, case_rows in grouped.items() if other_key != key for row in case_rows]
+        else:
+            raise ValueError(f"unknown train scope: {scope}")
+        scores = trace_distance_scores(train_rows, test_rows, feature_mode=feature_mode, dims=dims)
+        selected[key] = select_by_score(test_rows, scores.tolist())
+        for row, score in zip(test_rows, scores, strict=True):
+            payload = dict(row)
+            payload["robotwin2_trace_distance_score"] = float(score)
+            scored_rows.append(payload)
+    result = summarize_selections(
+        rows,
+        selector_name=f"trace_distance:{feature_mode}:{scope}:nearest_positive",
+        selected_by_case=selected,
+    )
+    result["scored_rows"] = scored_rows
+    return result
+
+
 def strip_large(result: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in result.items() if key not in {"selections", "scored_rows"}}
 
@@ -354,6 +470,8 @@ def main() -> None:
     parser.add_argument("--prototype-feature", action="append", choices=list(PROTOTYPE_FEATURES))
     parser.add_argument("--prototype-scope", action="append", choices=list(PROTOTYPE_SCOPES))
     parser.add_argument("--prototype-mode", default="nearest_positive", choices=list(PROTOTYPE_MODES))
+    parser.add_argument("--trace-distance-feature", action="append", choices=list(TRACE_DISTANCE_FEATURES))
+    parser.add_argument("--trace-distance-scope", action="append", choices=list(TRACE_DISTANCE_SCOPES))
     args = parser.parse_args()
 
     rows = load_jsonl(args.manifest)
@@ -369,6 +487,11 @@ def main() -> None:
             results.append(
                 evaluate_prototype(rows, feature_mode=feature_mode, scope=scope, prototype_mode=args.prototype_mode)
             )
+    distance_features = args.trace_distance_feature or list(TRACE_DISTANCE_FEATURES)
+    distance_scopes = args.trace_distance_scope or list(TRACE_DISTANCE_SCOPES)
+    for feature_mode in distance_features:
+        for scope in distance_scopes:
+            results.append(evaluate_trace_distance(rows, feature_mode=feature_mode, scope=scope))
 
     summary = {"manifest": str(args.manifest), "selectors": [strip_large(result) for result in results]}
     (args.output_dir / "summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")

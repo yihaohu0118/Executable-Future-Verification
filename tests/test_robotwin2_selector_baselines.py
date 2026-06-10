@@ -1,12 +1,17 @@
 import unittest
 
 from umm_reward_evaluator.benchmarks.robotwin2_selector_baselines import (
+    evaluate_trace_distance,
     evaluate_heuristic,
     evaluate_prototype,
     evaluate_random_expected,
     evaluate_rank0,
 )
-from umm_reward_evaluator.benchmarks.robotwin2_rank_randomization_sweep import parse_prototype_config, run_sweep
+from umm_reward_evaluator.benchmarks.robotwin2_rank_randomization_sweep import (
+    parse_prototype_config,
+    parse_trace_distance_config,
+    run_sweep,
+)
 from umm_reward_evaluator.benchmarks.robotwin2_kshot_calibration_sweep import run_kshot_sweep
 
 
@@ -88,6 +93,16 @@ class RoboTwin2SelectorBaselinesTest(unittest.TestCase):
         )
         self.assertEqual(prototype["overall"]["selector_success"], 4)
 
+    def test_dtw_trace_distance_is_a_strong_expert_similarity_control(self):
+        selector = evaluate_trace_distance(
+            self.rows,
+            feature_mode="dtw_gripper",
+            scope="same_task",
+        )
+        self.assertEqual(selector["overall"]["selector_success"], 4)
+        self.assertEqual(selector["overall"]["selector_oracle_match"], 4)
+        self.assertEqual(len(selector["scored_rows"]), len(self.rows))
+
     def test_rank_randomization_sweep_aggregates_multiple_seeds(self):
         summary = run_sweep(
             self.rows,
@@ -109,13 +124,16 @@ class RoboTwin2SelectorBaselinesTest(unittest.TestCase):
             remap_candidate_ids=True,
             heuristics=("smoothness_max",),
             prototypes=(parse_prototype_config("gripper_distribution:same_task:nearest_positive"),),
+            trace_distances=(parse_trace_distance_config("dtw_gripper:same_task"),),
         )
         selectors = {row["selector"] for row in summary["aggregate"]["selectors"]}
         self.assertIn("heuristic:smoothness_max", selectors)
         self.assertIn("prototype:gripper_distribution:same_task:nearest_positive", selectors)
+        self.assertIn("trace_distance:dtw_gripper:same_task:nearest_positive", selectors)
         self.assertNotIn("heuristic:energy_sum_max", selectors)
         self.assertEqual(summary["heuristics"], ["smoothness_max"])
         self.assertEqual(summary["prototypes"], ["gripper_distribution:same_task:nearest_positive"])
+        self.assertEqual(summary["trace_distances"], ["dtw_gripper:same_task"])
 
     def test_kshot_sweep_reports_source_plus_target_calibration(self):
         summary = run_kshot_sweep(

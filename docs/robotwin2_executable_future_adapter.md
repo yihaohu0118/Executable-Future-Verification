@@ -513,12 +513,17 @@ Mean selector success over seeds 0-9:
 | Phase-gripper distribution nearest-positive, same-task | 11.4 +/- 0.49 / 15 |
 | Phase-joint distribution nearest-positive, all-task | 12.0 +/- 0.00 / 15 |
 | Phase-joint+gripper distribution nearest-positive, all-task | 12.0 +/- 0.00 / 15 |
+| DTW action nearest-positive, same-task | 12.0 +/- 0.00 / 15 |
+| DTW gripper nearest-positive, same-task | 11.4 +/- 0.66 / 15 |
+| DTW joint nearest-positive, all-task | 12.0 +/- 0.00 / 15 |
+| DTW joint+gripper nearest-positive, all-task | 14.0 +/- 0.00 / 15 |
 
-The reviewer-safe current RoboTwin2 table should therefore cite 12.0/15 under
-anonymous rank/candidate-ID randomization rather than the fixed-order 13/15.
-The remaining weakness is still `open_laptop`: the best remapped all-task
-phase-joint selectors average 3/5 there, while `stack_blocks_two` is 4/5 and
-`stamp_seal` is 5/5.
+The stronger interpretation is now negative: the current RoboTwin2 pool can be
+mostly solved by nearest-expert trajectory similarity. DTW joint+gripper reaches
+14/15 and closes `open_laptop` to 5/5, so the earlier 12/15 phase-prototype
+result should be treated as a mechanism diagnostic, not a final method table.
+The next RoboTwin2 result must add non-expert successful futures and matched
+low-DTW failures before claiming executability beyond template matching.
 
 ### K-Shot Calibration Sweep
 

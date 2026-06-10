@@ -17,11 +17,14 @@ from umm_reward_evaluator.benchmarks.robotwin2_selector_baselines import (
     PROTOTYPE_FEATURES,
     PROTOTYPE_MODES,
     PROTOTYPE_SCOPES,
+    TRACE_DISTANCE_FEATURES,
+    TRACE_DISTANCE_SCOPES,
     evaluate_candidate_id,
     evaluate_heuristic,
     evaluate_prototype,
     evaluate_random_expected,
     evaluate_rank0,
+    evaluate_trace_distance,
 )
 
 
@@ -34,6 +37,12 @@ DEFAULT_PROTOTYPES = (
     ("phase_gripper_distribution", "all_tasks", "nearest_positive"),
     ("phase_joint_distribution", "all_tasks", "nearest_positive"),
     ("phase_joint_gripper_distribution", "all_tasks", "nearest_positive"),
+)
+DEFAULT_TRACE_DISTANCES = (
+    ("dtw_action", "same_task"),
+    ("dtw_gripper", "same_task"),
+    ("dtw_joint", "all_tasks"),
+    ("dtw_joint_gripper", "all_tasks"),
 )
 
 
@@ -49,6 +58,18 @@ def parse_prototype_config(value: str) -> tuple[str, str, str]:
     if prototype_mode not in PROTOTYPE_MODES:
         raise argparse.ArgumentTypeError(f"unknown prototype mode: {prototype_mode}")
     return feature_mode, scope, prototype_mode
+
+
+def parse_trace_distance_config(value: str) -> tuple[str, str]:
+    parts = value.split(":")
+    if len(parts) != 2:
+        raise argparse.ArgumentTypeError("trace-distance config must be feature:scope")
+    feature_mode, scope = parts
+    if feature_mode not in TRACE_DISTANCE_FEATURES:
+        raise argparse.ArgumentTypeError(f"unknown trace-distance feature: {feature_mode}")
+    if scope not in TRACE_DISTANCE_SCOPES:
+        raise argparse.ArgumentTypeError(f"unknown trace-distance scope: {scope}")
+    return feature_mode, scope
 
 
 def selector_value(result: dict[str, Any]) -> float:
@@ -73,6 +94,7 @@ def evaluate_selectors(
     *,
     heuristics: tuple[str, ...],
     prototypes: tuple[tuple[str, str, str], ...],
+    trace_distances: tuple[tuple[str, str], ...],
 ) -> list[dict[str, Any]]:
     results = [
         evaluate_rank0(rows),
@@ -89,6 +111,8 @@ def evaluate_selectors(
                 prototype_mode=prototype_mode,
             )
         )
+    for feature_mode, scope in trace_distances:
+        results.append(evaluate_trace_distance(rows, feature_mode=feature_mode, scope=scope))
     return results
 
 
@@ -132,6 +156,7 @@ def run_sweep(
     remap_candidate_ids: bool,
     heuristics: tuple[str, ...] = DEFAULT_HEURISTICS,
     prototypes: tuple[tuple[str, str, str], ...] = DEFAULT_PROTOTYPES,
+    trace_distances: tuple[tuple[str, str], ...] = DEFAULT_TRACE_DISTANCES,
 ) -> dict[str, Any]:
     seed_results = []
     for seed in seeds:
@@ -146,7 +171,12 @@ def run_sweep(
                 "seed": seed,
                 "selectors": [
                     compact_result(result)
-                    for result in evaluate_selectors(randomized, heuristics=heuristics, prototypes=prototypes)
+                    for result in evaluate_selectors(
+                        randomized,
+                        heuristics=heuristics,
+                        prototypes=prototypes,
+                        trace_distances=trace_distances,
+                    )
                 ],
             }
         )
@@ -158,6 +188,7 @@ def run_sweep(
         "num_seeds": len(seeds),
         "heuristics": list(heuristics),
         "prototypes": [":".join(config) for config in prototypes],
+        "trace_distances": [":".join(config) for config in trace_distances],
         "seed_results": seed_results,
         "aggregate": aggregate,
     }
@@ -182,11 +213,18 @@ def main() -> None:
         type=parse_prototype_config,
         help="Prototype selector as feature:scope:mode. Repeat to override the default prototype list.",
     )
+    parser.add_argument(
+        "--trace-distance-config",
+        action="append",
+        type=parse_trace_distance_config,
+        help="Trace-distance selector as feature:scope. Repeat to override the default trace-distance list.",
+    )
     args = parser.parse_args()
 
     seeds = list(range(args.seed_start, args.seed_start + args.num_seeds))
     heuristics = tuple(args.heuristic) if args.heuristic else DEFAULT_HEURISTICS
     prototypes = tuple(args.prototype_config) if args.prototype_config else DEFAULT_PROTOTYPES
+    trace_distances = tuple(args.trace_distance_config) if args.trace_distance_config else DEFAULT_TRACE_DISTANCES
     summary = run_sweep(
         load_jsonl(args.manifest),
         seeds=seeds,
@@ -194,6 +232,7 @@ def main() -> None:
         remap_candidate_ids=args.remap_candidate_ids,
         heuristics=heuristics,
         prototypes=prototypes,
+        trace_distances=trace_distances,
     )
     summary["manifest"] = str(args.manifest)
     args.output.parent.mkdir(parents=True, exist_ok=True)
