@@ -446,6 +446,48 @@ geometry. The next selector should add compact EEF/contact-direction trace
 features and a K-shot calibration curve instead of claiming universal
 gripper-only transfer.
 
+### Candidate-ID And Rank Remap Control
+
+The rank randomizer now groups by `(task_name, case_id)`, not only `case_id`.
+This matters for RoboTwin2 because different tasks reuse seed strings such as
+`seed=0`; grouping only by seed would mix candidates across tasks.
+
+The following control was run with failing candidates forced to rank0 and all
+candidate IDs remapped to anonymous `cand_XX` names:
+
+```bash
+PYTHONPATH=src python3 -m umm_reward_evaluator.benchmarks.randomize_planner_rank \
+  --manifest /private/tmp/robotwin2_k5/robotwin2_three_task_k5_manifest.jsonl \
+  --output /private/tmp/robotwin2_k5/robotwin2_three_task_k5_rankrand_remap_seed0.jsonl \
+  --mode failure_rank0_shuffle_rest \
+  --seed 0 \
+  --remap-candidate-ids
+```
+
+Validation still passes with 90 rows, 15 cases, six candidates per case,
+rank0 success 0/15, oracle success 15/15, and oracle-better 15/15.
+
+Key selector results after candidate-ID remapping:
+
+| Selector | Success |
+| --- | ---: |
+| Rank0 | 0/15 |
+| Uniform random expected | 4.17/15 |
+| Candidate ID `full_gripper_aware` | 0/15 |
+| Best simple action heuristic, `smoothness_max` | 5/15 |
+| Gripper distribution nearest-positive, same-task | 11/15 |
+| Gripper distribution nearest-positive, all-task | 9/15 |
+| Phase-gripper distribution nearest-positive, same-task | 11/15 |
+| Phase-joint distribution nearest-positive, all-task | 12/15 |
+| Phase-joint+gripper distribution nearest-positive, all-task | 12/15 |
+
+This control changes the interpretation. The fixed-order table shows the
+cleanest gripper-only mechanism, but the anonymous rank-remapped table is the
+more reviewer-safe result. It proves the signal is not purely candidate-name
+leakage, while also showing that the current nearest-positive selector is still
+sensitive to candidate ordering/tie-breaking and should be evaluated over
+multiple rank-randomization seeds before becoming a headline table.
+
 ## Why It Fits The Current Story
 
 RoboCasa365 already shows that action-envelope calibration can recover conservative-prior failures, but hard negatives require compact robot execution-envelope/contact evidence. RoboTwin 2.0 adds:

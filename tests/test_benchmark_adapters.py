@@ -1,6 +1,7 @@
 import unittest
 
 from umm_reward_evaluator.benchmarks.common import annotate_oracle_best, summarize_headroom
+from umm_reward_evaluator.benchmarks.randomize_planner_rank import randomize_manifest_rows
 from umm_reward_evaluator.benchmarks.robotwin2_trace_to_manifest import convert_records as convert_robotwin2
 from umm_reward_evaluator.benchmarks.world_model_diagnostic_to_manifest import convert_records as convert_diagnostic
 
@@ -110,6 +111,51 @@ class BenchmarkAdaptersTest(unittest.TestCase):
         self.assertTrue(rows[1]["oracle_success"])
         self.assertEqual(rows[0]["metadata"]["future_representation"], "rgb_video")
         self.assertEqual(rows[0]["oracle_best_candidate_id"], "action_faithful")
+
+    def test_rank_randomization_groups_by_task_and_case(self):
+        rows = []
+        for task in ("task_a", "task_b"):
+            rows.extend(
+                [
+                    {
+                        "benchmark": "robotwin2",
+                        "suite": "unit",
+                        "task_name": task,
+                        "case_id": "seed=0",
+                        "candidate_id": "rank0",
+                        "candidate_rank_by_planner": 0,
+                        "actions": [[0.0]],
+                        "oracle_success": False,
+                    },
+                    {
+                        "benchmark": "robotwin2",
+                        "suite": "unit",
+                        "task_name": task,
+                        "case_id": "seed=0",
+                        "candidate_id": "full",
+                        "candidate_rank_by_planner": 1,
+                        "actions": [[1.0]],
+                        "oracle_success": True,
+                    },
+                ]
+            )
+
+        randomized = randomize_manifest_rows(rows, seed=0, mode="prefer_success", remap_candidate_ids=True)
+        self.assertEqual(len(randomized), 4)
+        self.assertEqual(
+            sorted((row["task_name"], row["case_id"], row["candidate_rank_by_planner"]) for row in randomized),
+            [
+                ("task_a", "seed=0", 0),
+                ("task_a", "seed=0", 1),
+                ("task_b", "seed=0", 0),
+                ("task_b", "seed=0", 1),
+            ],
+        )
+        for row in randomized:
+            if row["candidate_rank_by_planner"] == 0:
+                self.assertTrue(row["oracle_success"])
+                self.assertEqual(row["candidate_id"], "cand_00")
+                self.assertEqual(row["oracle_best_candidate_id"], "cand_00")
 
 
 if __name__ == "__main__":

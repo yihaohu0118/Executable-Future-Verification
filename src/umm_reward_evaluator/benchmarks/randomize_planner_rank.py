@@ -9,7 +9,7 @@ from typing import Any
 
 import numpy as np
 
-from umm_reward_evaluator.benchmarks.common import load_jsonl, write_jsonl
+from umm_reward_evaluator.benchmarks.common import case_group_key, load_jsonl, oracle_key, write_jsonl
 
 
 def randomize_case_ranks(
@@ -57,6 +57,33 @@ def randomize_case_ranks(
     return sorted(reranked, key=lambda row: int(row["candidate_rank_by_planner"]))
 
 
+def randomize_manifest_rows(
+    rows: list[dict[str, Any]],
+    *,
+    seed: int,
+    mode: str,
+    remap_candidate_ids: bool,
+) -> list[dict[str, Any]]:
+    grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for row in rows:
+        grouped.setdefault(case_group_key(row), []).append(row)
+
+    randomized_rows: list[dict[str, Any]] = []
+    for case_offset, key in enumerate(sorted(grouped)):
+        case_rows = randomize_case_ranks(
+            grouped[key],
+            seed=seed + case_offset,
+            mode=mode,
+            remap_candidate_ids=remap_candidate_ids,
+        )
+        oracle = max(case_rows, key=oracle_key)
+        for row in case_rows:
+            payload = dict(row)
+            payload["oracle_best_candidate_id"] = oracle["candidate_id"]
+            randomized_rows.append(payload)
+    return randomized_rows
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--manifest", type=Path, required=True)
@@ -70,25 +97,17 @@ def main() -> None:
     parser.add_argument("--remap-candidate-ids", action="store_true")
     args = parser.parse_args()
 
-    grouped: dict[str, list[dict[str, Any]]] = {}
-    for row in load_jsonl(args.manifest):
-        grouped.setdefault(str(row["case_id"]), []).append(row)
-
-    rows = []
-    for case_offset, case_id in enumerate(sorted(grouped)):
-        rows.extend(
-            randomize_case_ranks(
-                grouped[case_id],
-                seed=args.seed + case_offset,
-                mode=args.mode,
-                remap_candidate_ids=args.remap_candidate_ids,
-            )
-        )
+    rows = randomize_manifest_rows(
+        load_jsonl(args.manifest),
+        seed=args.seed,
+        mode=args.mode,
+        remap_candidate_ids=args.remap_candidate_ids,
+    )
     write_jsonl(args.output, rows)
 
-    randomized_grouped: dict[str, list[dict[str, Any]]] = {}
+    randomized_grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
     for row in rows:
-        randomized_grouped.setdefault(str(row["case_id"]), []).append(row)
+        randomized_grouped.setdefault(case_group_key(row), []).append(row)
     rank0_success = 0
     for case_rows in randomized_grouped.values():
         rank0 = min(case_rows, key=lambda row: int(row["candidate_rank_by_planner"]))
@@ -101,7 +120,7 @@ def main() -> None:
     print(
         json.dumps(
             {
-                "cases": len(grouped),
+                "cases": len(randomized_grouped),
                 "mode": args.mode,
                 "rank0_success": rank0_success,
                 "remap_candidate_ids": args.remap_candidate_ids,
