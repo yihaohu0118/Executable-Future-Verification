@@ -24,6 +24,7 @@ from umm_reward_evaluator.benchmarks.train_multitask_action_sequence_selector im
 STATE_FEATURE_MODES = ("state", "state_action", "zero")
 STATE_SUMMARY_MODES = ("full", "endpoint", "terminal", "delta", "distribution", "path", "no_endpoint")
 FOLD_MODES = ("case", "task")
+TASK_MODES = ("shared", "shared_onehot", "per_task_head", "independent")
 TRAIN_CASE_CAP_SCOPES = ("all_tasks", "target_task")
 
 
@@ -489,7 +490,7 @@ def evaluate(
                     feature_mode=feature_mode,
                     action_mode=action_mode,
                     summary_mode=summary_mode,
-                    task_mode="shared_onehot" if task_mode == "shared_onehot" else "independent",
+                    task_mode="shared_onehot" if task_mode == "shared_onehot" else "shared",
                     tasks=tasks,
                     state_spec=state_spec,
                     hidden=hidden,
@@ -522,7 +523,7 @@ def main() -> None:
     parser.add_argument("--feature-mode", default="state", choices=list(STATE_FEATURE_MODES))
     parser.add_argument("--action-mode", default="stats_no_endpoints_no_length")
     parser.add_argument("--state-summary-mode", default="full", choices=list(STATE_SUMMARY_MODES))
-    parser.add_argument("--task-mode", default="per_task_head", choices=["shared_onehot", "per_task_head", "independent"])
+    parser.add_argument("--task-mode", default="per_task_head", choices=list(TASK_MODES))
     parser.add_argument("--fold-mode", default="case", choices=list(FOLD_MODES))
     parser.add_argument("--state-key", action="append", help="Restrict state features to this key. Can repeat.")
     parser.add_argument("--exclude-state-key", action="append", help="Drop this state key. Can repeat.")
