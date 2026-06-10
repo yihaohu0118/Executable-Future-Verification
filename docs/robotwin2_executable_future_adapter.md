@@ -268,6 +268,22 @@ It then replays six default candidate futures:
 | `reverse` | temporal reversal |
 | `noop` | zero action |
 
+For multi-seed runs, do not assume expert-valid seeds are contiguous. RoboTwin
+`collect_data.py` writes successful seeds to `data/<task>/<config>/seed.txt`,
+and failed seed attempts can create gaps. Use the batch mode so replay follows
+the official valid-seed list:
+
+```bash
+python umm_robotwin2_gripper_aware_trace.py \
+  --task-name stamp_seal \
+  --task-config demo_clean_k5 \
+  --instruction "stamp the seal on the target" \
+  --all-seeds \
+  --max-seeds 5 \
+  --output-dir umm_candidate_traces/stamp_seal_k5 \
+  --skip-existing
+```
+
 One implementation detail mattered for `open_laptop`: the official
 `check_success()` expects `self.arm_tag`, which is set inside expert
 `play_once()` but not by `setup_demo()` alone. The adapter therefore restores
@@ -304,6 +320,67 @@ Interpretation:
   paper-quality step is to scale each task to multiple seeds and replace the
   oracle/full-trace check with learned selector comparisons against action-only
   and magnitude/smoothness controls.
+
+### Three-Task K=5 Gripper-Aware Result
+
+The first multi-seed run used fixed expert-valid seeds from the official
+`seed.txt` files and six candidates per seed. It intentionally excludes
+`handover_block` from this K=5 table because that replay was stopped after the
+one-seed mechanism result; the current multi-seed evidence is therefore three
+tasks, not four.
+
+Local validated manifest:
+
+```text
+/private/tmp/robotwin2_k5/robotwin2_three_task_k5_manifest.jsonl
+```
+
+Validation summary:
+
+```json
+{
+  "rows": 90,
+  "cases": 15,
+  "tasks": {
+    "open_laptop": 5,
+    "stack_blocks_two": 5,
+    "stamp_seal": 5
+  },
+  "candidate_count_histogram": {"6": 15},
+  "rank0_success": 0,
+  "oracle_success": 15,
+  "oracle_better": 15,
+  "num_errors": 0,
+  "num_warnings": 0
+}
+```
+
+Candidate success counts:
+
+| Task | Rank0 | Full trace | First half | Drop last | Reverse | Noop |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `stack_blocks_two` | 0/5 | 5/5 | 0/5 | 5/5 | 0/5 | 0/5 |
+| `open_laptop` | 0/5 | 5/5 | 0/5 | 5/5 | 0/5 | 0/5 |
+| `stamp_seal` | 0/5 | 5/5 | 0/5 | 0/5 | 0/5 | 0/5 |
+| **Total** | **0/15** | **15/15** | **0/15** | **10/15** | **0/15** | **0/15** |
+
+Interpretation:
+
+- The recoverable-future headroom is stable across 15 fixed expert-valid cases:
+  default rank0 never succeeds, while the candidate pool always contains a
+  successful gripper-aware future.
+- Temporal reversal never succeeds, so the result is not explained by final
+  pose alone.
+- `stamp_seal` is the strictest contact task: removing the last action also
+  fails in all five seeds.
+- `stack_blocks_two` and `open_laptop` expose a useful counterpoint:
+  `drop_last` succeeds in all five seeds, showing that some generated futures
+  contain redundant cleanup actions after task success. A verifier should
+  identify task-critical contact/release phases rather than require exact
+  trajectory reproduction.
+- This is still an oracle/full-trace mechanism table. The next paper table must
+  add learned selector baselines and action-only/magnitude/smoothness controls
+  on the same K=5 protocol.
 
 ## Why It Fits The Current Story
 

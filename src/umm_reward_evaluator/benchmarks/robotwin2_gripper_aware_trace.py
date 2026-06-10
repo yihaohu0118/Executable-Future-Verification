@@ -51,6 +51,16 @@ def read_seed(task_name: str, task_config: str, seed: int | None) -> int:
     return int(text[0])
 
 
+def read_seed_list(task_name: str, task_config: str) -> list[int]:
+    seed_path = Path("data") / task_name / task_config / "seed.txt"
+    if not seed_path.exists():
+        raise SystemExit(f"missing seed file {seed_path}; run collect_data.py first")
+    seeds = [int(item) for item in seed_path.read_text(encoding="utf-8").strip().split()]
+    if not seeds:
+        raise SystemExit(f"empty seed file {seed_path}; run collect_data.py first")
+    return seeds
+
+
 def build_args(task_name: str, task_config: str, *, eval_mode: bool, need_plan: bool) -> dict[str, Any]:
     from envs import CONFIGS_PATH
 
@@ -241,27 +251,29 @@ def build_default_candidates(actions: list[list[float]]) -> list[tuple[str, int,
     ]
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--task-name", required=True)
-    parser.add_argument("--task-config", default="demo_clean_smoke")
-    parser.add_argument("--seed", type=int)
-    parser.add_argument("--instruction")
-    parser.add_argument("--output", type=Path, required=True)
-    args = parser.parse_args()
+def run_one_seed(
+    *,
+    task_name: str,
+    task_config: str,
+    seed: int,
+    instruction: str,
+    output: Path,
+    skip_existing: bool,
+) -> None:
+    if skip_existing and output.exists() and output.stat().st_size > 0:
+        print(f"skip existing {output}", flush=True)
+        return
 
-    seed = read_seed(args.task_name, args.task_config, args.seed)
-    instruction = args.instruction or args.task_name.replace("_", " ")
-    actions, expert_metadata = record_expert_actions(args.task_name, args.task_config, seed)
+    actions, expert_metadata = record_expert_actions(task_name, task_config, seed)
     if not expert_metadata["expert_success"]:
-        raise SystemExit(f"expert rollout did not succeed for {args.task_name} seed {seed}")
+        raise SystemExit(f"expert rollout did not succeed for {task_name} seed {seed}")
 
     rows: list[dict[str, Any]] = []
     for candidate_id, rank, action_seq in build_default_candidates(actions):
-        print(f"running {candidate_id} len={len(action_seq)}", flush=True)
+        print(f"running seed={seed} {candidate_id} len={len(action_seq)}", flush=True)
         row = run_candidate(
-            task_name=args.task_name,
-            task_config=args.task_config,
+            task_name=task_name,
+            task_config=task_config,
             seed=seed,
             instruction=instruction,
             candidate_id=candidate_id,
@@ -270,16 +282,61 @@ def main() -> None:
             expert_metadata=expert_metadata,
         )
         print(
-            f"{candidate_id} success={row['success']} executed={len(row['actions'])}",
+            f"seed={seed} {candidate_id} success={row['success']} executed={len(row['actions'])}",
             flush=True,
         )
         rows.append(row)
 
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    with args.output.open("w", encoding="utf-8") as f:
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with output.open("w", encoding="utf-8") as f:
         for row in rows:
             f.write(json.dumps(row, sort_keys=True) + "\n")
-    print(f"wrote {args.output}")
+    print(f"wrote {output}", flush=True)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--task-name", required=True)
+    parser.add_argument("--task-config", default="demo_clean_smoke")
+    parser.add_argument("--seed", type=int)
+    parser.add_argument("--instruction")
+    parser.add_argument("--output", type=Path)
+    parser.add_argument("--all-seeds", action="store_true")
+    parser.add_argument("--max-seeds", type=int)
+    parser.add_argument("--output-dir", type=Path)
+    parser.add_argument("--skip-existing", action="store_true")
+    args = parser.parse_args()
+
+    instruction = args.instruction or args.task_name.replace("_", " ")
+
+    if args.all_seeds:
+        if args.output_dir is None:
+            raise SystemExit("--all-seeds requires --output-dir")
+        seeds = read_seed_list(args.task_name, args.task_config)
+        if args.max_seeds is not None:
+            seeds = seeds[: args.max_seeds]
+        for seed in seeds:
+            run_one_seed(
+                task_name=args.task_name,
+                task_config=args.task_config,
+                seed=seed,
+                instruction=instruction,
+                output=args.output_dir / f"seed_{seed}.jsonl",
+                skip_existing=args.skip_existing,
+            )
+        return
+
+    if args.output is None:
+        raise SystemExit("--output is required unless --all-seeds is used")
+    seed = read_seed(args.task_name, args.task_config, args.seed)
+    run_one_seed(
+        task_name=args.task_name,
+        task_config=args.task_config,
+        seed=seed,
+        instruction=instruction,
+        output=args.output,
+        skip_existing=args.skip_existing,
+    )
 
 
 if __name__ == "__main__":

@@ -216,15 +216,27 @@ Current RoboTwin2 mechanism smoke:
   dual-arm coordination case. Manifest validation gives rank0 0/1, oracle 1/1,
   oracle_better 1/1.
 
-RoboTwin 2.0 has now passed the first kill-line condition at the smoke level:
-four tasks (`stack_blocks_two`, `stamp_seal`, `open_laptop`,
-`handover_block`) show rank0 0/1 and oracle 1/1 under fixed expert-valid seeds.
-This is not yet a paper table because each task has only one seed and the
-selector comparison is still oracle/full-trace based. The next required step is
-to scale these same tasks to multiple seeds and report learned selector
-baselines: random, rank0, action-only, magnitude/energy/smoothness,
-EEF/gripper execution-envelope, source-only/no-task-ID, and K-shot calibrated
-selectors.
+RoboTwin 2.0 has now passed the first kill-line condition at two levels:
+
+- Four tasks (`stack_blocks_two`, `stamp_seal`, `open_laptop`,
+  `handover_block`) show rank0 0/1 and oracle 1/1 under fixed expert-valid
+  seeds.
+- Three tasks were scaled to K=5 seeds each (`stack_blocks_two`,
+  `stamp_seal`, `open_laptop`) for a 15-case / 90-candidate mechanism table.
+  The validated combined manifest has 0 errors, rank0 success 0/15,
+  oracle success 15/15, and oracle_better 15/15. Candidate-level counts are:
+  full gripper-aware trace 15/15, first-action rank0 0/15, first-half 0/15,
+  reverse 0/15, noop 0/15, and drop-last 10/15. The drop-last successes are
+  concentrated in `stack_blocks_two` and `open_laptop`; `stamp_seal` drop-last
+  is 0/5.
+
+This is still not the final paper table because the selector comparison is
+oracle/full-trace based. The next required step is to report learned selector
+baselines on the same K=5 protocol: random, rank0, action-only,
+magnitude/energy/smoothness, EEF/gripper execution-envelope,
+source-only/no-task-ID, and K-shot calibrated selectors. `handover_block` should
+remain a one-seed bimanual mechanism example until we decide to spend the extra
+runtime for its K=5 table.
 
 Updated RoboWM next step:
 
