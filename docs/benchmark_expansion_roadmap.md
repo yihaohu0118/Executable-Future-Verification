@@ -85,6 +85,7 @@ Local finding on the remote machine:
 - Import smoke passed with `robocasa==1.0.1`, `robosuite==1.5.2`, `gymnasium==0.29.1`, and CUDA-enabled `torch==2.7.1+cu126`.
 - Gymnasium registers 396 `robocasa/*` environments.
 - Full kitchen/object assets were downloaded and extracted.
+- The local downloaded `datasets/v1.0/target/atomic` tree currently contains only four demonstration tasks: `PickPlaceCounterToCabinet`, `TurnOnSinkFaucet`, `OpenCabinet`, and `TurnOnMicrowave`. There are no local composite/non-atomic RoboCasa365 dataset splits under `datasets/v1.0`. Scaling the same evidence beyond four tasks therefore requires downloading additional RoboCasa365 demonstrations or moving to a second 2025-2026 benchmark.
 - Four target-split smoke tasks reset and step successfully: `PickPlaceCounterToCabinet`, `PickPlaceCounterToSink`, `CloseCabinet`, and `TurnOnSinkFaucet`.
 - The RoboCasa Gym wrapper exposes language instructions, proprioceptive state, and three 256x256 RGB camera streams per observation.
 - Code finding: top-level `import robocasa` does not register Gymnasium IDs; the adapter must import `robocasa.wrappers.gym_wrapper`.
@@ -117,9 +118,10 @@ Do not spend more setup time on legacy LIBERO, CALVIN, D4RL, PointMaze, PushT, o
 
 Use newer benchmark layers only after RoboCasa365 has a stronger table:
 
-- RoboTwin 2.0 / recent manipulation benchmark-audit settings for shortcut and statistical-significance stress tests.
-- RoboMIND 2.0 if we need a 2025 multi-embodiment dataset layer rather than executable sim.
-- 2026 robotic world-model diagnostics such as RoboWM-Bench, MiraBench, and RoboTrustBench if we need a world-model-specific reliability table.
+- RoboTwin 2.0 is the best next executable benchmark candidate if setup cost is manageable: it is a 2025 dual-arm manipulation benchmark/data generator with 50 tasks, five robot embodiments, and strong domain randomization. Project/code links from the paper: https://robotwin-platform.github.io/ and https://github.com/robotwin-Platform/robotwin/.
+- RoboWM-Bench is the best 2026 world-model-specific candidate if we pivot from execution-envelope probes to evaluating whether generated manipulation futures translate into executable robot actions: https://arxiv.org/abs/2604.19092.
+- RoboTrustBench is useful if the paper needs a 2026 trustworthy video-world-model diagnostic under normal, constraint-sensitive, counterfactual, and adversarial instructions, but it is less directly tied to action reranking unless we build a video-world-model evaluation layer: https://arxiv.org/abs/2606.01600.
+- RoboMIND 2.0 is relevant if we need a 2025 multi-embodiment real-data layer; it is a dataset/system paper rather than an immediately executable simulator benchmark, so it is a lower-priority next step for the current reranking experiments: https://arxiv.org/abs/2512.24653.
 
 ## Reviewer-Facing Minimum Bar
 
