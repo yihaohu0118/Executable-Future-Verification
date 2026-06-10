@@ -6,7 +6,7 @@ from umm_reward_evaluator.benchmarks.robotwin2_selector_baselines import (
     evaluate_random_expected,
     evaluate_rank0,
 )
-from umm_reward_evaluator.benchmarks.robotwin2_rank_randomization_sweep import run_sweep
+from umm_reward_evaluator.benchmarks.robotwin2_rank_randomization_sweep import parse_prototype_config, run_sweep
 
 
 def make_row(task, case, candidate, rank, success, actions, left_gripper, right_gripper=None):
@@ -99,6 +99,22 @@ class RoboTwin2SelectorBaselinesTest(unittest.TestCase):
         self.assertEqual(aggregate["rank0"]["mean_success"], 0.0)
         self.assertAlmostEqual(aggregate["random_expected"]["mean_success"], 4 / 3)
         self.assertEqual(aggregate["candidate_id:full_gripper_aware"]["mean_success"], 0.0)
+
+    def test_rank_randomization_sweep_accepts_custom_selector_lists(self):
+        summary = run_sweep(
+            self.rows,
+            seeds=[0],
+            mode="failure_rank0_shuffle_rest",
+            remap_candidate_ids=True,
+            heuristics=("smoothness_max",),
+            prototypes=(parse_prototype_config("gripper_distribution:same_task:nearest_positive"),),
+        )
+        selectors = {row["selector"] for row in summary["aggregate"]["selectors"]}
+        self.assertIn("heuristic:smoothness_max", selectors)
+        self.assertIn("prototype:gripper_distribution:same_task:nearest_positive", selectors)
+        self.assertNotIn("heuristic:energy_sum_max", selectors)
+        self.assertEqual(summary["heuristics"], ["smoothness_max"])
+        self.assertEqual(summary["prototypes"], ["gripper_distribution:same_task:nearest_positive"])
 
 
 if __name__ == "__main__":

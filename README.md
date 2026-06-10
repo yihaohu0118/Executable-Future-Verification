@@ -113,6 +113,9 @@ PYTHONPATH=src python -m umm_reward_evaluator.benchmarks.robotwin2_rank_randomiz
   --remap-candidate-ids
 ```
 
+Use repeated `--heuristic` and `--prototype-config feature:scope:mode` flags to
+override the default selector list for diagnostic sweeps.
+
 Randomize rank0 and anonymize candidate IDs for shortcut controls:
 
 ```bash

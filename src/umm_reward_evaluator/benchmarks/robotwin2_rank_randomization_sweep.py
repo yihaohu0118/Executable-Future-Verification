@@ -13,6 +13,10 @@ import numpy as np
 from umm_reward_evaluator.benchmarks.common import load_jsonl
 from umm_reward_evaluator.benchmarks.randomize_planner_rank import randomize_manifest_rows
 from umm_reward_evaluator.benchmarks.robotwin2_selector_baselines import (
+    HEURISTICS,
+    PROTOTYPE_FEATURES,
+    PROTOTYPE_MODES,
+    PROTOTYPE_SCOPES,
     evaluate_candidate_id,
     evaluate_heuristic,
     evaluate_prototype,
@@ -33,6 +37,20 @@ DEFAULT_PROTOTYPES = (
 )
 
 
+def parse_prototype_config(value: str) -> tuple[str, str, str]:
+    parts = value.split(":")
+    if len(parts) != 3:
+        raise argparse.ArgumentTypeError("prototype config must be feature:scope:mode")
+    feature_mode, scope, prototype_mode = parts
+    if feature_mode not in PROTOTYPE_FEATURES:
+        raise argparse.ArgumentTypeError(f"unknown prototype feature: {feature_mode}")
+    if scope not in PROTOTYPE_SCOPES:
+        raise argparse.ArgumentTypeError(f"unknown prototype scope: {scope}")
+    if prototype_mode not in PROTOTYPE_MODES:
+        raise argparse.ArgumentTypeError(f"unknown prototype mode: {prototype_mode}")
+    return feature_mode, scope, prototype_mode
+
+
 def selector_value(result: dict[str, Any]) -> float:
     overall = result["overall"]
     if result["selector"] == "random_expected":
@@ -50,14 +68,19 @@ def compact_result(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def evaluate_default_selectors(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def evaluate_selectors(
+    rows: list[dict[str, Any]],
+    *,
+    heuristics: tuple[str, ...],
+    prototypes: tuple[tuple[str, str, str], ...],
+) -> list[dict[str, Any]]:
     results = [
         evaluate_rank0(rows),
         evaluate_random_expected(rows),
         evaluate_candidate_id(rows, "full_gripper_aware"),
     ]
-    results.extend(evaluate_heuristic(rows, heuristic) for heuristic in DEFAULT_HEURISTICS)
-    for feature_mode, scope, prototype_mode in DEFAULT_PROTOTYPES:
+    results.extend(evaluate_heuristic(rows, heuristic) for heuristic in heuristics)
+    for feature_mode, scope, prototype_mode in prototypes:
         results.append(
             evaluate_prototype(
                 rows,
@@ -107,6 +130,8 @@ def run_sweep(
     seeds: list[int],
     mode: str,
     remap_candidate_ids: bool,
+    heuristics: tuple[str, ...] = DEFAULT_HEURISTICS,
+    prototypes: tuple[tuple[str, str, str], ...] = DEFAULT_PROTOTYPES,
 ) -> dict[str, Any]:
     seed_results = []
     for seed in seeds:
@@ -119,7 +144,10 @@ def run_sweep(
         seed_results.append(
             {
                 "seed": seed,
-                "selectors": [compact_result(result) for result in evaluate_default_selectors(randomized)],
+                "selectors": [
+                    compact_result(result)
+                    for result in evaluate_selectors(randomized, heuristics=heuristics, prototypes=prototypes)
+                ],
             }
         )
     aggregate = aggregate_seed_results(seed_results)
@@ -128,6 +156,8 @@ def run_sweep(
         "remap_candidate_ids": remap_candidate_ids,
         "seeds": seeds,
         "num_seeds": len(seeds),
+        "heuristics": list(heuristics),
+        "prototypes": [":".join(config) for config in prototypes],
         "seed_results": seed_results,
         "aggregate": aggregate,
     }
@@ -145,14 +175,25 @@ def main() -> None:
         default="failure_rank0_shuffle_rest",
     )
     parser.add_argument("--remap-candidate-ids", action="store_true")
+    parser.add_argument("--heuristic", action="append", choices=list(HEURISTICS))
+    parser.add_argument(
+        "--prototype-config",
+        action="append",
+        type=parse_prototype_config,
+        help="Prototype selector as feature:scope:mode. Repeat to override the default prototype list.",
+    )
     args = parser.parse_args()
 
     seeds = list(range(args.seed_start, args.seed_start + args.num_seeds))
+    heuristics = tuple(args.heuristic) if args.heuristic else DEFAULT_HEURISTICS
+    prototypes = tuple(args.prototype_config) if args.prototype_config else DEFAULT_PROTOTYPES
     summary = run_sweep(
         load_jsonl(args.manifest),
         seeds=seeds,
         mode=args.mode,
         remap_candidate_ids=args.remap_candidate_ids,
+        heuristics=heuristics,
+        prototypes=prototypes,
     )
     summary["manifest"] = str(args.manifest)
     args.output.parent.mkdir(parents=True, exist_ok=True)
