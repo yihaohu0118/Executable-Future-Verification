@@ -159,6 +159,15 @@ Current RoboWM-Bench status on dev2:
 
 Updated RoboTwin 2.0 next step:
 
+Current dev2 status: a dedicated `robotwin2-favc` environment is installed,
+official assets are available, SAPIEN render works, and a one-episode
+`click_bell` clean expert smoke succeeds with seed 0. On H100, official curobo
+v0.7.8 hits an illegal-instruction error in the fused LBFGS CUDA extension;
+the working patch disables only that fused kernel and uses curobo's PyTorch/JIT
+fallback.
+
+Updated RoboTwin 2.0 next step:
+
 1. Patch `script/eval_policy.py` only to trace policy actions, compact robot
    state summaries, video path, instruction, seed, and success.
 2. Convert traces with `robotwin2_trace_to_manifest.py` and validate with

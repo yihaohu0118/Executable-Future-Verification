@@ -14,6 +14,65 @@ This means RoboTwin should not be used as "can our method find feasible expert s
 
 > Fix expert-valid initial seeds and instructions, generate several policy/world-model candidate futures for each seed, then select the candidate that executes successfully.
 
+## Remote Environment Status
+
+Verified on dev2 on 2026-06-10:
+
+- Official RoboTwin checkout: `/tmp/robotwin_probe`, commit `c3ddfa8b97d5519efa828b075999bd0006778e5e`.
+- Dedicated conda env: `/home/yihao_hyh/miniconda3/envs/robotwin2-favc`, Python 3.10.
+- Installed core runtime: `torch==2.4.1+cu121`, `sapien==3.0.0b1`, `mplib==0.2.1`, `open3d==0.18.0`, `gymnasium==0.29.1`, `curobo==v0.7.8` editable checkout, `warp-lang==1.12.0`.
+- Official assets downloaded and extracted under `/tmp/robotwin_probe/assets`.
+- `script/test_render.py` passes with `Render Well`.
+- Task import passes for `open_microwave` and `click_bell`.
+- One-episode clean expert smoke passes:
+
+```bash
+CUDA_VISIBLE_DEVICES=7 \
+timeout 600 \
+/home/yihao_hyh/miniconda3/bin/conda run --no-capture-output \
+  -n robotwin2-favc \
+  python -u script/collect_data.py click_bell demo_clean_smoke
+```
+
+Result:
+
+```text
+simulate data episode 0 success! (seed = 0)
+Complete simulation, failed 0 times / 1 tries
+```
+
+Smoke artifacts:
+
+- `data/click_bell/demo_clean_smoke/seed.txt`: `0`
+- `data/click_bell/demo_clean_smoke/_traj_data/episode0.pkl`
+
+The environment still prints a SAPIEN Vulkan ICD warning, but rendering works.
+`pytorch3d` is also reported missing during import; this did not block task
+import, rendering, or the clean expert smoke.
+
+### Curobo H100 Patch
+
+The official curobo install initially failed during planner warmup on H100:
+
+```text
+RuntimeError: CUDA error: an illegal instruction was encountered
+...
+LBFGScu.apply -> lbfgs_step_cu.forward
+```
+
+The failure was isolated to curobo's fused LBFGS CUDA extension, not SAPIEN,
+assets, or RoboTwin task code. The working patch in our environment is:
+
+1. keep official curobo v0.7.8 and `warp-lang==1.12.0`;
+2. set `LBFGSOptConfig.use_cuda_kernel = False` in
+   `envs/curobo/src/curobo/opt/newton/lbfgs.py`;
+3. set `use_cuda_kernel: False` in curobo task configs under
+   `envs/curobo/src/curobo/content/configs/task/*.yml`.
+
+This disables only the fused LBFGS custom kernel and keeps curobo's planning
+path active through the PyTorch/JIT fallback. It is slower but sufficient for
+small smoke tests and avoids switching RoboTwin to a different planner.
+
 ## Why It Fits The Current Story
 
 RoboCasa365 already shows that action-envelope calibration can recover conservative-prior failures, but hard negatives require compact robot execution-envelope/contact evidence. RoboTwin 2.0 adds:

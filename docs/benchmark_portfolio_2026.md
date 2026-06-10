@@ -19,7 +19,7 @@ The unifying claim is:
 | Priority | Benchmark | Year | Role | Current status | Main metric |
 | --- | --- | ---: | --- | --- | --- |
 | P0 | RoboCasa365 | 2026 | Primary executable manipulation evidence | Running, strong n16 hard-negative results | task success / oracle recovery |
-| P1 | RoboTwin 2.0 | 2025 | Second executable manipulation benchmark | Code cloned on dev2; adapter exists; needs smoke/instrumentation | task success under randomized dual-arm tasks |
+| P1 | RoboTwin 2.0 | 2025 | Second executable manipulation benchmark | Dedicated dev2 env works; clean expert smoke passed; needs candidate tracing | task success under randomized dual-arm tasks |
 | P2 | MiraBench | 2026 | Action-conditioned world-model reliability diagnostic | Paper public; code/data release not yet confirmed in search | action fidelity / optimism-bias labels |
 | P3 | RoboTrustBench | 2026 | Trust/counterfactual/adversarial video-world-model diagnostic | Paper public; code/data release not yet confirmed in search | trustworthiness criteria |
 | Conditional | RoboWM-Bench | 2026 | Embodied world-model-to-action benchmark | Environment works after Vulkan/EGL fix; public eval has Pick reset mismatch | simulator success after official clarification |
@@ -64,6 +64,19 @@ The fair protocol is not to test whether we can find feasible seeds. The fair pr
 4. ask whether an execution-envelope verifier selects the successful candidate.
 
 The existing converter is `robotwin2_trace_to_manifest.py`.
+
+Current dev2 status:
+
+- dedicated `robotwin2-favc` conda environment created;
+- official assets downloaded under `/tmp/robotwin_probe/assets`;
+- SAPIEN render smoke passes;
+- curobo fused LBFGS custom kernel fails on H100 with illegal instruction, but
+  disabling that fused kernel and using curobo's PyTorch/JIT fallback fixes
+  planner warmup;
+- `click_bell` clean expert smoke succeeds with seed 0.
+
+The next evidence step is not another environment smoke. It is candidate
+generation and trace emission on 1-2 tasks.
 
 ### MiraBench
 
@@ -117,9 +130,9 @@ The minimum acceptable main paper table should contain:
 ## Immediate Work Plan
 
 1. RoboTwin 2.0:
-   - inspect official `script/eval_policy.py` and `_base_task.py`;
-   - add an instrumentation patch plan to record actions, qpos/endpose summaries, video path, and success;
-   - run a small smoke on one lightweight task if dependencies are already usable on dev2.
+   - patch official `script/eval_policy.py` to record actions, qpos/endpose summaries, video path, and success;
+   - run a one-task/five-seed/four-candidate candidate-generation smoke;
+   - convert traces with `robotwin2_trace_to_manifest.py` and validate with `--require-future-metadata`.
 
 2. MiraBench:
    - monitor official code/data release;
