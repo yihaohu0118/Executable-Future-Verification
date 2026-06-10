@@ -10,10 +10,10 @@ experiment paths are stable.
 
 ## Recommended Repository Name
 
-Best option:
+Current target repository:
 
 ```text
-executable-future-verifier
+Executable-Future-Verification
 ```
 
 Why:
@@ -122,7 +122,7 @@ Only after the paper story stabilizes:
 
 After package rename or at paper-submission cleanup:
 
-- Rename GitHub repository to `executable-future-verifier`.
+- Rename GitHub repository to `Executable-Future-Verification`.
 - Keep GitHub redirects from the old repository name.
 - Tag the last old-name commit for reproducibility.
 

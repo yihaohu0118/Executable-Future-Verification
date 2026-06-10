@@ -55,7 +55,7 @@ smoke has 15 cases and six candidates per case:
 - best simple action heuristic: 6/15 in fixed order, 5/15 after anonymous
   candidate-ID/rank remap;
 - nearest-positive gripper/phase/joint trace selectors: up to 13/15 in fixed
-  order and 12/15 under anonymous remap.
+  order and 12.0/15 mean over 10 anonymous remap seeds.
 
 The important control is that candidate-ID lookup collapses to 0/15 after
 anonymous remapping, while trace-based selectors remain above rank0 and simple
@@ -102,6 +102,17 @@ PYTHONPATH=src python -m umm_reward_evaluator.benchmarks.robotwin2_selector_base
   --output-dir /path/to/selector_outputs
 ```
 
+Run the multi-seed anonymous rank/candidate-ID sweep:
+
+```bash
+PYTHONPATH=src python -m umm_reward_evaluator.benchmarks.robotwin2_rank_randomization_sweep \
+  --manifest /path/to/robotwin2_manifest.jsonl \
+  --output /path/to/rankrand_sweep.json \
+  --num-seeds 10 \
+  --mode failure_rank0_shuffle_rest \
+  --remap-candidate-ids
+```
+
 Randomize rank0 and anonymize candidate IDs for shortcut controls:
 
 ```bash
@@ -134,7 +145,7 @@ PYTHONPATH=src python -m unittest discover -s tests
 Recommended future repository name:
 
 ```text
-executable-future-verifier
+Executable-Future-Verification
 ```
 
 The package name remains `umm_reward_evaluator` for now so existing scripts,

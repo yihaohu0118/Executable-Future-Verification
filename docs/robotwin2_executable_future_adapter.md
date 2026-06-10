@@ -467,7 +467,7 @@ PYTHONPATH=src python3 -m umm_reward_evaluator.benchmarks.randomize_planner_rank
 Validation still passes with 90 rows, 15 cases, six candidates per case,
 rank0 success 0/15, oracle success 15/15, and oracle-better 15/15.
 
-Key selector results after candidate-ID remapping:
+Key selector results after candidate-ID remapping for seed 0:
 
 | Selector | Success |
 | --- | ---: |
@@ -485,8 +485,40 @@ This control changes the interpretation. The fixed-order table shows the
 cleanest gripper-only mechanism, but the anonymous rank-remapped table is the
 more reviewer-safe result. It proves the signal is not purely candidate-name
 leakage, while also showing that the current nearest-positive selector is still
-sensitive to candidate ordering/tie-breaking and should be evaluated over
-multiple rank-randomization seeds before becoming a headline table.
+sensitive to candidate ordering/tie-breaking.
+
+A 10-seed anonymous rank/candidate-ID sweep is now implemented in
+`src/umm_reward_evaluator/benchmarks/robotwin2_rank_randomization_sweep.py`:
+
+```bash
+PYTHONPATH=src python3 -m umm_reward_evaluator.benchmarks.robotwin2_rank_randomization_sweep \
+  --manifest /private/tmp/robotwin2_k5/robotwin2_three_task_k5_manifest.jsonl \
+  --output /private/tmp/robotwin2_k5/selectors/rankrand_remap_sweep_seed0_9.json \
+  --num-seeds 10 \
+  --seed-start 0 \
+  --mode failure_rank0_shuffle_rest \
+  --remap-candidate-ids
+```
+
+Mean selector success over seeds 0-9:
+
+| Selector | Mean success |
+| --- | ---: |
+| Rank0 | 0.0 +/- 0.0 / 15 |
+| Candidate ID `full_gripper_aware` | 0.0 +/- 0.0 / 15 |
+| Uniform random expected | 4.17 +/- 0.00 / 15 |
+| Best simple action heuristic, `smoothness_max` | 5.3 +/- 0.46 / 15 |
+| Action distribution nearest-positive, same-task | 6.8 +/- 0.60 / 15 |
+| Gripper distribution nearest-positive, same-task | 11.0 +/- 0.00 / 15 |
+| Phase-gripper distribution nearest-positive, same-task | 11.4 +/- 0.49 / 15 |
+| Phase-joint distribution nearest-positive, all-task | 12.0 +/- 0.00 / 15 |
+| Phase-joint+gripper distribution nearest-positive, all-task | 12.0 +/- 0.00 / 15 |
+
+The reviewer-safe current RoboTwin2 table should therefore cite 12.0/15 under
+anonymous rank/candidate-ID randomization rather than the fixed-order 13/15.
+The remaining weakness is still `open_laptop`: the best remapped all-task
+phase-joint selectors average 3/5 there, while `stack_blocks_two` is 4/5 and
+`stamp_seal` is 5/5.
 
 ## Why It Fits The Current Story
 

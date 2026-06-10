@@ -6,6 +6,7 @@ from umm_reward_evaluator.benchmarks.robotwin2_selector_baselines import (
     evaluate_random_expected,
     evaluate_rank0,
 )
+from umm_reward_evaluator.benchmarks.robotwin2_rank_randomization_sweep import run_sweep
 
 
 def make_row(task, case, candidate, rank, success, actions, left_gripper, right_gripper=None):
@@ -85,6 +86,19 @@ class RoboTwin2SelectorBaselinesTest(unittest.TestCase):
             prototype_mode="nearest_positive",
         )
         self.assertEqual(prototype["overall"]["selector_success"], 4)
+
+    def test_rank_randomization_sweep_aggregates_multiple_seeds(self):
+        summary = run_sweep(
+            self.rows,
+            seeds=[0, 1],
+            mode="failure_rank0_shuffle_rest",
+            remap_candidate_ids=True,
+        )
+        self.assertEqual(summary["num_seeds"], 2)
+        aggregate = {row["selector"]: row for row in summary["aggregate"]["selectors"]}
+        self.assertEqual(aggregate["rank0"]["mean_success"], 0.0)
+        self.assertAlmostEqual(aggregate["random_expected"]["mean_success"], 4 / 3)
+        self.assertEqual(aggregate["candidate_id:full_gripper_aware"]["mean_success"], 0.0)
 
 
 if __name__ == "__main__":

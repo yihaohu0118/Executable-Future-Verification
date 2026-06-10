@@ -109,20 +109,24 @@ Current fixed-order selector table:
 | Gripper distribution nearest-positive, all-task | 12/15 |
 | Phase-gripper nearest-positive, same-task | 13/15 |
 
-Anonymous candidate-ID/rank remap control:
+Anonymous candidate-ID/rank remap control, averaged over 10 seeds:
 
 | Selector | Success |
 | --- | ---: |
 | Rank0 | 0/15 |
 | Candidate ID full-trace lookup | 0/15 |
-| Best action heuristic, smoothness max | 5/15 |
-| Gripper distribution nearest-positive, same-task | 11/15 |
-| Phase-joint nearest-positive, all-task | 12/15 |
-| Phase-joint+gripper nearest-positive, all-task | 12/15 |
+| Uniform random expected | 4.17/15 |
+| Best action heuristic, smoothness max | 5.3 +/- 0.46 / 15 |
+| Action distribution nearest-positive, same-task | 6.8 +/- 0.60 / 15 |
+| Gripper distribution nearest-positive, same-task | 11.0 +/- 0.00 / 15 |
+| Phase-gripper nearest-positive, same-task | 11.4 +/- 0.49 / 15 |
+| Phase-joint nearest-positive, all-task | 12.0 +/- 0.00 / 15 |
+| Phase-joint+gripper nearest-positive, all-task | 12.0 +/- 0.00 / 15 |
 
 Interpretation: the signal survives candidate-ID removal, but the fixed-order
-13/15 result is not yet the reviewer-safe headline. The next table must average
-over multiple anonymous rank-randomization seeds.
+13/15 result is not the reviewer-safe headline. The safer current RoboTwin2
+claim is 12.0/15 under anonymous candidate-ID/rank randomization, with rank0
+and candidate-ID lookup both at 0/15.
 
 ## Target Paper Story
 
@@ -160,15 +164,13 @@ Recommended contribution shape:
 
 ## Immediate Next Experiments
 
-1. Run RoboTwin2 anonymous rank/candidate-ID remap over several random seeds and
-   report mean/std selector success.
-2. Add compact EEF/contact-direction features to address the `open_laptop`
+1. Add compact EEF/contact-direction features to address the `open_laptop`
    boundary.
-3. Build a candidate pool where success is not always exactly the full expert
+2. Build a candidate pool where success is not always exactly the full expert
    trace.
-4. Add K-shot calibration curves on RoboTwin2 and compare source-only,
+3. Add K-shot calibration curves on RoboTwin2 and compare source-only,
    no-task-ID, same-task prototype, and task-conditioned variants.
-5. Keep `handover_block` as a one-seed bimanual mechanism example unless a
+4. Keep `handover_block` as a one-seed bimanual mechanism example unless a
    fourth K=5 task is needed for breadth.
 
 ## Legacy Direction

@@ -271,22 +271,34 @@ to group by `(task_name, case_id)`. With failing candidates forced to rank0 and
 all candidate IDs remapped to anonymous `cand_XX` names, validation still gives
 rank0 0/15 and oracle 15/15. The ID-leak upper bound collapses to 0/15, as it
 should. Feature selectors remain above rank0 and heuristics, but the best
-anonymous-remapped selectors are 12/15 rather than 13/15: phase-joint
-all-task and phase-joint+gripper all-task reach 12/15, while same-task
-phase-gripper reaches 11/15. This should be treated as the reviewer-safe
-control and expanded over multiple randomization seeds.
+anonymous-remapped selectors are 12/15 rather than 13/15.
+
+The 10-seed anonymous remap sweep gives the current reviewer-safe RoboTwin2
+selector result:
+
+| Selector | Mean success |
+| --- | ---: |
+| Rank0 | 0.0 +/- 0.0 / 15 |
+| Candidate ID `full_gripper_aware` | 0.0 +/- 0.0 / 15 |
+| Uniform random expected | 4.17 +/- 0.00 / 15 |
+| Best action heuristic, `smoothness_max` | 5.3 +/- 0.46 / 15 |
+| Action distribution nearest-positive, same-task | 6.8 +/- 0.60 / 15 |
+| Gripper distribution nearest-positive, same-task | 11.0 +/- 0.00 / 15 |
+| Phase-gripper distribution nearest-positive, same-task | 11.4 +/- 0.49 / 15 |
+| Phase-joint distribution nearest-positive, all-task | 12.0 +/- 0.00 / 15 |
+| Phase-joint+gripper distribution nearest-positive, all-task | 12.0 +/- 0.00 / 15 |
+
+This is the table to cite before adding new RoboTwin2 features.
 
 Updated RoboTwin2 next step:
 
 1. Add compact EEF/contact-direction features to close the `open_laptop`
    boundary, where phase-aware gripper nearest-positive is still only 3/5.
-2. Run multi-seed anonymous candidate-ID/rank randomization so the main table
-   cannot depend on fixed candidate names or fixed rank tie-breaking.
-3. Generate a candidate pool whose successful future is not always the full
+2. Generate a candidate pool whose successful future is not always the full
    expert trace, then re-run the selector table.
-4. Add K-shot calibration curves on RoboTwin2 and compare against no-task-ID
+3. Add K-shot calibration curves on RoboTwin2 and compare against no-task-ID
    source-only transfer.
-5. Keep `handover_block` as a one-seed bimanual mechanism example unless the
+4. Keep `handover_block` as a one-seed bimanual mechanism example unless the
    next table needs a fourth task for reviewer-facing breadth.
 
 Updated RoboWM next step:
