@@ -300,6 +300,7 @@ The surprising part is the action calibration cliff:
 - The 64-case expansion changes the strongest mechanism. Bag action-envelope moments reach a 28.6/64 mean and one unordered endpoint pair reaches 27.4/64, both above shuffled-time at 25.2/64 and raw ordered summaries at 21.6/64. Endpoint-free stats without energy already reach 25.8/64, so removing brittle first/last endpoints is a major source of the gain; adding energy/envelope moments gives the best current result.
 - The deterministic max-absolute-action heuristic reaches 28/64 without training, nearly matching the learned bag critic. This is an important shortcut control, not a failure: it exposes a strong under-actuation bias in the conservative rank0 prior.
 - Energy-matched hard negatives break the shortcut. On a four-task n4 stress pool, original demo actions succeed in 16/16, all time-reverse/roll/shuffle/block-swap/sign-flip corruptions fail, and magnitude/energy/smoothness heuristics fall to 0/16. Learned action-only selectors recover only 5-6/16 on average. This means the ordinary no-demo pool mostly tests under-actuation calibration, while the energy-matched pool exposes the remaining contact-timing and direction bottleneck.
+- Low-dimensional rollout state traces mostly close the energy-matched gap. On the same four-task n4 stress protocol, the zero state control is 0/16, the best action-only selector averages 6.2/16, and the state-trace selector gets 13,15,14,14,15/16 across five seeds. Adding endpoint-free action stats to state traces is slightly worse at 13.6/16 mean, so the next method should prioritize state/contact evidence rather than bigger action summaries.
 
 This suggests that for RoboCasa-style long-horizon manipulation, the failure mode may be less about generic action noise and more about systematic action-scale or temporal-completion errors. That is aligned with the failure-gated critic story: a useful critic should detect physically plausible but under-executed candidates, not just visually plausible endpoints.
 
@@ -313,7 +314,7 @@ This probe is not yet sufficient as a final benchmark result:
 - The largest randomized selector result so far uses sixteen episodes per task on four RoboCasa tasks. It is stronger than the original direction check, but still not enough for a final benchmark table without more tasks or a learned proposal source.
 - Current ranking prior is intentionally conservative and non-oracle; the next version should compare against an actual learned policy likelihood or BC proposal.
 - The no-demo Faucet result shows the current compact action statistic critic is not enough for articulated-fixture interaction. This is a weakness, but it is also the strongest evidence that the final method needs task-conditioned or contact-conditioned failure modeling.
-- The max-absolute-action heuristic is a strong baseline on the n16 pool. Energy-matched candidates beat that shortcut, but current action-only selectors still leave a large oracle gap; future results need visual/contact conditioning, not just more action summaries.
+- The max-absolute-action heuristic is a strong baseline on the n16 pool. Energy-matched candidates beat that shortcut, action-only selectors still leave a large oracle gap, and state traces close most of it; future results need visual/contact conditioning, not just more action summaries.
 
 ## Next Experiment
 
@@ -323,7 +324,7 @@ The next fairer RoboCasa365 experiment should keep the same replay infrastructur
 2. Use original demo actions only as supervision or an oracle upper bound.
 3. Generate rank0 from a non-oracle policy score, likelihood score, or noisy BC model.
 4. Scale the energy-matched hard-negative pool beyond n4 and randomize original-candidate position for rank-based leakage checks.
-5. Train/evaluate task-conditioned, visual-conditioned, and contact-conditioned action critics under held-out episodes.
+5. Train/evaluate task-conditioned, visual-conditioned, and contact-conditioned rollout critics under held-out episodes.
 6. Report:
    - rank0 success
    - oracle-best success

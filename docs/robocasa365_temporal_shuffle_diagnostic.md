@@ -190,29 +190,55 @@ Learned case-heldout selectors:
 
 This is the current most important diagnostic. The magnitude heuristic that nearly matched the learned bag critic on the n16 pool collapses from 28/64 to 0/16 under energy-matched negatives. Learned action-only selectors recover only 5-6/16 on average, so they are not just magnitude heuristics, but they are far from the 16/16 oracle. The bottleneck is now visible: endpoint-free action-envelope calibration fixes under-actuation, but distinguishing correct contact timing and direction from energy-matched corruptions likely requires visual state, contact context, or a stronger temporal model.
 
+## State-Trace Proxy on Energy-Matched Negatives
+
+To test whether the energy-matched gap is genuinely about missing state/contact context, the same four-task hard-negative pool was regenerated with low-dimensional rollout observation traces stored in metadata. The trace uses RoboCasa state and proprioceptive keys such as `object-state`, `robot0_proprio-state`, `obj_pos`, `obj_to_robot0_eef_pos`, `robot0_eef_pos`, and gripper state, sampled every 25 simulator steps. It does not use reward, `_check_success`, or the oracle label as an input feature.
+
+Manifest set:
+
+- `/tmp/robocasa365_energy_state_pick_n4_s17/PickPlaceCounterToCabinet_candidate_manifest.jsonl`
+- `/tmp/robocasa365_energy_state_faucet_n4_s17/TurnOnSinkFaucet_candidate_manifest.jsonl`
+- `/tmp/robocasa365_energy_state_opencab_n4_s17/OpenCabinet_candidate_manifest.jsonl`
+- `/tmp/robocasa365_energy_state_microwave_n4_s17/TurnOnMicrowave_candidate_manifest.jsonl`
+
+Oracle ceiling remains 16/16 and conservative rank0 remains 0/16. Trace coverage is complete, with per-candidate trace lengths ranging from 6 to 20 snapshots depending on task horizon.
+
+Held-out selectors:
+
+| Feature | Seeds | Overall success | Mean | Pick mean | Faucet mean | OpenCabinet mean | Microwave mean |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| zero state control | 0,1,2,3,4 | 0,0,0,0,0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 |
+| best action-only control, endpoint-free stats | 0,1,2,3,4 | 6,7,6,6,6 | 6.2 | 1.8 | 0.8 | 0.8 | 2.8 |
+| low-dimensional state trace | 0,1,2,3,4 | 13,15,14,14,15 | 14.2 | 3.8 | 3.4 | 3.0 | 4.0 |
+| state trace + endpoint-free action stats | 0,1,2,3,4 | 13,14,14,14,13 | 13.6 | 3.8 | 3.0 | 3.0 | 3.8 |
+
+This converts the hard-negative result from a pure limitation into a method direction. Once action magnitude is controlled, action-only selectors recover only 5-6/16. A low-dimensional rollout-state selector recovers 14.2/16 and is stable across seeds, while the zero control stays at 0/16. Adding action-envelope features to state traces does not improve the result and slightly hurts mean success, so the current bottleneck is not more action summarization. It is whether the rollout state trajectory shows the correct physical interaction.
+
+The remaining errors are concentrated in `OpenCabinet:ep_0000` and `TurnOnSinkFaucet:ep_0002`, which suggests the next useful feature is finer visual/contact evidence rather than a larger action MLP.
+
 ## Interpretation
 
 The current evidence supports this mechanism:
 
-> For action critics on RoboCasa365 replay candidates, temporal detail can be an anti-feature in ordinary no-demo pools: ordered first/last summaries overfit to endpoint artifacts, while endpoint-free action-envelope statistics preserve candidate-level action calibration better. But once action magnitude is matched, compact action-only summaries recover only limited signal; the next method must condition action adequacy on visual/contact context.
+> For action critics on RoboCasa365 replay candidates, temporal detail can be an anti-feature in ordinary no-demo pools: ordered first/last summaries overfit to endpoint artifacts, while endpoint-free action-envelope statistics preserve candidate-level action calibration better. But once action magnitude is matched, compact action-only summaries recover only limited signal; low-dimensional rollout state traces recover most of the oracle gap, so the next method should condition action adequacy on visual/contact state rather than action envelope alone.
 
 This is a useful ICLR-style diagnostic because it contradicts the default assumption that more temporal structure is always better for action-conditioned evaluation.
 
 The earlier negative bag result matters as a small-sample warning: on 24-32 cases, bag moments did not explain the full shuffle-time gain. After expanding to 64 cases, however, bag moments become the strongest single-view selector. This suggests the original shuffle result was a high-variance diagnostic of endpoint overfitting, while the more scalable mechanism is endpoint-free action-envelope calibration.
 
-The strongest current method-shaped result is not "always shuffle." It is an endpoint-free envelope critic plus a hard-negative guardrail: remove brittle first/last temporal anchors to detect under-actuation, but use energy-matched negatives to prevent the critic from collapsing into action magnitude. Unordered endpoint dropout remains useful, but the n16 result shows that the simplest envelope moments are the strongest learned baseline and that a no-learning action-magnitude heuristic is already surprisingly competitive unless the candidate pool is stress-tested.
+The strongest current method-shaped result is not "always shuffle." It is a two-stage critic: use endpoint-free envelope calibration to detect under-actuation in ordinary candidate pools, then use state/contact-conditioned rollout evidence to reject energy-matched corruptions. Unordered endpoint dropout remains useful as a diagnostic, but the n16 result shows that the simplest envelope moments are already close to a no-learning action-magnitude heuristic unless the candidate pool is stress-tested.
 
 The next method should not be "always shuffle actions." A safer direction is:
 
 1. learn when temporal order is reliable;
 2. use endpoint-free envelope and endpoint-dropout views as conservative failure detectors, but keep shuffle-robust controls as a diagnostic baseline;
 3. add energy-matched hard negatives to test whether the envelope critic understands action geometry or mostly corrects an under-actuation prior;
-4. add contact-conditioned features for Faucet-style interactions where successful candidates exist but compact statistics still miss them.
+4. add state/contact-conditioned rollout features for Faucet-style and cabinet-contact interactions where successful candidates exist but compact action statistics still miss them.
 
 ## Reviewer Caveats
 
 - Candidate generation is still replay perturbation, not a learned policy.
-- The strongest deterministic heuristic on ordinary no-demo pools is action magnitude; the energy-matched hard-negative pool shows that this shortcut collapses, but also that current action-only selectors do not yet close the oracle gap.
+- The strongest deterministic heuristic on ordinary no-demo pools is action magnitude; the energy-matched hard-negative pool shows that this shortcut collapses, and the state-trace proxy shows that most of the remaining gap is recoverable from rollout state/context.
 - The action traces are sparse snapshots stored with stride 25, so this diagnostic does not rule out high-frequency temporal information.
 - The strongest current table uses four tasks and sixteen episodes per task. It is stronger than the original 32-case diagnostic, but still needs more RoboCasa365 tasks or a learned proposal source before becoming a headline benchmark table.
 - The shuffled controls should be presented as a warning against overclaiming temporal world modeling, not as proof that action order is irrelevant.

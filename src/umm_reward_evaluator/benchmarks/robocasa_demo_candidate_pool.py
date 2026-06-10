@@ -45,6 +45,19 @@ DEFAULT_PROFILES = (
     ActionProfile("cand_04_truncated_080", 4, "truncate", truncate_frac=0.80),
 )
 
+LOWDIM_OBS_KEYS = (
+    "object-state",
+    "robot0_proprio-state",
+    "robot0_eef_pos",
+    "robot0_eef_quat",
+    "robot0_gripper_qpos",
+    "robot0_gripper_qvel",
+    "obj_pos",
+    "obj_quat",
+    "obj_to_robot0_eef_pos",
+    "robot0_base_to_eef_pos",
+)
+
 
 def conservative_prior_score(actions: np.ndarray) -> float:
     """Non-oracle policy prior: prefer smaller, smoother action chunks."""
@@ -254,21 +267,45 @@ def _success(env: Any) -> bool:
         return bool(value)
 
 
+def lowdim_obs_snapshot(obs: Any) -> dict[str, list[float]]:
+    if not isinstance(obs, dict):
+        return {}
+    snapshot: dict[str, list[float]] = {}
+    for key in LOWDIM_OBS_KEYS:
+        if key not in obs:
+            continue
+        arr = np.asarray(obs[key])
+        if not np.issubdtype(arr.dtype, np.number):
+            continue
+        flat = arr.astype(np.float32).reshape(-1)
+        if flat.size == 0:
+            continue
+        flat = np.nan_to_num(flat, nan=0.0, posinf=0.0, neginf=0.0)
+        snapshot[key] = np.round(flat, 5).tolist()
+    return snapshot
+
+
 def run_actions(
     env: Any,
     initial_state: dict[str, Any],
     actions: np.ndarray,
     *,
     max_steps: int | None,
-) -> tuple[bool, float, int]:
+    state_stride: int,
+) -> tuple[bool, float, int, list[dict[str, list[float]]]]:
     _, _, reset_to = _import_robocasa_playback()
     reset_to(env, initial_state)
 
     total_reward = 0.0
     steps = len(actions) if max_steps is None else min(len(actions), max_steps)
     success = _success(env)
+    state_trace: list[dict[str, list[float]]] = []
     for t in range(steps):
-        _, reward, done, _ = env.step(actions[t])
+        obs, reward, done, _ = env.step(actions[t])
+        if state_stride > 0 and (t == 0 or (t + 1) % state_stride == 0 or t == steps - 1 or done):
+            snapshot = lowdim_obs_snapshot(obs)
+            if snapshot:
+                state_trace.append(snapshot)
         try:
             total_reward += float(reward)
         except Exception:
@@ -276,7 +313,7 @@ def run_actions(
         success = success or _success(env)
         if done:
             break
-    return success, total_reward, t + 1 if steps else 0
+    return success, total_reward, t + 1 if steps else 0, state_trace
 
 
 def action_snapshot(actions: np.ndarray, stride: int) -> list[list[float]]:
@@ -303,6 +340,7 @@ def build_pool(
     include_original: bool,
     max_steps: int | None,
     action_stride: int,
+    state_stride: int,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     _, lerobot_utils, _ = _import_robocasa_playback()
     episodes = lerobot_utils.get_episodes(dataset)
@@ -348,12 +386,30 @@ def build_pool(
                     profile,
                     case_seed=episode_index,
                 )
-                success, total_reward, executed_steps = run_actions(
+                success, total_reward, executed_steps, state_trace = run_actions(
                     env,
                     initial_state,
                     candidate_actions,
                     max_steps=max_steps,
+                    state_stride=state_stride,
                 )
+                metadata = {
+                    "dataset": str(dataset),
+                    "episode": episode.stem,
+                    "episode_index": episode_index,
+                    "env_name": env_meta.get("env_name"),
+                    "profile": profile.kind,
+                    "scale": profile.scale,
+                    "noise_std": profile.noise_std,
+                    "truncate_frac": profile.truncate_frac,
+                    "conservative_prior_score": profile.prior_score,
+                    "original_action_shape": list(actions.shape),
+                    "stored_action_stride": action_stride,
+                    "executed_steps": executed_steps,
+                }
+                if state_stride > 0:
+                    metadata["stored_state_stride"] = state_stride
+                    metadata["state_trace"] = state_trace
                 row = CandidateRow(
                     benchmark="RoboCasa365",
                     suite=suite,
@@ -368,20 +424,7 @@ def build_pool(
                     instruction=instruction,
                     oracle_return=total_reward,
                     oracle_progress=1.0 if success else 0.0,
-                    metadata={
-                        "dataset": str(dataset),
-                        "episode": episode.stem,
-                        "episode_index": episode_index,
-                        "env_name": env_meta.get("env_name"),
-                        "profile": profile.kind,
-                        "scale": profile.scale,
-                        "noise_std": profile.noise_std,
-                        "truncate_frac": profile.truncate_frac,
-                        "conservative_prior_score": profile.prior_score,
-                        "original_action_shape": list(actions.shape),
-                        "stored_action_stride": action_stride,
-                        "executed_steps": executed_steps,
-                    },
+                    metadata=metadata,
                 )
                 rows.append(json.loads(row.to_json()))
     finally:
@@ -400,6 +443,7 @@ def build_pool(
             "num_profiles": num_candidates if profile_mode in {"random", "energy_matched"} else len(profiles),
             "include_original": include_original,
             "ranking_prior": "conservative_action_energy",
+            "state_stride": state_stride,
         }
     )
     return rows, summary
@@ -418,6 +462,7 @@ def main() -> None:
     parser.add_argument("--exclude-original", action="store_true")
     parser.add_argument("--max-steps", type=int)
     parser.add_argument("--action-stride", type=int, default=10)
+    parser.add_argument("--state-stride", type=int, default=0)
     parser.add_argument("--output-dir", type=Path, default=Path("outputs/robocasa365_demo_pool"))
     args = parser.parse_args()
 
@@ -434,6 +479,7 @@ def main() -> None:
         include_original=not args.exclude_original,
         max_steps=args.max_steps,
         action_stride=args.action_stride,
+        state_stride=args.state_stride,
     )
 
     manifest_path = args.output_dir / f"{args.task_name}_candidate_manifest.jsonl"
