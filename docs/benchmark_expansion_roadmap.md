@@ -136,3 +136,9 @@ The paper-quality result should not be framed as "we improve PushT" or "we solve
 3. Any second benchmark must pass the 2025-2026 scope gate and add stress-test value beyond RoboCasa365, rather than serving as an easier legacy control.
 
 The key ablation is whether the trained action-world critic helps only when used as a gated override. If global ActionWorld is worse than static progress but the gate is better, that is a stronger and more counterintuitive story.
+
+## RoboTwin 2.0 Next Step
+
+RoboTwin 2.0 official code is accessible, while RoboWM-Bench currently has a paper-level public entry but no stable code path found in the initial search. The practical second-layer benchmark should therefore start from RoboTwin 2.0 candidate-future traces and keep RoboWM-Bench as the preferred world-model-specific target if code/data become available.
+
+The concrete adapter plan is in `docs/robotwin2_executable_future_adapter.md`. The new converter `robotwin2_trace_to_manifest.py` turns instrumented RoboTwin rollout traces into the shared executable-future manifest.
