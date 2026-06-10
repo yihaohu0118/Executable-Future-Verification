@@ -399,11 +399,28 @@ The EEF+gripper distribution MLP was also rerun under different fold and task-co
 
 This is the main external-validity boundary for the current probe. The strong result does not require task-specific heads when the target task has other held-out cases: independent same-task training already reaches 62.4/64. But it does require target-task or contact-regime calibration. Training on the other three tasks and testing a held-out task collapses to 25.6/64, and a one-hot for an unseen task is meaningless. The paper story should therefore avoid claiming zero-shot cross-task world modeling. The defensible claim is task/contact-conditioned execution-envelope verification.
 
+### Few-Shot Target-Task Calibration
+
+To quantify how much target-task calibration is needed, the selector was extended with `--max-train-cases-per-task`, which caps the number of calibration cases available in each held-out fold. The cap is deterministic per seed and keeps all candidates from the selected training cases.
+
+For independent EEF+gripper distribution selectors:
+
+| Target-task calibration cases | Seeds | Overall success | Mean | Std |
+| ---: | --- | ---: | ---: | ---: |
+| 0, leave-one-task-out | 0,1,2,3,4 | 31,20,27,26,24 | 25.6 | 3.61 |
+| 1 | 0,1,2,3,4 | 27,26,19,25,24 | 24.2 | 2.79 |
+| 2 | 0,1,2,3,4 | 43,50,50,44,47 | 46.8 | 2.93 |
+| 4 | 0,1,2,3,4 | 57,55,58,60,54 | 56.8 | 2.14 |
+| 8 | 0,1,2,3,4 | 62,62,59,61,61 | 61.0 | 1.10 |
+| all available same-task cases | 0,1,2,3,4 | 62,64,62,62,62 | 62.4 | 0.80 |
+
+This gives a useful sample-efficiency story. One calibration case is too brittle because the selected case may not cover the relevant contact regime. Two cases already recover 46.8/64, four cases recover 56.8/64, and eight cases nearly saturate the independent same-task result. The method should be framed as few-shot task/contact calibration, not zero-shot transfer.
+
 ## Interpretation
 
 The current evidence supports this mechanism:
 
-> For action critics on RoboCasa365 replay candidates, temporal detail can be an anti-feature in ordinary no-demo pools: ordered first/last summaries overfit to endpoint artifacts, while endpoint-free action-envelope statistics preserve candidate-level action calibration better. But once action magnitude is matched, compact action-only summaries recover only limited signal; on the n16 fully regenerated hard-negative pool, action-only reaches 28.4/64 while robot-only rollout traces reach 64/64 and proprio-only reaches 63.0/64. A finer key ablation shows that EEF/gripper traces without the broad proprio vector still reach 62.2/64, and an EEF summary ablation shows that endpoint-free distributional execution envelopes reach 63.4-63.6/64 while endpoint-only summaries stay near 33-43/64. Non-neural same-task prototype matching reaches 59/64, but leave-one-task-out MLP drops to 25.6/64, so the next method should condition action adequacy on compact, task/contact-calibrated execution-envelope feedback rather than action envelope, temporal detail, endpoint state, object-state shortcuts, or zero-shot cross-task assumptions.
+> For action critics on RoboCasa365 replay candidates, temporal detail can be an anti-feature in ordinary no-demo pools: ordered first/last summaries overfit to endpoint artifacts, while endpoint-free action-envelope statistics preserve candidate-level action calibration better. But once action magnitude is matched, compact action-only summaries recover only limited signal; on the n16 fully regenerated hard-negative pool, action-only reaches 28.4/64 while robot-only rollout traces reach 64/64 and proprio-only reaches 63.0/64. A finer key ablation shows that EEF/gripper traces without the broad proprio vector still reach 62.2/64, and an EEF summary ablation shows that endpoint-free distributional execution envelopes reach 63.4-63.6/64 while endpoint-only summaries stay near 33-43/64. Non-neural same-task prototype matching reaches 59/64, but leave-one-task-out MLP drops to 25.6/64. Four target-task calibration cases already recover 56.8/64 and eight recover 61.0/64, so the next method should condition action adequacy on compact, few-shot task/contact-calibrated execution-envelope feedback rather than action envelope, temporal detail, endpoint state, object-state shortcuts, or zero-shot cross-task assumptions.
 
 This is a useful ICLR-style diagnostic because it contradicts the default assumption that more temporal structure is always better for action-conditioned evaluation.
 

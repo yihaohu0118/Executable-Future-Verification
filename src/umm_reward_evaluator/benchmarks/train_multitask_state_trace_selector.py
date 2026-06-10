@@ -157,6 +157,37 @@ def feature_matrix(
     return np.stack(xs).astype(np.float32)
 
 
+def cap_train_cases_per_task(
+    rows: list[dict[str, Any]],
+    *,
+    max_cases_per_task: int | None,
+    seed: int,
+) -> list[dict[str, Any]]:
+    if max_cases_per_task is None:
+        return rows
+    if max_cases_per_task <= 0:
+        raise ValueError("--max-train-cases-per-task must be positive")
+    grouped_cases: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for row in rows:
+        grouped_cases.setdefault((str(row["task_label"]), str(row["case_id"])), []).append(row)
+
+    by_task: dict[str, list[str]] = {}
+    for task, case_id in grouped_cases:
+        by_task.setdefault(task, []).append(case_id)
+
+    rng = np.random.default_rng(seed)
+    selected_keys: set[tuple[str, str]] = set()
+    for task, case_ids in sorted(by_task.items()):
+        unique_case_ids = sorted(set(case_ids))
+        if len(unique_case_ids) > max_cases_per_task:
+            keep = sorted(rng.choice(unique_case_ids, size=max_cases_per_task, replace=False).tolist())
+        else:
+            keep = unique_case_ids
+        selected_keys.update((task, case_id) for case_id in keep)
+
+    return [row for key in sorted(selected_keys) for row in grouped_cases[key]]
+
+
 def attach_scores(rows: list[dict[str, Any]], scores: np.ndarray) -> list[dict[str, Any]]:
     out = []
     for row, score in zip(rows, scores):
@@ -372,6 +403,7 @@ def evaluate(
     epochs: int,
     lr: float,
     seed: int,
+    max_train_cases_per_task: int | None,
 ) -> tuple[dict[str, Any], list[dict[str, Any]], list[dict[str, Any]]]:
     if fold_mode == "task" and task_mode == "per_task_head":
         raise ValueError("task-fold evaluation cannot use per_task_head because the held-out task head is untrained")
@@ -409,6 +441,11 @@ def evaluate(
                 if other_key != (task, case_id)
                 for row in case_rows
             ]
+        train_rows = cap_train_cases_per_task(
+            train_rows,
+            max_cases_per_task=max_train_cases_per_task,
+            seed=seed + fold,
+        )
         if task_mode == "per_task_head":
             scored.extend(
                 train_task_head_fold(
@@ -451,6 +488,7 @@ def evaluate(
     summary["fold_mode"] = fold_mode
     summary["state_keys"] = list(state_spec.keys)
     summary["state_dims"] = state_spec.dims
+    summary["max_train_cases_per_task"] = max_train_cases_per_task
     summary["include_state_keys"] = sorted(include_state_keys) if include_state_keys is not None else None
     summary["exclude_state_keys"] = sorted(exclude_state_keys) if exclude_state_keys is not None else None
     summary["tasks"] = tasks
@@ -472,6 +510,7 @@ def main() -> None:
     parser.add_argument("--epochs", type=int, default=200)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--max-train-cases-per-task", type=int)
     args = parser.parse_args()
 
     rows = load_labeled_rows(args.manifest)
@@ -488,6 +527,7 @@ def main() -> None:
         epochs=args.epochs,
         lr=args.lr,
         seed=args.seed,
+        max_train_cases_per_task=args.max_train_cases_per_task,
     )
     args.output_dir.mkdir(parents=True, exist_ok=True)
     (args.output_dir / "summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
