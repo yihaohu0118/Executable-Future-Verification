@@ -381,6 +381,24 @@ action DTW is fooled by `stamp_seal` contact perturbations. The next preset
 should create near-neighbor failures around successful time-warp and contact
 perturb candidates.
 
+Targeted-hard smoke:
+
+- A new `--candidate-preset targeted_hard` mode extends `anti_template` with
+  contact-phase time warps, contact offsets, and gripper-contact pulses.
+- On `stamp_seal` seed 0, rank0 remains 0/1 and oracle remains 1/1.
+- The same pool contains diverse non-full success 1/1 and matched low-DTW
+  negative 1/1.
+- Candidate-level outcomes split nearby edits: `repeat_precontact`,
+  `repeat_contact_long`, `delete_contact_step`, and
+  `contact_joint_offset_small` succeed, while `repeat_middle_drop_final`,
+  `contact_joint_perturb_strong`, `gripper_contact_pulse`, and
+  `gripper_contact_pulse_wide` fail.
+
+This is the right stress-test direction for the expert-template-matching
+critique, but it is still only a one-case smoke. The next gate is a K=5
+`stamp_seal` targeted-hard table with selector baselines; only then should the
+pool be expanded to the other RoboTwin2 tasks.
+
 Updated RoboWM next step:
 
 1. Turn the reset-compatibility shim and Vulkan/EGL setup into a reproducible helper patch or documented benchmark fork diff.

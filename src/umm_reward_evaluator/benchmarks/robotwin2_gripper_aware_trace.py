@@ -326,6 +326,25 @@ def repeat_middle(actions: list[list[float]], repeats: int = 2) -> list[list[flo
     return actions[:mid] + [actions[mid]] * max(1, repeats) + actions[mid:]
 
 
+def repeat_at_fraction(actions: list[list[float]], *, fraction: float, repeats: int = 2) -> list[list[float]]:
+    if not actions:
+        return actions
+    index = min(max(0, int(round((len(actions) - 1) * fraction))), len(actions) - 1)
+    return actions[:index] + [actions[index]] * max(1, repeats) + actions[index:]
+
+
+def delete_at_fraction(actions: list[list[float]], *, fraction: float) -> list[list[float]]:
+    if len(actions) <= 1:
+        return actions
+    index = min(max(0, int(round((len(actions) - 1) * fraction))), len(actions) - 1)
+    return actions[:index] + actions[index + 1 :]
+
+
+def repeat_middle_drop_final(actions: list[list[float]], repeats: int = 2) -> list[list[float]]:
+    warped = repeat_middle(actions, repeats=repeats)
+    return warped[:-1] if len(warped) > 1 else warped
+
+
 def time_subsample_then_hold(actions: list[list[float]], stride: int = 2) -> list[list[float]]:
     if len(actions) <= 2:
         return actions
@@ -343,6 +362,32 @@ def perturb_contact_segment(actions: list[list[float]], *, scale: float = 0.08) 
     base = arr[start - 1].copy() if start > 0 else arr[0].copy()
     arr[start:, :6] = base[:6] + (arr[start:, :6] - base[:6]) * (1.0 + scale)
     arr[start:, 7:13] = base[7:13] + (arr[start:, 7:13] - base[7:13]) * (1.0 - scale)
+    return as_action_list(arr)
+
+
+def perturb_contact_offset(actions: list[list[float]], *, offset: float = 0.04, start_fraction: float = 0.55) -> list[list[float]]:
+    arr = action_matrix(actions).copy()
+    if len(arr) <= 2:
+        return as_action_list(arr)
+    start = max(0, int(len(arr) * start_fraction))
+    sign = np.ones((arr.shape[1],), dtype=float)
+    sign[1::2] = -1.0
+    sign[6] = 0.0
+    if arr.shape[1] > 13:
+        sign[13] = 0.0
+    arr[start:, :] = arr[start:, :] + offset * sign[: arr.shape[1]]
+    return as_action_list(arr)
+
+
+def gripper_contact_pulse(actions: list[list[float]], *, fraction: float = 0.6, width: int = 1) -> list[list[float]]:
+    arr = action_matrix(actions).copy()
+    if arr.shape[1] < 14 or len(arr) <= 1:
+        return as_action_list(arr)
+    center = min(max(0, int(round((len(arr) - 1) * fraction))), len(arr) - 1)
+    start = max(0, center - max(0, width // 2))
+    end = min(len(arr), start + max(1, width))
+    for gripper_col in (6, 13):
+        arr[start:end, gripper_col] = 1.0 - np.round(np.clip(arr[start:end, gripper_col], 0.0, 1.0))
     return as_action_list(arr)
 
 
@@ -376,11 +421,72 @@ def build_antitemplate_candidates(actions: list[list[float]]) -> list[CandidateS
     return candidates
 
 
+def build_targeted_hard_candidates(actions: list[list[float]]) -> list[CandidateSpec]:
+    candidates = build_antitemplate_candidates(actions)
+    if not actions:
+        return candidates
+    next_rank = max(candidate.rank for candidate in candidates) + 1
+    targeted = [
+        CandidateSpec(
+            "repeat_precontact",
+            next_rank,
+            repeat_at_fraction(actions, fraction=0.35, repeats=2),
+            "targeted_time_warp_negative_probe",
+        ),
+        CandidateSpec(
+            "repeat_contact_long",
+            next_rank + 1,
+            repeat_at_fraction(actions, fraction=0.6, repeats=4),
+            "targeted_time_warp_negative_probe",
+        ),
+        CandidateSpec(
+            "repeat_middle_drop_final",
+            next_rank + 2,
+            repeat_middle_drop_final(actions, repeats=2),
+            "targeted_time_warp_negative_probe",
+        ),
+        CandidateSpec(
+            "delete_contact_step",
+            next_rank + 3,
+            delete_at_fraction(actions, fraction=0.6),
+            "targeted_time_warp_negative_probe",
+        ),
+        CandidateSpec(
+            "contact_joint_perturb_strong",
+            next_rank + 4,
+            perturb_contact_segment(actions, scale=0.18),
+            "targeted_contact_negative_probe",
+        ),
+        CandidateSpec(
+            "contact_joint_offset_small",
+            next_rank + 5,
+            perturb_contact_offset(actions, offset=0.04, start_fraction=0.55),
+            "targeted_contact_negative_probe",
+        ),
+        CandidateSpec(
+            "gripper_contact_pulse",
+            next_rank + 6,
+            gripper_contact_pulse(actions, fraction=0.6, width=1),
+            "targeted_gripper_contact_negative_probe",
+        ),
+        CandidateSpec(
+            "gripper_contact_pulse_wide",
+            next_rank + 7,
+            gripper_contact_pulse(actions, fraction=0.6, width=2),
+            "targeted_gripper_contact_negative_probe",
+        ),
+    ]
+    candidates.extend(targeted)
+    return candidates
+
+
 def build_candidates(actions: list[list[float]], preset: str) -> list[CandidateSpec]:
     if preset == "default":
         return build_default_candidates(actions)
     if preset == "anti_template":
         return build_antitemplate_candidates(actions)
+    if preset == "targeted_hard":
+        return build_targeted_hard_candidates(actions)
     raise ValueError(f"unknown candidate preset: {preset}")
 
 
@@ -451,7 +557,7 @@ def main() -> None:
     parser.add_argument("--max-seeds", type=int)
     parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--skip-existing", action="store_true")
-    parser.add_argument("--candidate-preset", choices=["default", "anti_template"], default="default")
+    parser.add_argument("--candidate-preset", choices=["default", "anti_template", "targeted_hard"], default="default")
     args = parser.parse_args()
 
     instruction = args.instruction or args.task_name.replace("_", " ")

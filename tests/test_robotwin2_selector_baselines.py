@@ -136,6 +136,22 @@ class RoboTwin2SelectorBaselinesTest(unittest.TestCase):
         self.assertGreater(len(by_id["repeat_middle"].actions), len(actions))
         self.assertLess(len(by_id["stride2_hold_endpoint"].actions), len(actions))
 
+    def test_targeted_hard_candidate_preset_adds_near_neighbor_probes(self):
+        actions = [[float(step + dim) for dim in range(14)] for step in range(6)]
+        candidates = build_candidates(actions, "targeted_hard")
+        by_id = {candidate.candidate_id: candidate for candidate in candidates}
+        self.assertIn("repeat_contact_long", by_id)
+        self.assertIn("repeat_middle_drop_final", by_id)
+        self.assertIn("delete_contact_step", by_id)
+        self.assertIn("contact_joint_perturb_strong", by_id)
+        self.assertIn("gripper_contact_pulse", by_id)
+        self.assertEqual(by_id["repeat_contact_long"].candidate_source, "targeted_time_warp_negative_probe")
+        self.assertEqual(by_id["contact_joint_offset_small"].candidate_source, "targeted_contact_negative_probe")
+        self.assertEqual(by_id["gripper_contact_pulse"].candidate_source, "targeted_gripper_contact_negative_probe")
+        self.assertGreater(len(by_id["repeat_contact_long"].actions), len(actions))
+        self.assertEqual(len(by_id["delete_contact_step"].actions), len(actions) - 1)
+        self.assertEqual(len(by_id["gripper_contact_pulse"].actions), len(actions))
+
     def test_selector_failure_analysis_tracks_sources_after_remap(self):
         rows = []
         for row in self.rows:

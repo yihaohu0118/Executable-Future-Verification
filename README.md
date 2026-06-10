@@ -67,6 +67,10 @@ smoke has 15 cases and six candidates per case:
   `stack_blocks_two`, `open_laptop`, and `stamp_seal` now have rank0 0/15,
   oracle 15/15, diverse non-full successes 14/15, and matched low-DTW
   negatives 6/15. DTW is no longer oracle but remains strong at 13-13.5/15.
+- A follow-up `targeted_hard` preset adds contact-phase time warps,
+  contact-offset perturbations, and gripper-contact pulses. A `stamp_seal`
+  seed-0 smoke produced both nearby successes and nearby failures, which is the
+  setting needed to test whether selectors beat expert-template matching.
 
 The important control is that candidate-ID lookup collapses to 0/15 after
 anonymous remapping, while trace-based selectors remain above rank0 and simple
@@ -181,6 +185,9 @@ PYTHONPATH=/path/to/Executable-Future-Verification/src python -m umm_reward_eval
   --candidate-preset anti_template
 ```
 
+Use `--candidate-preset targeted_hard` for the newer near-neighbor
+success/failure probes.
+
 Run the local test suite:
 
 ```bash
@@ -196,7 +203,9 @@ PYTHONPATH=src python -m unittest discover -s tests
    timing, intermediate poses, or contact strategies.
 4. Add matched hard negatives: similar joint/gripper traces that fail because
    of contact direction, closing timing, or task constraints.
-5. Keep RoboWM-Bench as a world-model-specific diagnostic layer until its
+5. Scale the RoboTwin2 `targeted_hard` preset beyond the current one-case smoke
+   and compare against DTW/template baselines.
+6. Keep RoboWM-Bench as a world-model-specific diagnostic layer until its
    public evaluator ceiling is clarified.
 
 ## Rename Status

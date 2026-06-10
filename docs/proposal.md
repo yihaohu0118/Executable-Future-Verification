@@ -157,6 +157,15 @@ strong at 13-13.5/15, while the best compact phase/gripper prototype reaches
 anti-template pool exposes task-dependent contact/timing sensitivity and
 requires few-shot task/contact calibration.
 
+A new `targeted_hard` candidate preset is now the next reviewer-risk test. It
+adds contact-phase time warps, stronger/offset contact perturbations, and
+gripper-contact pulses around the failure sources found by selector analysis.
+On a one-case `stamp_seal` seed-0 smoke, it keeps rank0 at 0/1 and oracle at
+1/1 while producing both diverse non-full success and matched low-DTW failure
+cases. The useful observation is not the score itself; it is that very nearby
+trace edits split into successes and failures, which is the setting needed to
+test whether a verifier is doing more than expert-template matching.
+
 K-shot target-task calibration under the same anonymous remap protocol:
 
 | Selector | K=0 | K=1 | K=2 | K=4 |
@@ -218,6 +227,8 @@ Recommended contribution shape:
 - The new anti-template K=5 pool fixes most hard-positive coverage but not the
   strongest baseline problem. DTW is no longer oracle, but it is still close to
   the best selector.
+- The `targeted_hard` preset has only a one-case smoke so far. It must be
+  scaled before any claim about beating template matching is safe.
 - We have no real robot; the paper must be framed as executable-future
   verification in modern simulated/world-model benchmarks, not deployment.
 - RoboWM-Bench remains conceptually ideal, but current public-code friction
@@ -235,12 +246,16 @@ Recommended contribution shape:
    and learned binary/contrastive selector baselines.
 5. Keep `handover_block` as a one-seed bimanual mechanism example unless a
    fourth K=5 task is needed for breadth.
+6. Scale `--candidate-preset targeted_hard` from the current `stamp_seal`
+   seed-0 smoke to K=5, then decide whether it should replace or supplement the
+   anti-template main table.
 
 Implementation status: `robotwin2_gripper_aware_trace.py` now has an
 `--candidate-preset anti_template` mode that adds time-warp, gripper-timing,
 and contact-segment perturbation probes with explicit `candidate_source`
-metadata. The next remote run should use this preset and filter by official
-task success to discover real hard positives and matched hard negatives.
+metadata. It also has an experimental `--candidate-preset targeted_hard` mode
+for the near-neighbor success/failure pairs needed to test template-matching
+baselines.
 
 Latest remote result: see `docs/robotwin2_antitemplate_k5_results.md`. The next
 candidate-generation pass should make matched negatives harder, especially by

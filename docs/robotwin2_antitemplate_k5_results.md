@@ -137,6 +137,53 @@ The next anti-template pool should therefore add near-neighbor failures around
 successful time-warp candidates and contact perturbations, rather than adding
 more broad random perturbations.
 
+## Targeted-Hard Smoke
+
+A follow-up `--candidate-preset targeted_hard` mode was added to create
+near-neighbor probes around the failure sources above. It extends
+`anti_template` with:
+
+- contact-phase time warps: `repeat_precontact`, `repeat_contact_long`,
+  `repeat_middle_drop_final`, and `delete_contact_step`;
+- stronger and offset contact perturbations:
+  `contact_joint_perturb_strong` and `contact_joint_offset_small`;
+- gripper/contact pulses: `gripper_contact_pulse` and
+  `gripper_contact_pulse_wide`.
+
+Remote smoke:
+
+- task: `stamp_seal`;
+- config: `demo_clean_k5`;
+- seed: `0`;
+- output root: `/tmp/robotwin2_targeted_hard_smoke/`;
+- result: rank0 `0/1`, oracle `1/1`, diverse non-full success `1/1`,
+  matched low-DTW negative `1/1`.
+
+Candidate-source success in this smoke:
+
+| Candidate source | Success |
+| --- | ---: |
+| full_expert_trace | 1/1 |
+| time_warp_hard_positive_probe | 1/2 |
+| targeted_time_warp_negative_probe | 3/4 |
+| targeted_contact_negative_probe | 1/2 |
+| targeted_gripper_contact_negative_probe | 0/2 |
+| matched_contact_direction_negative_probe | 0/1 |
+| matched_gripper_timing_negative_probe | 0/2 |
+| suffix_truncation | 0/1 |
+| prefix_truncation | 0/1 |
+| first_action | 0/1 |
+| time_reverse | 0/1 |
+| noop | 0/1 |
+
+Detailed candidate outcomes show the desired near-neighbor structure:
+`repeat_precontact`, `repeat_contact_long`, `delete_contact_step`, and
+`contact_joint_offset_small` remain successful, while
+`repeat_middle_drop_final`, `contact_joint_perturb_strong`,
+`gripper_contact_pulse`, and `gripper_contact_pulse_wide` fail. This is still a
+one-case smoke, not a main-table result, but it confirms the new preset can
+generate mixed success/failure pairs near the expert trace.
+
 ## Current Interpretation
 
 This result is stronger than the previous RoboTwin2 smoke because it creates
@@ -144,4 +191,6 @@ real diverse successes and some matched failures. It is still not a finished
 main-table result because DTW and gripper-prototype baselines remain very
 strong. The next experiment should create harder matched negatives where
 joint/gripper DTW and gripper timing are close to successful trajectories but
-contact or task completion fails.
+contact or task completion fails. The `targeted_hard` smoke is the first pass
+at that next pool; the next remote run should scale it to K=5 before treating
+it as evidence.
