@@ -303,11 +303,31 @@ The next leakage question is whether the state-trace selector is simply reading 
 
 This is the most useful mechanism diagnostic so far. Removing `object-state` does not hurt; it slightly improves the mean. Robot-only traces recover 31.2/32, and even `robot0_proprio-state` alone recovers 30.2/32. In contrast, object low-dimensional keys alone collapse to 16/32, solving Pick and Microwave but failing Faucet and OpenCabinet. The remaining signal is therefore not just privileged object-state leakage. It appears to be encoded in the robot/eef/gripper rollout response, consistent with contact/execution feedback: when an energy-matched action is temporally or directionally wrong, the robot's realized state trajectory differs even if compact action statistics look similar.
 
+### n16 Random-Position Hard-Negative Scale-Up
+
+The fully regenerated random-position pool was then expanded from eight to sixteen target episodes per task by merging episodes 0-7 with newly generated episodes 8-15 under the same `random_nonzero` original-placement protocol. The merged benchmark has 64 hard-negative cases and 512 candidates. Every task has oracle 16/16 and rank0 0/16. The successful original action is always at a nonzero rank, with the same audited rank distribution for each task: rank 1 for three cases, rank 2 for one case, rank 4 for one case, rank 5 for four cases, rank 6 for one case, and rank 7 for six cases.
+
+Held-out selectors on the n16 fully regenerated random-position manifests:
+
+| Feature | Seeds | Overall success | Mean | Std |
+| --- | --- | ---: | ---: | ---: |
+| zero state control | 0,1,2,3,4 | 0,0,0,0,0 | 0.0 | 0.0 |
+| action-only endpoint-free stats | 0,1,2,3,4 | 29,30,29,28,26 | 28.4 | 1.36 |
+| object low-dimensional keys only | 0,1,2,3,4 | 31,31,31,31,31 | 31.0 | 0.0 |
+| `robot0_proprio-state` only | 0,1,2,3,4 | 62,64,63,62,64 | 63.0 | 0.89 |
+| all state keys | 0,1,2,3,4 | 63,63,63,63,63 | 63.0 | 0.0 |
+| state trace + endpoint-free action stats | 0,1,2,3,4 | 62,62,62,62,62 | 62.0 | 0.0 |
+| robot-only, excluding all object keys | 0,1,2,3,4 | 64,64,64,64,64 | 64.0 | 0.0 |
+
+The per-task split sharpens the mechanism. Object-only traces solve Pick almost perfectly and Microwave nearly perfectly, but get 0/16 on Faucet and OpenCabinet across all seeds. Robot-only traces get 16/16 on every task and every seed. Proprio-only traces are nearly saturated as well: 15-16/16 on Pick, Faucet, and OpenCabinet, and 16/16 on Microwave.
+
+Deterministic heuristics remain far below the state/contact result on the same 64 hard cases. The strongest heuristic is `planner_rank_max` at 24/64, which is a construction diagnostic because the successful original is often placed at high nonzero rank. The next best is `smoothness_min` at 11/64; energy and magnitude variants reach only 4-8/64. This rules out the ordinary no-demo shortcut where max action magnitude nearly matched the learned selector.
+
 ## Interpretation
 
 The current evidence supports this mechanism:
 
-> For action critics on RoboCasa365 replay candidates, temporal detail can be an anti-feature in ordinary no-demo pools: ordered first/last summaries overfit to endpoint artifacts, while endpoint-free action-envelope statistics preserve candidate-level action calibration better. But once action magnitude is matched, compact action-only summaries recover only limited signal; robot/proprio/eef rollout traces recover 30-31/32 on the n8 hard-negative pool, even after fully regenerating the pool with randomized original-candidate placement, so the next method should condition action adequacy on contact/execution feedback rather than action envelope or object-state shortcuts alone.
+> For action critics on RoboCasa365 replay candidates, temporal detail can be an anti-feature in ordinary no-demo pools: ordered first/last summaries overfit to endpoint artifacts, while endpoint-free action-envelope statistics preserve candidate-level action calibration better. But once action magnitude is matched, compact action-only summaries recover only limited signal; on the n16 fully regenerated hard-negative pool, action-only reaches 28.4/64 while robot-only rollout traces reach 64/64 and proprio-only reaches 63.0/64. The next method should condition action adequacy on robot/contact execution feedback rather than action envelope, temporal detail, or object-state shortcuts alone.
 
 This is a useful ICLR-style diagnostic because it contradicts the default assumption that more temporal structure is always better for action-conditioned evaluation.
 
@@ -325,7 +345,7 @@ The next method should not be "always shuffle actions." A safer direction is:
 ## Reviewer Caveats
 
 - Candidate generation is still replay perturbation, not a learned policy.
-- The strongest deterministic heuristic on ordinary no-demo pools is action magnitude; the energy-matched hard-negative pool shows that this shortcut collapses, and the n8 state-trace proxy shows that most of the remaining gap is recoverable from rollout state/context.
+- The strongest deterministic heuristic on ordinary no-demo pools is action magnitude; the energy-matched hard-negative pool shows that this shortcut collapses, and the n16 state-trace proxy shows that nearly all of the remaining gap is recoverable from robot/contact rollout state/context.
 - The action traces are sparse snapshots stored with stride 25, so this diagnostic does not rule out high-frequency temporal information.
-- The strongest current table uses four tasks and sixteen episodes per task. It is stronger than the original 32-case diagnostic, but still needs more RoboCasa365 tasks or a learned proposal source before becoming a headline benchmark table.
+- The strongest current table uses four tasks and sixteen episodes per task. It is stronger than the original 32-case diagnostic, and the n16 hard-negative result is now saturated for robot-only traces, but it still needs more RoboCasa365 tasks or a learned proposal source before becoming a headline benchmark table.
 - The shuffled controls should be presented as a warning against overclaiming temporal world modeling, not as proof that action order is irrelevant.
