@@ -323,11 +323,26 @@ The per-task split sharpens the mechanism. Object-only traces solve Pick almost 
 
 Deterministic heuristics remain far below the state/contact result on the same 64 hard cases. The strongest heuristic is `planner_rank_max` at 24/64, which is a construction diagnostic because the successful original is often placed at high nonzero rank. The next best is `smoothness_min` at 11/64; energy and magnitude variants reach only 4-8/64. This rules out the ordinary no-demo shortcut where max action magnitude nearly matched the learned selector.
 
+### Robot-Key Ablation
+
+The n16 result above still leaves a deployability question: `robot-only` contains both a broad `robot0_proprio-state` vector and explicit end-effector/gripper keys. A second n16 ablation isolates those signals:
+
+| Robot/contact keys | Seeds | Overall success | Mean | Std | Main failure pattern |
+| --- | --- | ---: | ---: | ---: | --- |
+| EEF/gripper, no proprio | 0,1,2,3,4 | 62,64,62,62,61 | 62.2 | 0.98 | OpenCabinet loses 1-3 cases |
+| EEF/gripper + object-to-EEF relative vector | 0,1,2,3,4 | 62,60,62,62,62 | 61.6 | 0.80 | OpenCabinet remains hardest |
+| EEF position + gripper | 0,1,2,3,4 | 63,62,62,62,61 | 62.0 | 0.63 | OpenCabinet and Microwave lose a few |
+| EEF position only | 0,1,2,3,4 | 60,61,60,61,60 | 60.4 | 0.49 | Pick/Microwave/Faucet lose 1-2 each |
+| EEF pose only | 0,1,2,3,4 | 63,60,62,60,60 | 61.0 | 1.26 | Small losses across all tasks |
+| gripper only | 0,1,2,3,4 | 45,43,40,46,45 | 43.8 | 2.14 | Microwave and Faucet lose most |
+
+This is the strongest anti-leakage evidence so far. A broad proprio vector is not necessary: explicit EEF and gripper traces without `robot0_proprio-state` still recover 62.2/64, nearly matching full state and state+action. EEF position alone recovers 60.4/64, far above the 28.4/64 action-only selector and the 31.0/64 object-only selector. Adding the object-to-EEF relative vector does not help. The signal therefore looks less like privileged object state and more like a compact execution trace: did the end effector actually move through the contact-relevant path, and did the gripper response match the intended interaction?
+
 ## Interpretation
 
 The current evidence supports this mechanism:
 
-> For action critics on RoboCasa365 replay candidates, temporal detail can be an anti-feature in ordinary no-demo pools: ordered first/last summaries overfit to endpoint artifacts, while endpoint-free action-envelope statistics preserve candidate-level action calibration better. But once action magnitude is matched, compact action-only summaries recover only limited signal; on the n16 fully regenerated hard-negative pool, action-only reaches 28.4/64 while robot-only rollout traces reach 64/64 and proprio-only reaches 63.0/64. The next method should condition action adequacy on robot/contact execution feedback rather than action envelope, temporal detail, or object-state shortcuts alone.
+> For action critics on RoboCasa365 replay candidates, temporal detail can be an anti-feature in ordinary no-demo pools: ordered first/last summaries overfit to endpoint artifacts, while endpoint-free action-envelope statistics preserve candidate-level action calibration better. But once action magnitude is matched, compact action-only summaries recover only limited signal; on the n16 fully regenerated hard-negative pool, action-only reaches 28.4/64 while robot-only rollout traces reach 64/64 and proprio-only reaches 63.0/64. A finer key ablation shows that EEF/gripper traces without the broad proprio vector still reach 62.2/64, and EEF position alone reaches 60.4/64. The next method should condition action adequacy on compact robot/contact execution feedback rather than action envelope, temporal detail, or object-state shortcuts alone.
 
 This is a useful ICLR-style diagnostic because it contradicts the default assumption that more temporal structure is always better for action-conditioned evaluation.
 
