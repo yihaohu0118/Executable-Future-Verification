@@ -298,7 +298,8 @@ The surprising part is the action calibration cliff:
 - Unordered pseudo-endpoints sharpen the mechanism. One stable permutation-derived endpoint pair gets 20,20,20/32 in four-task no-demo multitask evaluation, but four such pairs drop to 17,19,20/32. This is a useful negative result: adding more randomized endpoint evidence can hurt stability, so the method should learn when to trust temporal/detail features rather than simply add more of them.
 - Multiview calibration partially turns the diagnostic into a method. An outer-isolated logistic calibrator over one unordered endpoint view plus shuffled-time view reaches 21,20,20/32, compared with 22,19,19/32 for shuffled-time alone and 20,20,20/32 for unordered endpoints alone. Simple rank aggregation of the same views stays at 20,19,19/32, so the useful effect is learned stabilization rather than agreement voting.
 - The 64-case expansion changes the strongest mechanism. Bag action-envelope moments reach a 28.6/64 mean and one unordered endpoint pair reaches 27.4/64, both above shuffled-time at 25.2/64 and raw ordered summaries at 21.6/64. Endpoint-free stats without energy already reach 25.8/64, so removing brittle first/last endpoints is a major source of the gain; adding energy/envelope moments gives the best current result.
-- The deterministic max-absolute-action heuristic reaches 28/64 without training, nearly matching the learned bag critic. This is an important shortcut control, not a failure: it exposes a strong under-actuation bias in the conservative rank0 prior. The next candidate pool must include energy-matched hard negatives before the result can be framed as semantic action understanding.
+- The deterministic max-absolute-action heuristic reaches 28/64 without training, nearly matching the learned bag critic. This is an important shortcut control, not a failure: it exposes a strong under-actuation bias in the conservative rank0 prior.
+- Energy-matched hard negatives break the shortcut. On a four-task n4 stress pool, original demo actions succeed in 16/16, all time-reverse/roll/shuffle/block-swap/sign-flip corruptions fail, and magnitude/energy/smoothness heuristics fall to 0/16. Learned action-only selectors recover only 5-6/16 on average. This means the ordinary no-demo pool mostly tests under-actuation calibration, while the energy-matched pool exposes the remaining contact-timing and direction bottleneck.
 
 This suggests that for RoboCasa-style long-horizon manipulation, the failure mode may be less about generic action noise and more about systematic action-scale or temporal-completion errors. That is aligned with the failure-gated critic story: a useful critic should detect physically plausible but under-executed candidates, not just visually plausible endpoints.
 
@@ -312,7 +313,7 @@ This probe is not yet sufficient as a final benchmark result:
 - The largest randomized selector result so far uses sixteen episodes per task on four RoboCasa tasks. It is stronger than the original direction check, but still not enough for a final benchmark table without more tasks or a learned proposal source.
 - Current ranking prior is intentionally conservative and non-oracle; the next version should compare against an actual learned policy likelihood or BC proposal.
 - The no-demo Faucet result shows the current compact action statistic critic is not enough for articulated-fixture interaction. This is a weakness, but it is also the strongest evidence that the final method needs task-conditioned or contact-conditioned failure modeling.
-- The max-absolute-action heuristic is a strong baseline on the n16 pool. Future results must beat this heuristic on energy-matched candidates, not only beat rank0.
+- The max-absolute-action heuristic is a strong baseline on the n16 pool. Energy-matched candidates beat that shortcut, but current action-only selectors still leave a large oracle gap; future results need visual/contact conditioning, not just more action summaries.
 
 ## Next Experiment
 
@@ -321,8 +322,8 @@ The next fairer RoboCasa365 experiment should keep the same replay infrastructur
 1. Run more target episodes and multiple random seeds.
 2. Use original demo actions only as supervision or an oracle upper bound.
 3. Generate rank0 from a non-oracle policy score, likelihood score, or noisy BC model.
-4. Add harder controls that match action energy while changing direction or phase.
-5. Train/evaluate task-conditioned and contact-conditioned action critics under held-out episodes.
+4. Scale the energy-matched hard-negative pool beyond n4 and randomize original-candidate position for rank-based leakage checks.
+5. Train/evaluate task-conditioned, visual-conditioned, and contact-conditioned action critics under held-out episodes.
 6. Report:
    - rank0 success
    - oracle-best success

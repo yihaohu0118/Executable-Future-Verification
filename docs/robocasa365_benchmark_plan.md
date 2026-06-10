@@ -34,7 +34,7 @@ Status:
 
 - LIBERO clone was removed from the remote machine.
 - A fresh check found no legacy benchmark installs under `/home/yihao_hyh/benchmarks`; only RoboCasa365 and its required robosuite dependency remain.
-- The newly installed VideoZeroBench side track was removed from dev2 because the current benchmark evidence is restricted to 2025-2026 robotics benchmarks.
+- VideoZeroBench is inactive for this project because the current benchmark evidence is restricted to 2025-2026 robotics benchmarks. Its data/cache should not be deleted when present; keep it separate from the active RoboCasa365 setup.
 - RoboCasa kitchen/object assets are being downloaded.
 - RoboCasa kitchen/object assets finished downloading and extracting.
 - Reset/step smoke succeeds for `PickPlaceCounterToCabinet`, `PickPlaceCounterToSink`, `CloseCabinet`, and `TurnOnSinkFaucet` on `split=target`.

@@ -106,6 +106,46 @@ def random_profiles(
     return tuple(profiles)
 
 
+def energy_matched_profiles(
+    actions: np.ndarray,
+    *,
+    episode_index: int,
+    num_candidates: int,
+    include_original: bool,
+) -> tuple[ActionProfile, ...]:
+    raw_profiles = [
+        ActionProfile("raw_time_reverse", 0, "time_reverse"),
+        ActionProfile("raw_time_roll_25", 1, "time_roll", seed_offset=25),
+        ActionProfile("raw_time_roll_50", 2, "time_roll", seed_offset=50),
+        ActionProfile("raw_time_shuffle", 3, "time_shuffle", seed_offset=3),
+        ActionProfile("raw_block_swap", 4, "block_swap"),
+        ActionProfile("raw_flip_xyz", 5, "sign_flip_xyz"),
+        ActionProfile("raw_flip_gripper", 6, "sign_flip_gripper"),
+    ]
+    if include_original:
+        raw_profiles.append(ActionProfile("raw_demo_original", 7, "original"))
+    raw_profiles = raw_profiles[:num_candidates]
+    if include_original and all(profile.kind != "original" for profile in raw_profiles):
+        raw_profiles[-1] = ActionProfile("raw_demo_original", len(raw_profiles) - 1, "original")
+
+    profiles = []
+    for rank, raw_profile in enumerate(raw_profiles):
+        transformed = transform_actions(actions, raw_profile, case_seed=episode_index)
+        profiles.append(
+            ActionProfile(
+                candidate_id=f"cand_{rank:02d}",
+                rank=rank,
+                kind=raw_profile.kind,
+                scale=raw_profile.scale,
+                noise_std=raw_profile.noise_std,
+                truncate_frac=raw_profile.truncate_frac,
+                seed_offset=raw_profile.seed_offset,
+                prior_score=conservative_prior_score(transformed),
+            )
+        )
+    return tuple(profiles)
+
+
 def _import_robocasa_playback() -> tuple[Any, Any, Any]:
     import robosuite  # noqa: F401
     import robocasa  # noqa: F401
@@ -186,6 +226,23 @@ def transform_actions(
         keep = max(1, int(round(len(transformed) * profile.truncate_frac)))
         transformed[keep:] = 0.0
         return transformed
+    if profile.kind == "time_reverse":
+        return transformed[::-1].copy()
+    if profile.kind == "time_roll":
+        shift = max(1, int(round(len(transformed) * (profile.seed_offset / 100.0))))
+        return np.roll(transformed, shift=shift, axis=0)
+    if profile.kind == "time_shuffle":
+        rng = np.random.default_rng(case_seed + profile.seed_offset)
+        return transformed[rng.permutation(len(transformed))]
+    if profile.kind == "block_swap":
+        midpoint = max(1, len(transformed) // 2)
+        return np.concatenate([transformed[midpoint:], transformed[:midpoint]], axis=0)
+    if profile.kind == "sign_flip_xyz":
+        transformed[:, :3] *= -1.0
+        return transformed
+    if profile.kind == "sign_flip_gripper":
+        transformed[:, -1] *= -1.0
+        return transformed
     raise ValueError(f"unknown profile kind: {profile.kind}")
 
 
@@ -264,17 +321,23 @@ def build_pool(
             initial_state = _initial_state(dataset, episode_index)
             instruction = _episode_instruction(dataset, episode_index)
             case_id = f"{task_name}:ep_{episode_index:04d}"
-            case_profiles = (
-                random_profiles(
+            if profile_mode == "random":
+                case_profiles = random_profiles(
                     actions,
                     episode_index=episode_index,
                     num_candidates=num_candidates,
                     seed=seed,
                     include_original=include_original,
                 )
-                if profile_mode == "random"
-                else profiles
-            )
+            elif profile_mode == "energy_matched":
+                case_profiles = energy_matched_profiles(
+                    actions,
+                    episode_index=episode_index,
+                    num_candidates=num_candidates,
+                    include_original=include_original,
+                )
+            else:
+                case_profiles = profiles
             for profile in case_profiles:
                 print(
                     f"[robocasa_demo_pool] episode={episode_index} candidate={profile.candidate_id}",
@@ -334,7 +397,7 @@ def build_pool(
             "dataset": str(dataset),
             "profile_mode": profile_mode,
             "start_episode": start_episode,
-            "num_profiles": num_candidates if profile_mode == "random" else len(profiles),
+            "num_profiles": num_candidates if profile_mode in {"random", "energy_matched"} else len(profiles),
             "include_original": include_original,
             "ranking_prior": "conservative_action_energy",
         }
@@ -349,7 +412,7 @@ def main() -> None:
     parser.add_argument("--suite", default="target-human")
     parser.add_argument("--start-episode", type=int, default=0)
     parser.add_argument("--num-episodes", type=int, default=5)
-    parser.add_argument("--profile-mode", choices=["fixed", "random"], default="fixed")
+    parser.add_argument("--profile-mode", choices=["fixed", "random", "energy_matched"], default="fixed")
     parser.add_argument("--num-candidates", type=int, default=8)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--exclude-original", action="store_true")

@@ -13,7 +13,7 @@ Each candidate row is JSONL:
 
 | Field | Required | Meaning |
 | --- | --- | --- |
-| `benchmark` | yes | `robocasa365`, `maniskill3`, or another 2025-2026 benchmark id |
+| `benchmark` | yes | `robocasa365` or another active 2025-2026 benchmark id |
 | `suite` | yes | Suite or environment id, such as `PickCube-v1` |
 | `task_name` | yes | Human-readable task id |
 | `case_id` | yes | Initial-state / instruction / goal id |
@@ -36,9 +36,11 @@ The helper module `umm_reward_evaluator.benchmarks.common` provides row serializ
 | Priority | Benchmark | Why | Main risk |
 | ---: | --- | --- | --- |
 | 1 | RoboCasa365 | 2026 household manipulation benchmark, broad task diversity, official success labels, target split demonstrations | Need non-oracle candidate source beyond replay perturbations |
-| 2 | ManiSkill3 | Recognized manipulation suite, Gymnasium API, built-in success flags, GPU-parallel execution | Useful as mechanism control, but less current than RoboCasa365 for the headline |
-| 3 | RoboTwin 2.0 / benchmark-audit stress tests | Current manipulation stress-test direction for shortcut and statistical-significance claims | Setup and policy sources still need verification |
-| 4 | RoboMIND 2.0 | 2025 multi-embodiment manipulation data layer | Primarily dataset/offline evaluation unless simulator execution is available |
+| 2 | RoboTwin 2.0 / benchmark-audit stress tests | Current manipulation stress-test direction for shortcut and statistical-significance claims | Setup and policy sources still need verification |
+| 3 | RoboMIND 2.0 | 2025 multi-embodiment manipulation data layer | Primarily dataset/offline evaluation unless simulator execution is available |
+| 4 | RoboWM-Bench / MiraBench / RoboTrustBench | 2026 world-model and robotic reliability diagnostics | Need exact protocol mapping to executable candidate selection |
+
+Archived diagnostics such as PushT and ManiSkill can remain in the repository as mechanism-discovery controls, but they should not be reported as the main ICLR benchmark evidence for the current story.
 
 ## Required Evidence
 

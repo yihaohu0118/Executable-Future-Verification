@@ -2,20 +2,24 @@
 
 ## Current Claim
 
-The strongest PushT-100 result is not "a learned world score is globally better." The more defensible claim is:
+The active ICLR evidence is restricted to 2025-2026 robotics benchmarks. Older PushT and ManiSkill diagnostics are now archived as mechanism-discovery notes only; they should not be used as headline benchmark evidence.
 
-> Temporal visual progress is a strong anchor, and a trained action-world critic helps when it is used as a failure override rather than as a global replacement.
+The current RoboCasa365 claim is sharper and more defensible:
 
-Current PushT-100 numbers:
+> A conservative manipulation prior is often under-actuated. Endpoint-free action-envelope calibration recovers many failures, but its deterministic magnitude shortcut collapses under energy-matched hard negatives; the useful method must therefore separate action adequacy from action magnitude.
 
-| Setting | Mean state dist | Oracle match |
-| --- | ---: | ---: |
-| NanoWM rank0 | 190.9580 | 21/100 |
-| Static DINO mean | 179.5808 | 33/100 |
-| Static DINO progress | 181.1198 | 41/100 |
-| ActionWorld e200 | 178.8655 | 39/100 |
-| Static DINO progress + ActionWorld failure gate | 177.3960 | 43/100 |
-| Oracle-best CEM | 157.4419 | 100/100 |
+Current 2026 RoboCasa365 numbers:
+
+| Setting | Success |
+| --- | ---: |
+| Rank0 conservative replay prior | 0/64 |
+| Oracle-best no-demo candidate | 41/64 |
+| Raw ordered action selector, mean over 5 seeds | 21.6/64 |
+| Shuffled-time action selector, mean over 5 seeds | 25.2/64 |
+| Endpoint-free stats selector, mean over 5 seeds | 25.8/64 |
+| One unordered endpoint pair, mean over 5 seeds | 27.4/64 |
+| Bag action-envelope selector, mean over 5 seeds | 28.6/64 |
+| Deterministic max mean-absolute-action heuristic | 28/64 |
 
 ## 2025-2026 External-Benchmark Plan
 
@@ -23,8 +27,9 @@ Scope gate:
 
 - Active benchmark evidence must come from 2025-2026 benchmarks.
 - Legacy suites such as LIBERO, CALVIN, D4RL, PointMaze, and older tabletop-only diagnostics are no longer acceptable as main ICLR evidence.
-- Recently installed benchmark attempts that do not pass this scope gate should be removed from the remote machine rather than kept as side tracks.
-- As of the latest remote cleanup, the newly installed VideoZeroBench environment, project directory, and downloaded data shards were removed. The active remote benchmark setup is RoboCasa365 plus its required robosuite dependency.
+- Recently installed benchmark attempts that do not pass this scope gate should be marked inactive rather than kept as active side tracks.
+- VideoZeroBench is not part of the active ICLR benchmark stack because it is outside the current robotics benchmark scope. Do not delete its training/data cache when it already exists; keep it available for unrelated video-reasoning work or later restoration.
+- The active remote robotics benchmark setup is RoboCasa365 plus its required robosuite dependency.
 
 ### 1. RoboCasa365 First
 
@@ -61,6 +66,7 @@ Local finding on the remote machine:
 - Multiview temporal-dropout calibrator: an outer-isolated meta selector over one unordered endpoint-dropout view plus a shuffled-time view recovers 21,20,20/32, compared with 22,19,19/32 for shuffled-time alone and 20,20,20/32 for unordered endpoints alone. Simple rank aggregation of the same two views stays at 20,19,19/32, so the effect is learned stabilization rather than naive agreement voting.
 - Expanded n16 result: four tasks were expanded to sixteen target episodes per task, giving 64 no-demo cases with oracle-best 41/64 and rank0 0/64. Across five seeds, raw ordered statistics recover 21.6/64 on average, shuffled-time recovers 25.2/64, endpoint-free stats recover 25.8/64, one unordered endpoint pair recovers 27.4/64, and bag action-envelope moments recover 28.6/64. This supersedes the small-sample shuffle story: the stronger mechanism is endpoint-free action-envelope calibration.
 - Deterministic heuristic control: max mean absolute action recovers 28/64 without training, nearly matching the learned bag critic. This exposes the main shortcut risk and the main paper opportunity: the conservative policy prior is under-actuated, and action-envelope calibration fixes that prior surprisingly well. The next evidence layer must use energy-matched hard negatives to show whether the critic understands more than action magnitude.
+- Energy-matched hard-negative control: on four tasks with four target episodes each, original demonstration actions succeed in 16/16 while time-reverse, temporal-roll, time-shuffle, block-swap, xyz-flip, and gripper-flip corruptions all fail. Magnitude/energy/smoothness heuristics collapse to 0/16. Learned action-only selectors recover only 5-6/16 on average, with endpoint-free stats at 6.2/16 and shuffled-time at 6.0/16. This is the strongest current evidence that action-envelope calibration is useful for under-actuation but insufficient for contact-timing correctness without visual/contact context.
 
 First RoboCasa365 milestone:
 
@@ -73,7 +79,7 @@ First RoboCasa365 milestone:
 
 ### 2. Newer Complementary Benchmarks Only
 
-Do not spend more setup time on legacy LIBERO, CALVIN, D4RL, or PointMaze for the main ICLR evidence. They can be cited as background, but they are not the benchmark target for the current story.
+Do not spend more setup time on legacy LIBERO, CALVIN, D4RL, PointMaze, PushT, or ManiSkill for the main ICLR evidence. They can be cited as background or internal mechanism probes, but they are not benchmark targets for the current story.
 
 Use newer benchmark layers only after RoboCasa365 has a stronger table:
 
@@ -83,10 +89,10 @@ Use newer benchmark layers only after RoboCasa365 has a stronger table:
 
 ## Reviewer-Facing Minimum Bar
 
-The paper-quality result should not be framed as "we improve PushT." The target claim should be:
+The paper-quality result should not be framed as "we improve PushT" or "we solve a legacy tabletop diagnostic." The target claim should be:
 
-1. PushT-100 shows the mechanism under NanoWM/CEM planning.
-2. RoboCasa365 shows the same failure-gated mechanism transfers to a current kitchen-manipulation benchmark with strong 2025-2026 relevance.
+1. RoboCasa365 shows a recoverable failure mode on a current 2026 kitchen-manipulation benchmark.
+2. Energy-matched hard negatives show that action magnitude is a real shortcut and that current action-only selectors recover only limited temporal/contact signal after the shortcut is removed.
 3. Any second benchmark must pass the 2025-2026 scope gate and add stress-test value beyond RoboCasa365, rather than serving as an easier legacy control.
 
 The key ablation is whether the trained action-world critic helps only when used as a gated override. If global ActionWorld is worse than static progress but the gate is better, that is a stronger and more counterintuitive story.
