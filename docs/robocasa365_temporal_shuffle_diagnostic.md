@@ -367,11 +367,29 @@ For EEF position plus gripper (`robot0_base_to_eef_pos`, `robot0_eef_pos`, `robo
 
 This is a sharper counterintuitive result than the original robot-only table. The successful signal is not final EEF location, start/end displacement, or average step size. Removing endpoints and keeping distributional execution-envelope statistics preserves almost all performance, and for EEF position plus gripper, distribution-only statistics slightly outperform the full summary. The critic appears to detect whether the realized robot trajectory occupied the right contact-relevant workspace, not whether it ended at a particular pose.
 
+### Non-Neural Prototype Control
+
+To test whether the EEF/gripper distribution result requires a neural selector, a non-neural prototype baseline was added in `score_state_trace_prototype_selector.py`. For each held-out case, it computes normalized execution-envelope features, builds simple prototypes from all other cases, and selects the candidate closest to successful prototypes or farthest from negative prototypes.
+
+On EEF position plus gripper distribution features:
+
+| Prototype scope/mode | Overall success | By task |
+| --- | ---: | --- |
+| same-task positive centroid | 57/64 | OpenCabinet 14, Pick 16, Microwave 12, Faucet 15 |
+| same-task positive-vs-negative centroid | 58/64 | OpenCabinet 11, Pick 16, Microwave 15, Faucet 16 |
+| same-task nearest positive | 59/64 | OpenCabinet 12, Pick 16, Microwave 16, Faucet 15 |
+| all-task positive centroid | 21/64 | OpenCabinet 4, Pick 9, Microwave 4, Faucet 4 |
+| all-task positive-vs-negative centroid | 23/64 | OpenCabinet 0, Pick 12, Microwave 1, Faucet 10 |
+| all-task nearest positive | 48/64 | OpenCabinet 12, Pick 11, Microwave 14, Faucet 11 |
+| task-head MLP, same features | 64,64,64,63,63/64 | Mean 63.6/64 |
+
+The prototype result is useful in both directions. Same-task nearest-positive matching already recovers 59/64, so a large part of the effect is a simple execution-envelope similarity signal rather than model capacity. But all-task prototypes collapse, and the task-head MLP recovers 63.6/64, so the final method should not be a global distance threshold. It needs task/contact-regime conditioning over compact execution-envelope evidence.
+
 ## Interpretation
 
 The current evidence supports this mechanism:
 
-> For action critics on RoboCasa365 replay candidates, temporal detail can be an anti-feature in ordinary no-demo pools: ordered first/last summaries overfit to endpoint artifacts, while endpoint-free action-envelope statistics preserve candidate-level action calibration better. But once action magnitude is matched, compact action-only summaries recover only limited signal; on the n16 fully regenerated hard-negative pool, action-only reaches 28.4/64 while robot-only rollout traces reach 64/64 and proprio-only reaches 63.0/64. A finer key ablation shows that EEF/gripper traces without the broad proprio vector still reach 62.2/64, and an EEF summary ablation shows that endpoint-free distributional execution envelopes reach 63.4-63.6/64 while endpoint-only summaries stay near 33-43/64. The next method should condition action adequacy on compact robot/contact execution-envelope feedback rather than action envelope, temporal detail, endpoint state, or object-state shortcuts alone.
+> For action critics on RoboCasa365 replay candidates, temporal detail can be an anti-feature in ordinary no-demo pools: ordered first/last summaries overfit to endpoint artifacts, while endpoint-free action-envelope statistics preserve candidate-level action calibration better. But once action magnitude is matched, compact action-only summaries recover only limited signal; on the n16 fully regenerated hard-negative pool, action-only reaches 28.4/64 while robot-only rollout traces reach 64/64 and proprio-only reaches 63.0/64. A finer key ablation shows that EEF/gripper traces without the broad proprio vector still reach 62.2/64, and an EEF summary ablation shows that endpoint-free distributional execution envelopes reach 63.4-63.6/64 while endpoint-only summaries stay near 33-43/64. Non-neural same-task prototype matching reaches 59/64, but all-task prototypes are much weaker, so the next method should condition action adequacy on compact, task-aware robot/contact execution-envelope feedback rather than action envelope, temporal detail, endpoint state, or object-state shortcuts alone.
 
 This is a useful ICLR-style diagnostic because it contradicts the default assumption that more temporal structure is always better for action-conditioned evaluation.
 
