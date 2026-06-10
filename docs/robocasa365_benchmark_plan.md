@@ -52,6 +52,7 @@ Status:
 - Unordered permutation-endpoint features add a cleaner counterfactual to the shuffle diagnostic. A single stable unordered endpoint pair recovers 20,20,20/32 in four-task no-demo multitask evaluation, while four unordered pairs recover 17,19,20/32 without length and 16,20,19/32 with length. This suggests endpoint dropout is useful, but adding more pseudo-endpoints can destabilize small-data calibration.
 - A multiview temporal-dropout calibrator gives the cleanest method-shaped four-task no-demo result so far: one unordered endpoint view plus shuffled-time view, combined by an outer-isolated logistic calibrator, recovers 21,20,20/32. Simple rank aggregation of the same views recovers only 20,19,19/32, so the effect is learned stabilization rather than naive voting.
 - The expanded n16 table is now the strongest evidence layer. With sixteen episodes per task, oracle-best is 41/64 and rank0 is 0/64. Over five seeds, raw ordered summaries recover 21.6/64 on average, shuffled-time recovers 25.2/64, endpoint-free stats recover 25.8/64, one unordered endpoint pair recovers 27.4/64, and bag action-envelope moments recover 28.6/64. This makes endpoint-free action-envelope calibration the current best method-shaped result.
+- A deterministic max-absolute-action heuristic recovers 28/64 on the same n16 pool without training. This is nearly tied with the learned bag critic and shows the current candidate pool is partly an under-actuation diagnostic. Future tables must include this heuristic and add energy-matched hard negatives.
 
 ## Smoke Command
 
@@ -125,4 +126,5 @@ The key evidence is a consistent gap:
 - shuffle-robust calibration can be stronger than preserving true temporal endpoints in the current small-data regime;
 - endpoint-free action-envelope calibration is stronger than raw ordered summaries, shuffled-time diagnostics, and endpoint dropout on the expanded 64-case table;
 - endpoint-dropout remains a useful second-best mechanism and supports the claim that brittle first/last anchors are harmful;
+- deterministic action magnitude is a strong baseline, so the next benchmark layer must test energy-matched alternatives rather than only low-energy rank0 failures;
 - a failure-gated critic recovers hard cases with less damage to easy cases.

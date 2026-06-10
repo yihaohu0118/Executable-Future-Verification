@@ -268,6 +268,16 @@ The n16 manifests merge the original eight target episodes with newly generated 
 | Shuffled-time action statistics | per-task head | 0,1,2,3,4 | 26,24,25,25,26 / 64 | 25.2 | 5.6 | 7.4 | 7.2 | 5.0 | 41/64 |
 | Multiview meta: one unordered endpoint + shuffled-time | per-task head | 0,1,2 | 26,25,24 / 64 | 25.0 | 5.7 | 7.3 | 7.0 | 5.0 | 41/64 |
 
+Deterministic n16 heuristic controls:
+
+| Heuristic | Overall success | Pick | Faucet | OpenCabinet | Microwave |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Max mean absolute action | 28/64 | 6/16 | 8/16 | 8/16 | 6/16 |
+| Max sum action energy | 27/64 | 6/16 | 7/16 | 7/16 | 7/16 |
+| Max action energy | 26/64 | 7/16 | 6/16 | 6/16 | 7/16 |
+| Max planner rank / lowest conservative prior | 26/64 | 7/16 | 5/16 | 6/16 | 8/16 |
+| Min action energy / rank0-style prior | 0/64 | 0/16 | 0/16 | 0/16 | 0/16 |
+
 ## Observation
 
 The surprising part is the action calibration cliff:
@@ -288,6 +298,7 @@ The surprising part is the action calibration cliff:
 - Unordered pseudo-endpoints sharpen the mechanism. One stable permutation-derived endpoint pair gets 20,20,20/32 in four-task no-demo multitask evaluation, but four such pairs drop to 17,19,20/32. This is a useful negative result: adding more randomized endpoint evidence can hurt stability, so the method should learn when to trust temporal/detail features rather than simply add more of them.
 - Multiview calibration partially turns the diagnostic into a method. An outer-isolated logistic calibrator over one unordered endpoint view plus shuffled-time view reaches 21,20,20/32, compared with 22,19,19/32 for shuffled-time alone and 20,20,20/32 for unordered endpoints alone. Simple rank aggregation of the same views stays at 20,19,19/32, so the useful effect is learned stabilization rather than agreement voting.
 - The 64-case expansion changes the strongest mechanism. Bag action-envelope moments reach a 28.6/64 mean and one unordered endpoint pair reaches 27.4/64, both above shuffled-time at 25.2/64 and raw ordered summaries at 21.6/64. Endpoint-free stats without energy already reach 25.8/64, so removing brittle first/last endpoints is a major source of the gain; adding energy/envelope moments gives the best current result.
+- The deterministic max-absolute-action heuristic reaches 28/64 without training, nearly matching the learned bag critic. This is an important shortcut control, not a failure: it exposes a strong under-actuation bias in the conservative rank0 prior. The next candidate pool must include energy-matched hard negatives before the result can be framed as semantic action understanding.
 
 This suggests that for RoboCasa-style long-horizon manipulation, the failure mode may be less about generic action noise and more about systematic action-scale or temporal-completion errors. That is aligned with the failure-gated critic story: a useful critic should detect physically plausible but under-executed candidates, not just visually plausible endpoints.
 
@@ -301,6 +312,7 @@ This probe is not yet sufficient as a final benchmark result:
 - The largest randomized selector result so far uses sixteen episodes per task on four RoboCasa tasks. It is stronger than the original direction check, but still not enough for a final benchmark table without more tasks or a learned proposal source.
 - Current ranking prior is intentionally conservative and non-oracle; the next version should compare against an actual learned policy likelihood or BC proposal.
 - The no-demo Faucet result shows the current compact action statistic critic is not enough for articulated-fixture interaction. This is a weakness, but it is also the strongest evidence that the final method needs task-conditioned or contact-conditioned failure modeling.
+- The max-absolute-action heuristic is a strong baseline on the n16 pool. Future results must beat this heuristic on energy-matched candidates, not only beat rank0.
 
 ## Next Experiment
 

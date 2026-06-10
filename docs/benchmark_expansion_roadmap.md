@@ -60,14 +60,16 @@ Local finding on the remote machine:
 - Permutation-endpoint counterfactual: a single stable unordered pseudo-endpoint pair recovers 20,20,20/32 in four-task no-demo multitask evaluation. Using four unordered pairs is less stable at 17,19,20/32 without length and 16,20,19/32 with length. This gives a sharper story than "more temporal features help": a small amount of endpoint dropout helps calibration, but extra pseudo-temporal evidence can overfit.
 - Multiview temporal-dropout calibrator: an outer-isolated meta selector over one unordered endpoint-dropout view plus a shuffled-time view recovers 21,20,20/32, compared with 22,19,19/32 for shuffled-time alone and 20,20,20/32 for unordered endpoints alone. Simple rank aggregation of the same two views stays at 20,19,19/32, so the effect is learned stabilization rather than naive agreement voting.
 - Expanded n16 result: four tasks were expanded to sixteen target episodes per task, giving 64 no-demo cases with oracle-best 41/64 and rank0 0/64. Across five seeds, raw ordered statistics recover 21.6/64 on average, shuffled-time recovers 25.2/64, endpoint-free stats recover 25.8/64, one unordered endpoint pair recovers 27.4/64, and bag action-envelope moments recover 28.6/64. This supersedes the small-sample shuffle story: the stronger mechanism is endpoint-free action-envelope calibration.
+- Deterministic heuristic control: max mean absolute action recovers 28/64 without training, nearly matching the learned bag critic. This exposes the main shortcut risk and the main paper opportunity: the conservative policy prior is under-actuated, and action-envelope calibration fixes that prior surprisingly well. The next evidence layer must use energy-matched hard negatives to show whether the critic understands more than action magnitude.
 
 First RoboCasa365 milestone:
 
 1. Replace the intentionally brittle replay rank0 with a non-oracle policy score, likelihood score, or noisy BC proposal.
 2. Randomize scale, noise, truncation, and temporal warp per episode so candidate identity is not sufficient.
 3. Add endpoint-free action-envelope, endpoint-dropout, shuffle-robust, and task/contact-conditioned calibration features that can separate Faucet-style fixture interaction from easier pick-place and cabinet-opening action statistics.
-4. Train the same compact action critic and failure gate used in the diagnostic pipeline.
-5. Report rank0 success, oracle-best success, gated success, and hard-case recovery on target split tasks.
+4. Add energy-matched hard negatives so max-action-magnitude cannot solve the benchmark.
+5. Train the same compact action critic and failure gate used in the diagnostic pipeline.
+6. Report rank0 success, oracle-best success, deterministic magnitude heuristic success, gated success, and hard-case recovery on target split tasks.
 
 ### 2. Newer Complementary Benchmarks Only
 

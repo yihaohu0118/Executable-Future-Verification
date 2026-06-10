@@ -230,7 +230,7 @@ The common framing is to build a stronger planner, larger world model, or global
 - a trained proposal can rank likely samples well while still missing physical execution failures that a rollout critic detects;
 - the critic can recover failures caused by small action-geometry mistakes;
 - action/video signals can expose failure even when the candidate appears plausible;
-- in the current slice, temporal order is not just less important than expected; on the expanded 64-case RoboCasa365 table, endpoint-free action-envelope moments outperform raw ordered summaries, shuffled-time diagnostics, and endpoint-dropout views.
+- in the current slice, temporal order is not just less important than expected; on the expanded 64-case RoboCasa365 table, endpoint-free action-envelope moments outperform raw ordered summaries, shuffled-time diagnostics, and endpoint-dropout views, while a deterministic max-absolute-action heuristic nearly matches the learned critic.
 
 ## Current Weaknesses
 
@@ -238,21 +238,24 @@ These must be addressed before this is paper-ready:
 
 1. Current RoboCasa365 candidates still use a conservative replay prior rather than a learned policy likelihood.
 2. Current video/action selectors may exploit candidate-family regularities.
-3. Current phenomenon does not prove temporal world modeling because shuffle-time controls remain strong.
-4. Need a full low-level policy-generated candidate source or official benchmark demonstrations for external validity.
-5. Need a harder fusion benchmark because current action/video critics each solve the slice independently.
-6. Need uncertainty-aware gate calibration; mixed-rank settings can make a conservative gate preserve a failing rank0.
-7. The benchmark stack must stay inside the 2025-2026 robotics window; the newly installed VideoZeroBench side track was removed and should not become part of the active ICLR evidence.
+3. Deterministic action magnitude is a strong baseline: max mean absolute action reaches 28/64 without training, nearly matching the learned bag critic.
+4. Current phenomenon does not prove temporal world modeling because endpoint-free and magnitude-only controls remain strong.
+5. Need energy-matched hard negatives before claiming semantic action understanding.
+6. Need a full low-level policy-generated candidate source or official benchmark demonstrations for external validity.
+7. Need a harder fusion benchmark because current action/video critics each solve the slice independently.
+8. Need uncertainty-aware gate calibration; mixed-rank settings can make a conservative gate preserve a failing rank0.
+9. The benchmark stack must stay inside the 2025-2026 robotics window; the newly installed VideoZeroBench side track was removed and should not become part of the active ICLR evidence.
 
 ## Next Experiments
 
 Priority order:
 
 1. Make RoboCasa365 the headline benchmark layer and scale beyond the current four-task probe.
-2. Scale the endpoint-free action-envelope critic for the Faucet/Microwave gap: in the expanded 64-case no-demo table, oracle-best is 41/64, raw ordered summaries average 21.6/64, shuffled-time averages 25.2/64, endpoint-free stats average 25.8/64, one unordered endpoint pair averages 27.4/64, and bag action-envelope moments average 28.6/64.
-3. Replace the diagnostic replay prior with BC/diffusion-policy top-k samples where a 2025-2026 benchmark provides usable policy or demonstration sources.
-4. Add uncertainty-aware calibration to the gate and evaluate under mixed proposal qualities.
-5. Use only verified 2025-2026 robotics benchmarks as the next layer, such as RoboTwin 2.0, RoboMIND 2.0, or 2026 robotic world-model diagnostics; do not make legacy LIBERO/CALVIN/D4RL or unrelated side tracks part of the main evidence.
+2. Scale the endpoint-free action-envelope critic for the Faucet/Microwave gap: in the expanded 64-case no-demo table, oracle-best is 41/64, raw ordered summaries average 21.6/64, shuffled-time averages 25.2/64, endpoint-free stats average 25.8/64, one unordered endpoint pair averages 27.4/64, bag action-envelope moments average 28.6/64, and max mean absolute action reaches 28/64 without training.
+3. Build energy-matched hard negatives where action magnitude is held fixed but action direction, phase, or contact timing is wrong.
+4. Replace the diagnostic replay prior with BC/diffusion-policy top-k samples where a 2025-2026 benchmark provides usable policy or demonstration sources.
+5. Add uncertainty-aware calibration to the gate and evaluate under mixed proposal qualities.
+6. Use only verified 2025-2026 robotics benchmarks as the next layer, such as RoboTwin 2.0, RoboMIND 2.0, or 2026 robotic world-model diagnostics; do not make legacy LIBERO/CALVIN/D4RL or unrelated side tracks part of the main evidence.
 
 ## Implemented Files
 
@@ -260,6 +263,7 @@ Priority order:
 - `src/umm_reward_evaluator/benchmarks/train_action_sequence_selector.py`
 - `src/umm_reward_evaluator/benchmarks/train_multitask_action_sequence_selector.py`
 - `src/umm_reward_evaluator/benchmarks/train_multiview_action_sequence_selector.py`
+- `src/umm_reward_evaluator/benchmarks/score_action_heuristic_selector.py`
 - `src/umm_reward_evaluator/benchmarks/train_gated_action_sequence_selector.py`
 - `src/umm_reward_evaluator/benchmarks/train_action_sequence_selector_scaling.py`
 - `src/umm_reward_evaluator/benchmarks/train_video_frame_selector.py`

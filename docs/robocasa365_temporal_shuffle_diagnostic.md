@@ -124,11 +124,23 @@ Oracle ceiling: 41/64. Conservative rank0 remains 0/64.
 | shuffled-time action statistics | 0,1,2,3,4 | 26,24,25,25,26 | 25.2 | 5.6 | 7.4 | 7.2 | 5.0 |
 | multiview meta: one unordered endpoint + shuffled-time | 0,1,2 | 26,25,24 | 25.0 | 5.7 | 7.3 | 7.0 | 5.0 |
 
+Deterministic heuristic controls on the same n16 manifests:
+
+| Heuristic | Overall success | Pick | Faucet | OpenCabinet | Microwave |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| max mean absolute action | 28/64 | 6/16 | 8/16 | 8/16 | 6/16 |
+| max sum action energy | 27/64 | 6/16 | 7/16 | 7/16 | 7/16 |
+| max action energy | 26/64 | 7/16 | 6/16 | 6/16 | 7/16 |
+| max planner rank / lowest conservative prior | 26/64 | 7/16 | 5/16 | 6/16 | 8/16 |
+| min action energy / rank0-style prior | 0/64 | 0/16 | 0/16 | 0/16 | 0/16 |
+
 The n16 result changes the interpretation. On 32 cases, shuffled-time looked like the strongest diagnostic. On 64 cases, simple action-envelope moments are strongest on average, and one unordered endpoint pair is second. Raw ordered summaries remain much worse. The new endpoint-free stats control shows that removing first/last endpoints explains a large part of the gain: 25.8/64 mean versus 21.6/64 for raw. Adding the full bag energy/envelope moments raises this to 28.6/64.
 
 This creates a stronger counterintuitive claim than the original shuffle diagnostic:
 
 > On expanded RoboCasa365 replay candidates, preserving true temporal endpoints hurts more than it helps; coarse action-envelope calibration is more reliable than ordered first/last summaries and even more reliable than shuffled-time diagnostics.
+
+The heuristic controls make the claim sharper and more dangerous: max mean absolute action reaches 28/64 without training, nearly matching the learned bag mean of 28.6/64. The result is not a single-candidate shortcut, because the selected candidate IDs are spread across ranks. It is a sign that the conservative policy prior is badly miscalibrated for these recoverable failures: it prefers low-action candidates that always fail, while successful candidates often require larger action magnitude.
 
 ## Interpretation
 
@@ -140,17 +152,19 @@ This is a useful ICLR-style diagnostic because it contradicts the default assump
 
 The earlier negative bag result matters as a small-sample warning: on 24-32 cases, bag moments did not explain the full shuffle-time gain. After expanding to 64 cases, however, bag moments become the strongest single-view selector. This suggests the original shuffle result was a high-variance diagnostic of endpoint overfitting, while the more scalable mechanism is endpoint-free action-envelope calibration.
 
-The strongest current method-shaped result is not "always shuffle." It is an endpoint-free envelope critic: remove brittle first/last temporal anchors and score candidates from action-distribution statistics. Unordered endpoint dropout remains useful, but the n16 result shows that the simplest envelope moments are the strongest current baseline.
+The strongest current method-shaped result is not "always shuffle." It is an endpoint-free envelope critic: remove brittle first/last temporal anchors and score candidates from action-distribution statistics. Unordered endpoint dropout remains useful, but the n16 result shows that the simplest envelope moments are the strongest learned baseline and that a no-learning action-magnitude heuristic is already surprisingly competitive.
 
 The next method should not be "always shuffle actions." A safer direction is:
 
 1. learn when temporal order is reliable;
 2. use endpoint-free envelope and endpoint-dropout views as conservative failure detectors, but keep shuffle-robust controls as a diagnostic baseline;
-3. add contact-conditioned features for Faucet-style interactions where successful candidates exist but compact statistics still miss them.
+3. add energy-matched hard negatives to test whether the envelope critic understands action geometry or mostly corrects an under-actuation prior;
+4. add contact-conditioned features for Faucet-style interactions where successful candidates exist but compact statistics still miss them.
 
 ## Reviewer Caveats
 
 - Candidate generation is still replay perturbation, not a learned policy.
+- The strongest deterministic heuristic is action magnitude, so the current candidate pool must be stress-tested with energy-matched hard negatives before claiming semantic action understanding.
 - The action traces are sparse snapshots stored with stride 25, so this diagnostic does not rule out high-frequency temporal information.
 - The strongest current table uses four tasks and sixteen episodes per task. It is stronger than the original 32-case diagnostic, but still needs more RoboCasa365 tasks or a learned proposal source before becoming a headline benchmark table.
 - The shuffled controls should be presented as a warning against overclaiming temporal world modeling, not as proof that action order is irrelevant.
