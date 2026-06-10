@@ -232,7 +232,7 @@ The common framing is to build a stronger planner, larger world model, or global
 - action/video signals can expose failure even when the candidate appears plausible;
 - in the current slice, temporal order is not just less important than expected; on the expanded 64-case RoboCasa365 table, endpoint-free action-envelope moments outperform raw ordered summaries, shuffled-time diagnostics, and endpoint-dropout views, while a deterministic max-absolute-action heuristic nearly matches the learned critic.
 - when action magnitude is controlled by energy-matched corruptions, deterministic energy/magnitude/smoothness shortcuts collapse to 0/32 and learned action-only selectors recover only 8.2/32;
-- low-dimensional rollout state traces recover 30.4/32 on the same energy-matched stress test, while adding action stats to state traces is slightly worse at 30.0/32, exposing a sharper bottleneck: action adequacy must be conditioned on rollout state/contact context rather than action envelope alone.
+- low-dimensional rollout state traces recover 30.4/32 on the same energy-matched stress test, while adding action stats to state traces is slightly worse at 30.0/32; the state-trace result stays 30.4/32 after rank/candidate-id randomization, exposing a sharper bottleneck: action adequacy must be conditioned on rollout state/contact context rather than action envelope alone.
 
 ## Current Weaknesses
 
@@ -242,7 +242,7 @@ These must be addressed before this is paper-ready:
 2. Current video/action selectors may exploit candidate-family regularities.
 3. Deterministic action magnitude is a strong baseline on ordinary no-demo pools: max mean absolute action reaches 28/64 without training, nearly matching the learned bag critic.
 4. Energy-matched hard negatives remove that shortcut but current action-only selectors still recover only 8.2/32 against a 32/32 oracle.
-5. Low-dimensional rollout state traces recover 30.4/32 on the same stress test, but this is still a state/proprio proxy rather than a deployable RGB-only visual critic.
+5. Low-dimensional rollout state traces recover 30.4/32 on the same stress test and remain 30.4/32 after manifest-level rank/candidate-id randomization, but this is still a state/proprio proxy rather than a deployable RGB-only visual critic.
 6. Current phenomenon does not prove temporal world modeling; it proves an under-actuation shortcut first, then exposes the need for visual/contact-conditioned discrimination.
 7. Need a full low-level policy-generated candidate source or official benchmark demonstrations for external validity.
 8. Need a harder fusion benchmark because current action/video critics each solve the slice independently.
@@ -255,7 +255,7 @@ Priority order:
 
 1. Make RoboCasa365 the headline benchmark layer and scale beyond the current four-task probe.
 2. Scale the endpoint-free action-envelope critic for the Faucet/Microwave gap: in the expanded 64-case no-demo table, oracle-best is 41/64, raw ordered summaries average 21.6/64, shuffled-time averages 25.2/64, endpoint-free stats average 25.8/64, one unordered endpoint pair averages 27.4/64, bag action-envelope moments average 28.6/64, and max mean absolute action reaches 28/64 without training.
-3. Randomize original-candidate placement in the energy-matched pool so rank/order leakage is impossible; the current state-trace hard-negative pool is already scaled to n8 with 32/32 oracle and 0/32 rank0.
+3. Regenerate the energy-matched rollout pool with randomized original-candidate placement. The current manifest-level rank/candidate-id randomization control already keeps state traces at 30.4/32, but a fully regenerated pool is the cleaner final table.
 4. Convert the state-trace result into a deployable visual/contact-conditioned selector: the target is to preserve the 30.4/32 state-proxy gain without privileged state leakage.
 5. Replace the diagnostic replay prior with BC/diffusion-policy top-k samples where a 2025-2026 benchmark provides usable policy or demonstration sources.
 6. Add uncertainty-aware calibration to the gate and evaluate under mixed proposal qualities.
@@ -298,7 +298,7 @@ The implementation now includes reviewer-oriented controls:
 1. `raw_no_length` action features: removes trajectory length as a possible success shortcut while preserving action statistics.
 2. Candidate-row shuffling: tests whether results are invariant to JSONL order. Selector tie-breaking now prefers planner rank0 when scores are equal, so zero controls are well-defined and not row-order dependent.
 3. Action-video fusion: tests whether the FAVC critic can combine independently trained action and visual critics in a held-out protocol.
-4. RoboCasa low-dimensional state-trace selector: tests whether energy-matched failures require rollout state/contact context after action magnitude shortcuts are removed. On the current n8 hard-negative pool, action-only endpoint-free stats average 8.2/32 while state traces recover 30.4/32.
+4. RoboCasa low-dimensional state-trace selector: tests whether energy-matched failures require rollout state/contact context after action magnitude shortcuts are removed. On the current n8 hard-negative pool, action-only endpoint-free stats average 8.2/32 while state traces recover 30.4/32; after rank/candidate-id randomization, action-only is 8.4/32 and state traces remain 30.4/32.
 
 The implementation also includes `train_action_video_fusion_selector.py`, a case-heldout fusion critic over action and video selector scores. This is the first minimal FAVC implementation beyond separate action-only and video-only diagnostics.
 

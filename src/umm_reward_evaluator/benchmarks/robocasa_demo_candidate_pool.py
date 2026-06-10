@@ -125,8 +125,10 @@ def energy_matched_profiles(
     episode_index: int,
     num_candidates: int,
     include_original: bool,
+    seed: int,
+    original_placement: str,
 ) -> tuple[ActionProfile, ...]:
-    raw_profiles = [
+    corruptions = [
         ActionProfile("raw_time_reverse", 0, "time_reverse"),
         ActionProfile("raw_time_roll_25", 1, "time_roll", seed_offset=25),
         ActionProfile("raw_time_roll_50", 2, "time_roll", seed_offset=50),
@@ -136,7 +138,20 @@ def energy_matched_profiles(
         ActionProfile("raw_flip_gripper", 6, "sign_flip_gripper"),
     ]
     if include_original:
-        raw_profiles.append(ActionProfile("raw_demo_original", 7, "original"))
+        raw_profiles = list(corruptions[: max(0, num_candidates - 1)])
+        if original_placement == "last":
+            original_position = len(raw_profiles)
+        else:
+            rng = np.random.default_rng(seed + 7919 * episode_index)
+            low = 1 if original_placement == "random_nonzero" else 0
+            if num_candidates <= low:
+                original_position = 0
+            else:
+                original_position = int(rng.integers(low, num_candidates))
+            original_position = min(original_position, len(raw_profiles))
+        raw_profiles.insert(original_position, ActionProfile("raw_demo_original", 7, "original"))
+    else:
+        raw_profiles = list(corruptions)
     raw_profiles = raw_profiles[:num_candidates]
     if include_original and all(profile.kind != "original" for profile in raw_profiles):
         raw_profiles[-1] = ActionProfile("raw_demo_original", len(raw_profiles) - 1, "original")
@@ -338,6 +353,7 @@ def build_pool(
     num_candidates: int,
     seed: int,
     include_original: bool,
+    energy_original_placement: str,
     max_steps: int | None,
     action_stride: int,
     state_stride: int,
@@ -373,6 +389,8 @@ def build_pool(
                     episode_index=episode_index,
                     num_candidates=num_candidates,
                     include_original=include_original,
+                    seed=seed,
+                    original_placement=energy_original_placement,
                 )
             else:
                 case_profiles = profiles
@@ -444,6 +462,7 @@ def build_pool(
             "include_original": include_original,
             "ranking_prior": "conservative_action_energy",
             "state_stride": state_stride,
+            "energy_original_placement": energy_original_placement,
         }
     )
     return rows, summary
@@ -460,6 +479,15 @@ def main() -> None:
     parser.add_argument("--num-candidates", type=int, default=8)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--exclude-original", action="store_true")
+    parser.add_argument(
+        "--energy-original-placement",
+        choices=["last", "random_nonzero", "random_any"],
+        default="last",
+        help=(
+            "Where to place the original action trace in energy_matched mode. "
+            "random_nonzero removes fixed cand_07 leakage while keeping rank0 a corruption."
+        ),
+    )
     parser.add_argument("--max-steps", type=int)
     parser.add_argument("--action-stride", type=int, default=10)
     parser.add_argument("--state-stride", type=int, default=0)
@@ -477,6 +505,7 @@ def main() -> None:
         num_candidates=args.num_candidates,
         seed=args.seed,
         include_original=not args.exclude_original,
+        energy_original_placement=args.energy_original_placement,
         max_steps=args.max_steps,
         action_stride=args.action_stride,
         state_stride=args.state_stride,
