@@ -139,6 +139,6 @@ The key ablation is whether the trained action-world critic helps only when used
 
 ## RoboTwin 2.0 Next Step
 
-RoboTwin 2.0 official code is accessible, while RoboWM-Bench currently has a paper-level public entry but no stable code path found in the initial search. The practical second-layer benchmark should therefore start from RoboTwin 2.0 candidate-future traces and keep RoboWM-Bench as the preferred world-model-specific target if code/data become available.
+RoboWM-Bench code is now accessible at `https://github.com/fffstrong/RoboWM-Bench`, so it should become the main second-layer benchmark. RoboTwin 2.0 remains the executable-simulation fallback if IsaacSim/IsaacLab setup blocks RoboWM-Bench.
 
-The concrete adapter plan is in `docs/robotwin2_executable_future_adapter.md`. The new converter `robotwin2_trace_to_manifest.py` turns instrumented RoboTwin rollout traces into the shared executable-future manifest.
+The concrete RoboWM-Bench code audit and adapter plan is in `docs/robowm_bench_code_audit.md`. The converter `robowm_bench_actions_to_manifest.py` turns evaluated RoboWM-Bench action JSON roots into the shared executable-future manifest.

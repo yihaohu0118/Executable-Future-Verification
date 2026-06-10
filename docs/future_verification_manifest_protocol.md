@@ -86,7 +86,7 @@ The current result is therefore Layer 1 of the world-model story: a controlled e
 
 ## Mapping RoboWM-Bench
 
-If RoboWM-Bench code/data become accessible, the adapter should emit one row per generated future:
+RoboWM-Bench code is accessible at `https://github.com/fffstrong/RoboWM-Bench`. The adapter should emit one row per generated future:
 
 - `future_source`: `world_model_video`;
 - `future_representation`: `video_to_actions`;
@@ -98,6 +98,8 @@ If RoboWM-Bench code/data become accessible, the adapter should emit one row per
 The main question becomes:
 
 > Does execution-envelope verification select more physically executable generated futures than visual realism or world-model likelihood?
+
+The concrete code audit and adapter plan is in `docs/robowm_bench_code_audit.md`.
 
 ## Mapping RoboTwin 2.0
 
