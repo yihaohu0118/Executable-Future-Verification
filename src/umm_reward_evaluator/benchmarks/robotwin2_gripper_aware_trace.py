@@ -139,6 +139,11 @@ def compact_state(env: Any, obs: dict[str, Any] | None) -> dict[str, Any]:
         joint_vec = obs.get("joint_action", {}).get("vector")
         if joint_vec is not None:
             state["joint_action_vector"] = np.asarray(joint_vec).reshape(-1).astype(float).tolist()
+    if "joint_action_vector" not in state:
+        try:
+            state["joint_action_vector"] = current_action(env).astype(float).tolist()
+        except Exception:
+            pass
     try:
         state["left_gripper"] = float(env.robot.get_left_gripper_val())
         state["right_gripper"] = float(env.robot.get_right_gripper_val())
@@ -212,7 +217,14 @@ def run_candidate(
             action_arr = np.asarray(action, dtype=float)
             env.take_action(action_arr, action_type="qpos")
             executed.append(action_arr.tolist())
-            obs = env.get_obs()
+            try:
+                obs = env.get_obs()
+            except Exception as exc:
+                obs = None
+                state_trace.append({"obs_error": repr(exc), **compact_state(env, None)})
+                if env.eval_success:
+                    break
+                continue
             state_trace.append(compact_state(env, obs))
             if env.eval_success:
                 break
@@ -246,6 +258,42 @@ def run_candidate(
             env.close_env()
         except Exception:
             traceback.print_exc()
+
+
+def failed_candidate_row(
+    *,
+    task_name: str,
+    task_config: str,
+    seed: int,
+    instruction: str,
+    candidate: CandidateSpec,
+    expert_metadata: dict[str, Any],
+    exc: Exception,
+) -> dict[str, Any]:
+    return {
+        "task_name": task_name,
+        "task_config": task_config,
+        "seed": seed,
+        "instruction": instruction,
+        "policy_name": "gripper_aware_expert_trace",
+        "ckpt_setting": "none",
+        "candidate_id": candidate.candidate_id,
+        "candidate_seed": candidate.rank,
+        "candidate_rank_by_planner": candidate.rank,
+        "video_path": "",
+        "actions": candidate.actions,
+        "success": False,
+        "action_type": "qpos",
+        "metadata": {
+            "candidate_source": candidate.candidate_source,
+            "future_source": "gripper_aware_expert_trace",
+            "future_representation": "actions_and_state_trace",
+            "verification_target": "task_success",
+            "state_trace": [],
+            "expert_metadata": expert_metadata,
+            "candidate_error": repr(exc),
+        },
+    }
 
 
 def as_action_list(actions: np.ndarray) -> list[list[float]]:
@@ -354,30 +402,41 @@ def run_one_seed(
     if not expert_metadata["expert_success"]:
         raise SystemExit(f"expert rollout did not succeed for {task_name} seed {seed}")
 
-    rows: list[dict[str, Any]] = []
-    for candidate in build_candidates(actions, candidate_preset):
-        print(f"running seed={seed} {candidate.candidate_id} len={len(candidate.actions)}", flush=True)
-        row = run_candidate(
-            task_name=task_name,
-            task_config=task_config,
-            seed=seed,
-            instruction=instruction,
-            candidate_id=candidate.candidate_id,
-            candidate_source=candidate.candidate_source,
-            rank=candidate.rank,
-            action_seq=candidate.actions,
-            expert_metadata=expert_metadata,
-        )
-        print(
-            f"seed={seed} {candidate.candidate_id} success={row['success']} executed={len(row['actions'])}",
-            flush=True,
-        )
-        rows.append(row)
-
+    candidates = build_candidates(actions, candidate_preset)
     output.parent.mkdir(parents=True, exist_ok=True)
     with output.open("w", encoding="utf-8") as f:
-        for row in rows:
+        for candidate in candidates:
+            print(f"running seed={seed} {candidate.candidate_id} len={len(candidate.actions)}", flush=True)
+            try:
+                row = run_candidate(
+                    task_name=task_name,
+                    task_config=task_config,
+                    seed=seed,
+                    instruction=instruction,
+                    candidate_id=candidate.candidate_id,
+                    candidate_source=candidate.candidate_source,
+                    rank=candidate.rank,
+                    action_seq=candidate.actions,
+                    expert_metadata=expert_metadata,
+                )
+                print(
+                    f"seed={seed} {candidate.candidate_id} success={row['success']} executed={len(row['actions'])}",
+                    flush=True,
+                )
+            except Exception as exc:
+                traceback.print_exc()
+                row = failed_candidate_row(
+                    task_name=task_name,
+                    task_config=task_config,
+                    seed=seed,
+                    instruction=instruction,
+                    candidate=candidate,
+                    expert_metadata=expert_metadata,
+                    exc=exc,
+                )
+                print(f"seed={seed} {candidate.candidate_id} success=False error={exc!r}", flush=True)
             f.write(json.dumps(row, sort_keys=True) + "\n")
+            f.flush()
     print(f"wrote {output}", flush=True)
 
 
