@@ -338,11 +338,40 @@ The n16 result above still leaves a deployability question: `robot-only` contain
 
 This is the strongest anti-leakage evidence so far. A broad proprio vector is not necessary: explicit EEF and gripper traces without `robot0_proprio-state` still recover 62.2/64, nearly matching full state and state+action. EEF position alone recovers 60.4/64, far above the 28.4/64 action-only selector and the 31.0/64 object-only selector. Adding the object-to-EEF relative vector does not help. The signal therefore looks less like privileged object state and more like a compact execution trace: did the end effector actually move through the contact-relevant path, and did the gripper response match the intended interaction?
 
+### EEF Summary-Statistic Ablation
+
+The full state-trace feature concatenates first, last, delta, mean, standard deviation, min, max, and mean absolute step. To test whether the EEF result is just endpoint success in disguise, the selector was extended with `--state-summary-mode` and rerun on the n16 random-position pool.
+
+For EEF position only (`robot0_base_to_eef_pos`, `robot0_eef_pos`):
+
+| EEF summary | Seeds | Overall success | Mean | Std |
+| --- | --- | ---: | ---: | ---: |
+| full summary | 0,1,2,3,4 | 60,61,60,61,60 | 60.4 | 0.49 |
+| terminal only | 0,1,2,3,4 | 35,37,37,39,36 | 36.8 | 1.33 |
+| endpoint first/last/delta | 0,1,2,3,4 | 34,37,28,31,36 | 33.2 | 3.31 |
+| delta only | 0,1,2,3,4 | 39,41,44,41,40 | 41.0 | 1.67 |
+| distribution only, mean/std/min/max | 0,1,2,3,4 | 63,62,63,62,63 | 62.6 | 0.49 |
+| path step only | 0,1,2,3,4 | 33,29,35,32,29 | 31.6 | 2.33 |
+| no endpoints, distribution + path | 0,1,2,3,4 | 62,62,63,63,63 | 62.6 | 0.49 |
+
+For EEF position plus gripper (`robot0_base_to_eef_pos`, `robot0_eef_pos`, `robot0_gripper_qpos`, `robot0_gripper_qvel`):
+
+| EEF/gripper summary | Seeds | Overall success | Mean | Std |
+| --- | --- | ---: | ---: | ---: |
+| full summary | 0,1,2,3,4 | 63,62,62,62,61 | 62.0 | 0.63 |
+| terminal only | 0,1,2,3,4 | 35,38,38,35,37 | 36.6 | 1.36 |
+| endpoint first/last/delta | 0,1,2,3,4 | 41,41,42,45,44 | 42.6 | 1.62 |
+| distribution only, mean/std/min/max | 0,1,2,3,4 | 64,64,64,63,63 | 63.6 | 0.49 |
+| path step only | 0,1,2,3,4 | 42,42,39,40,42 | 41.0 | 1.26 |
+| no endpoints, distribution + path | 0,1,2,3,4 | 63,62,64,64,64 | 63.4 | 0.80 |
+
+This is a sharper counterintuitive result than the original robot-only table. The successful signal is not final EEF location, start/end displacement, or average step size. Removing endpoints and keeping distributional execution-envelope statistics preserves almost all performance, and for EEF position plus gripper, distribution-only statistics slightly outperform the full summary. The critic appears to detect whether the realized robot trajectory occupied the right contact-relevant workspace, not whether it ended at a particular pose.
+
 ## Interpretation
 
 The current evidence supports this mechanism:
 
-> For action critics on RoboCasa365 replay candidates, temporal detail can be an anti-feature in ordinary no-demo pools: ordered first/last summaries overfit to endpoint artifacts, while endpoint-free action-envelope statistics preserve candidate-level action calibration better. But once action magnitude is matched, compact action-only summaries recover only limited signal; on the n16 fully regenerated hard-negative pool, action-only reaches 28.4/64 while robot-only rollout traces reach 64/64 and proprio-only reaches 63.0/64. A finer key ablation shows that EEF/gripper traces without the broad proprio vector still reach 62.2/64, and EEF position alone reaches 60.4/64. The next method should condition action adequacy on compact robot/contact execution feedback rather than action envelope, temporal detail, or object-state shortcuts alone.
+> For action critics on RoboCasa365 replay candidates, temporal detail can be an anti-feature in ordinary no-demo pools: ordered first/last summaries overfit to endpoint artifacts, while endpoint-free action-envelope statistics preserve candidate-level action calibration better. But once action magnitude is matched, compact action-only summaries recover only limited signal; on the n16 fully regenerated hard-negative pool, action-only reaches 28.4/64 while robot-only rollout traces reach 64/64 and proprio-only reaches 63.0/64. A finer key ablation shows that EEF/gripper traces without the broad proprio vector still reach 62.2/64, and an EEF summary ablation shows that endpoint-free distributional execution envelopes reach 63.4-63.6/64 while endpoint-only summaries stay near 33-43/64. The next method should condition action adequacy on compact robot/contact execution-envelope feedback rather than action envelope, temporal detail, endpoint state, or object-state shortcuts alone.
 
 This is a useful ICLR-style diagnostic because it contradicts the default assumption that more temporal structure is always better for action-conditioned evaluation.
 

@@ -22,6 +22,7 @@ from umm_reward_evaluator.benchmarks.train_multitask_action_sequence_selector im
 )
 
 STATE_FEATURE_MODES = ("state", "state_action", "zero")
+STATE_SUMMARY_MODES = ("full", "endpoint", "terminal", "delta", "distribution", "path", "no_endpoint")
 
 
 @dataclass(frozen=True)
@@ -65,7 +66,13 @@ def padded_snapshot(snapshot: dict[str, list[float]], key: str, dim: int) -> np.
     return out
 
 
-def per_key_trace_features(trace: list[dict[str, list[float]]], key: str, dim: int) -> np.ndarray:
+def per_key_trace_features(
+    trace: list[dict[str, list[float]]],
+    key: str,
+    dim: int,
+    *,
+    summary_mode: str,
+) -> np.ndarray:
     if not trace:
         x = np.zeros((1, dim), dtype=np.float32)
     else:
@@ -78,24 +85,49 @@ def per_key_trace_features(trace: list[dict[str, list[float]]], key: str, dim: i
     amin = x.min(axis=0)
     amax = x.max(axis=0)
     path = np.abs(np.diff(x, axis=0)).mean(axis=0) if x.shape[0] > 1 else np.zeros((dim,), dtype=np.float32)
-    return np.concatenate([first, last, delta, mean, std, amin, amax, path]).astype(np.float32)
-
-
-def state_features(row: dict[str, Any], spec: StateFeatureSpec) -> np.ndarray:
-    trace = state_trace(row)
-    if not spec.keys:
-        return np.zeros((1,), dtype=np.float32)
-    parts = [per_key_trace_features(trace, key, spec.dims[key]) for key in spec.keys]
+    if summary_mode == "full":
+        parts = [first, last, delta, mean, std, amin, amax, path]
+    elif summary_mode == "endpoint":
+        parts = [first, last, delta]
+    elif summary_mode == "terminal":
+        parts = [last]
+    elif summary_mode == "delta":
+        parts = [delta]
+    elif summary_mode == "distribution":
+        parts = [mean, std, amin, amax]
+    elif summary_mode == "path":
+        parts = [path]
+    elif summary_mode == "no_endpoint":
+        parts = [mean, std, amin, amax, path]
+    else:
+        raise ValueError(f"Unknown state summary mode {summary_mode}")
     return np.concatenate(parts).astype(np.float32)
 
 
-def feature_vector(row: dict[str, Any], *, mode: str, spec: StateFeatureSpec, action_mode: str) -> np.ndarray:
+def state_features(row: dict[str, Any], spec: StateFeatureSpec, *, summary_mode: str) -> np.ndarray:
+    trace = state_trace(row)
+    if not spec.keys:
+        return np.zeros((1,), dtype=np.float32)
+    parts = [per_key_trace_features(trace, key, spec.dims[key], summary_mode=summary_mode) for key in spec.keys]
+    return np.concatenate(parts).astype(np.float32)
+
+
+def feature_vector(
+    row: dict[str, Any],
+    *,
+    mode: str,
+    spec: StateFeatureSpec,
+    action_mode: str,
+    summary_mode: str,
+) -> np.ndarray:
     if mode == "zero":
         return np.zeros((1,), dtype=np.float32)
     if mode == "state":
-        return state_features(row, spec)
+        return state_features(row, spec, summary_mode=summary_mode)
     if mode == "state_action":
-        return np.concatenate([state_features(row, spec), action_features(row, mode=action_mode)]).astype(np.float32)
+        return np.concatenate(
+            [state_features(row, spec, summary_mode=summary_mode), action_features(row, mode=action_mode)]
+        ).astype(np.float32)
     raise ValueError(f"Unknown state feature mode {mode}")
 
 
@@ -105,10 +137,14 @@ def feature_matrix(
     feature_mode: str,
     state_spec: StateFeatureSpec,
     action_mode: str,
+    summary_mode: str,
     task_mode: str,
     tasks: list[str],
 ) -> np.ndarray:
-    xs = [feature_vector(row, mode=feature_mode, spec=state_spec, action_mode=action_mode) for row in rows]
+    xs = [
+        feature_vector(row, mode=feature_mode, spec=state_spec, action_mode=action_mode, summary_mode=summary_mode)
+        for row in rows
+    ]
     if task_mode == "shared_onehot":
         task_to_idx = {task: idx for idx, task in enumerate(tasks)}
         with_task = []
@@ -135,6 +171,7 @@ def train_shared_fold(
     *,
     feature_mode: str,
     action_mode: str,
+    summary_mode: str,
     task_mode: str,
     tasks: list[str],
     state_spec: StateFeatureSpec,
@@ -151,6 +188,7 @@ def train_shared_fold(
         feature_mode=feature_mode,
         state_spec=state_spec,
         action_mode=action_mode,
+        summary_mode=summary_mode,
         task_mode=task_mode,
         tasks=tasks,
     )
@@ -159,6 +197,7 @@ def train_shared_fold(
         feature_mode=feature_mode,
         state_spec=state_spec,
         action_mode=action_mode,
+        summary_mode=summary_mode,
         task_mode=task_mode,
         tasks=tasks,
     )
@@ -189,6 +228,7 @@ def train_task_head_fold(
     *,
     feature_mode: str,
     action_mode: str,
+    summary_mode: str,
     tasks: list[str],
     state_spec: StateFeatureSpec,
     hidden: int,
@@ -205,6 +245,7 @@ def train_task_head_fold(
         feature_mode=feature_mode,
         state_spec=state_spec,
         action_mode=action_mode,
+        summary_mode=summary_mode,
         task_mode="per_task_head",
         tasks=tasks,
     )
@@ -213,6 +254,7 @@ def train_task_head_fold(
         feature_mode=feature_mode,
         state_spec=state_spec,
         action_mode=action_mode,
+        summary_mode=summary_mode,
         task_mode="per_task_head",
         tasks=tasks,
     )
@@ -320,6 +362,7 @@ def evaluate(
     *,
     feature_mode: str,
     action_mode: str,
+    summary_mode: str,
     task_mode: str,
     include_state_keys: set[str] | None,
     exclude_state_keys: set[str] | None,
@@ -353,6 +396,7 @@ def evaluate(
                     test_rows,
                     feature_mode=feature_mode,
                     action_mode=action_mode,
+                    summary_mode=summary_mode,
                     tasks=tasks,
                     state_spec=state_spec,
                     hidden=hidden,
@@ -368,6 +412,7 @@ def evaluate(
                     test_rows,
                     feature_mode=feature_mode,
                     action_mode=action_mode,
+                    summary_mode=summary_mode,
                     task_mode="shared_onehot" if task_mode == "shared_onehot" else "independent",
                     tasks=tasks,
                     state_spec=state_spec,
@@ -381,6 +426,7 @@ def evaluate(
     summary, selections = evaluate_grouped(scored)
     summary["feature_mode"] = feature_mode
     summary["action_mode"] = action_mode
+    summary["state_summary_mode"] = summary_mode
     summary["task_mode"] = task_mode
     summary["state_keys"] = list(state_spec.keys)
     summary["state_dims"] = state_spec.dims
@@ -396,6 +442,7 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--feature-mode", default="state", choices=list(STATE_FEATURE_MODES))
     parser.add_argument("--action-mode", default="stats_no_endpoints_no_length")
+    parser.add_argument("--state-summary-mode", default="full", choices=list(STATE_SUMMARY_MODES))
     parser.add_argument("--task-mode", default="per_task_head", choices=["shared_onehot", "per_task_head", "independent"])
     parser.add_argument("--state-key", action="append", help="Restrict state features to this key. Can repeat.")
     parser.add_argument("--exclude-state-key", action="append", help="Drop this state key. Can repeat.")
@@ -410,6 +457,7 @@ def main() -> None:
         rows,
         feature_mode=args.feature_mode,
         action_mode=args.action_mode,
+        summary_mode=args.state_summary_mode,
         task_mode=args.task_mode,
         include_state_keys=set(args.state_key) if args.state_key else None,
         exclude_state_keys=set(args.exclude_state_key) if args.exclude_state_key else None,
