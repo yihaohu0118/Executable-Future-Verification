@@ -73,6 +73,57 @@ This disables only the fused LBFGS custom kernel and keeps curobo's planning
 path active through the PyTorch/JIT fallback. It is slower but sufficient for
 small smoke tests and avoids switching RoboTwin to a different planner.
 
+## Candidate Manifest Smoke
+
+The first end-to-end candidate trace smoke was run on the same
+`click_bell/demo_clean_smoke/seed=0` case. It used the expert pre-motion pkl to
+construct four compact qpos candidates:
+
+| Candidate | Planner rank | Success |
+| --- | ---: | --- |
+| `expert_endpoints` | 0 | true |
+| `reverse_endpoints` | 1 | true |
+| `first_endpoint_only` | 2 | false |
+| `noop` | 3 | false |
+
+The raw trace was written on dev2:
+
+```text
+/tmp/robotwin_probe/umm_candidate_traces/click_bell_clean_smoke.jsonl
+```
+
+Local conversion and validation passed:
+
+```bash
+PYTHONPATH=src python -m umm_reward_evaluator.benchmarks.robotwin2_trace_to_manifest \
+  --input /private/tmp/robotwin2_smoke/click_bell_clean_smoke.jsonl \
+  --output-manifest /private/tmp/robotwin2_smoke/click_bell_clean_smoke_manifest.jsonl
+
+PYTHONPATH=src python -m umm_reward_evaluator.benchmarks.validate_future_verification_manifest \
+  --manifest /private/tmp/robotwin2_smoke/click_bell_clean_smoke_manifest.jsonl \
+  --require-future-metadata
+```
+
+Validation summary:
+
+```json
+{
+  "rows": 4,
+  "cases": 1,
+  "candidate_count_histogram": {"4": 1},
+  "rank0_success": 1,
+  "oracle_success": 1,
+  "oracle_better": 0,
+  "num_errors": 0
+}
+```
+
+This is only a pipeline smoke, not benchmark evidence. Because rank0 already
+succeeds and the reversed endpoint candidate also succeeds, `click_bell` is too
+order-insensitive for the main reranking table. The next RoboTwin task should
+be more contact/order-sensitive, such as `press_stapler`, `stamp_seal`,
+`open_laptop`, `handover_block`, or `stack_blocks_two`.
+
 ## Why It Fits The Current Story
 
 RoboCasa365 already shows that action-envelope calibration can recover conservative-prior failures, but hard negatives require compact robot execution-envelope/contact evidence. RoboTwin 2.0 adds:

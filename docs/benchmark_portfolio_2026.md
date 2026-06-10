@@ -74,9 +74,12 @@ Current dev2 status:
   disabling that fused kernel and using curobo's PyTorch/JIT fallback fixes
   planner warmup;
 - `click_bell` clean expert smoke succeeds with seed 0.
+- a four-candidate `click_bell` trace converts to the shared manifest and
+  validates with no schema errors, but it has no reranking headroom because
+  rank0 already succeeds and the reversed endpoint candidate also succeeds.
 
 The next evidence step is not another environment smoke. It is candidate
-generation and trace emission on 1-2 tasks.
+generation and trace emission on 1-2 harder, order-sensitive tasks.
 
 ### MiraBench
 
