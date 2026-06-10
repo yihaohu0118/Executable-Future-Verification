@@ -35,13 +35,22 @@ def state_trace(row: dict[str, Any]) -> list[dict[str, list[float]]]:
     return trace if isinstance(trace, list) else []
 
 
-def build_state_spec(rows: list[dict[str, Any]]) -> StateFeatureSpec:
+def build_state_spec(
+    rows: list[dict[str, Any]],
+    *,
+    include_keys: set[str] | None = None,
+    exclude_keys: set[str] | None = None,
+) -> StateFeatureSpec:
     dims: dict[str, int] = {}
     for row in rows:
         for snapshot in state_trace(row):
             if not isinstance(snapshot, dict):
                 continue
             for key, values in snapshot.items():
+                if include_keys is not None and key not in include_keys:
+                    continue
+                if exclude_keys is not None and key in exclude_keys:
+                    continue
                 arr = np.asarray(values, dtype=np.float32).reshape(-1)
                 dims[key] = max(dims.get(key, 0), int(arr.size))
     return StateFeatureSpec(keys=tuple(sorted(dims)), dims=dims)
@@ -312,12 +321,14 @@ def evaluate(
     feature_mode: str,
     action_mode: str,
     task_mode: str,
+    include_state_keys: set[str] | None,
+    exclude_state_keys: set[str] | None,
     hidden: int,
     epochs: int,
     lr: float,
     seed: int,
 ) -> tuple[dict[str, Any], list[dict[str, Any]], list[dict[str, Any]]]:
-    state_spec = build_state_spec(rows)
+    state_spec = build_state_spec(rows, include_keys=include_state_keys, exclude_keys=exclude_state_keys)
     tasks = sorted({str(row["task_label"]) for row in rows})
     grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
     for row in rows:
@@ -373,6 +384,8 @@ def evaluate(
     summary["task_mode"] = task_mode
     summary["state_keys"] = list(state_spec.keys)
     summary["state_dims"] = state_spec.dims
+    summary["include_state_keys"] = sorted(include_state_keys) if include_state_keys is not None else None
+    summary["exclude_state_keys"] = sorted(exclude_state_keys) if exclude_state_keys is not None else None
     summary["tasks"] = tasks
     return summary, selections, scored
 
@@ -384,6 +397,8 @@ def main() -> None:
     parser.add_argument("--feature-mode", default="state", choices=list(STATE_FEATURE_MODES))
     parser.add_argument("--action-mode", default="stats_no_endpoints_no_length")
     parser.add_argument("--task-mode", default="per_task_head", choices=["shared_onehot", "per_task_head", "independent"])
+    parser.add_argument("--state-key", action="append", help="Restrict state features to this key. Can repeat.")
+    parser.add_argument("--exclude-state-key", action="append", help="Drop this state key. Can repeat.")
     parser.add_argument("--hidden", type=int, default=32)
     parser.add_argument("--epochs", type=int, default=200)
     parser.add_argument("--lr", type=float, default=1e-3)
@@ -396,6 +411,8 @@ def main() -> None:
         feature_mode=args.feature_mode,
         action_mode=args.action_mode,
         task_mode=args.task_mode,
+        include_state_keys=set(args.state_key) if args.state_key else None,
+        exclude_state_keys=set(args.exclude_state_key) if args.exclude_state_key else None,
         hidden=args.hidden,
         epochs=args.epochs,
         lr=args.lr,

@@ -287,11 +287,27 @@ Held-out selectors on the fully regenerated random-position n8 manifests:
 
 Deterministic action heuristics remain weak on the regenerated pool: energy/magnitude/range variants reach only 1-3/32, smoothness reaches 0-4/32, and conservative-prior variants reach 0-2/32. `planner_rank_max` reaches 20/32 because random_nonzero still places the original at high rank in five of eight episodes per task; this is a construction diagnostic, not a valid action or state baseline. The learned state-trace result is unchanged from both the fixed-position and manifest-randomized controls.
 
+### State-Key Ablation
+
+The next leakage question is whether the state-trace selector is simply reading a privileged object-state success variable. On the fully regenerated random-position n8 pool, the selector was rerun with explicit state-key include/exclude controls:
+
+| State keys | Seeds | Overall success | Mean | Std | Seed-0 by task |
+| --- | --- | ---: | ---: | ---: | --- |
+| all state keys | 0,1,2,3,4 | 30,31,31,30,30 | 30.4 | 0.49 | Pick 8, Faucet 7, OpenCabinet 7, Microwave 8 |
+| exclude `object-state` | 0,1,2,3,4 | 31,32,32,31,31 | 31.4 | 0.49 | Pick 8, Faucet 8, OpenCabinet 7, Microwave 8 |
+| robot-only, excluding all object keys | 0,1,2,3,4 | 31,31,31,31,32 | 31.2 | 0.40 | Pick 8, Faucet 8, OpenCabinet 7, Microwave 8 |
+| `robot0_proprio-state` only | 0,1,2,3,4 | 31,30,31,30,29 | 30.2 | 0.75 | Pick 7, Faucet 8, OpenCabinet 8, Microwave 8 |
+| eef/gripper keys only | 0,1,2,3,4 | 31,31,31,31,29 | 30.6 | 0.80 | Pick 8, Faucet 8, OpenCabinet 7, Microwave 8 |
+| object low-dimensional keys only | 0,1,2,3,4 | 16,16,16,16,16 | 16.0 | 0.0 | Pick 8, Faucet 0, OpenCabinet 0, Microwave 8 |
+| eef/object relative contact proxy | 0,1,2,3,4 | 29,30,29,30,29 | 29.4 | 0.49 | Pick 8, Faucet 6, OpenCabinet 7, Microwave 8 |
+
+This is the most useful mechanism diagnostic so far. Removing `object-state` does not hurt; it slightly improves the mean. Robot-only traces recover 31.2/32, and even `robot0_proprio-state` alone recovers 30.2/32. In contrast, object low-dimensional keys alone collapse to 16/32, solving Pick and Microwave but failing Faucet and OpenCabinet. The remaining signal is therefore not just privileged object-state leakage. It appears to be encoded in the robot/eef/gripper rollout response, consistent with contact/execution feedback: when an energy-matched action is temporally or directionally wrong, the robot's realized state trajectory differs even if compact action statistics look similar.
+
 ## Interpretation
 
 The current evidence supports this mechanism:
 
-> For action critics on RoboCasa365 replay candidates, temporal detail can be an anti-feature in ordinary no-demo pools: ordered first/last summaries overfit to endpoint artifacts, while endpoint-free action-envelope statistics preserve candidate-level action calibration better. But once action magnitude is matched, compact action-only summaries recover only limited signal; low-dimensional rollout state traces recover 30.4/32 on the n8 hard-negative pool, even after fully regenerating the pool with randomized original-candidate placement, so the next method should condition action adequacy on visual/contact state rather than action envelope alone.
+> For action critics on RoboCasa365 replay candidates, temporal detail can be an anti-feature in ordinary no-demo pools: ordered first/last summaries overfit to endpoint artifacts, while endpoint-free action-envelope statistics preserve candidate-level action calibration better. But once action magnitude is matched, compact action-only summaries recover only limited signal; robot/proprio/eef rollout traces recover 30-31/32 on the n8 hard-negative pool, even after fully regenerating the pool with randomized original-candidate placement, so the next method should condition action adequacy on contact/execution feedback rather than action envelope or object-state shortcuts alone.
 
 This is a useful ICLR-style diagnostic because it contradicts the default assumption that more temporal structure is always better for action-conditioned evaluation.
 
