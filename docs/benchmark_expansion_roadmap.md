@@ -298,6 +298,22 @@ joint+gripper row is stronger than the phase-distribution prototype, which
 means the current pool can mostly be solved by nearest-expert trajectory
 similarity.
 
+Anti-template diagnostics on the same manifest:
+
+| Diagnostic | Count |
+| --- | ---: |
+| Cases | 15 |
+| Rank0 success | 0/15 |
+| Oracle success | 15/15 |
+| Nominal non-full-expert success cases | 10/15 |
+| Diverse non-full-expert success cases, joint+gripper DTW > 1e-6 | 0/15 |
+| Matched low-DTW negative cases | 0/15 |
+
+The 10 nominal non-full successes are not real hard positives under executed
+trace distance: their joint+gripper DTW to the full expert candidate is zero.
+The likely reason is early termination after the success flag, which makes
+`drop_last` execute the same trace as `full_gripper_aware`.
+
 RoboTwin2 K-shot calibration now matches the RoboCasa story. Under the same
 anonymous remap protocol, source-plus-target K-shot nearest-positive selectors
 give:
@@ -325,6 +341,14 @@ Updated RoboTwin2 next step:
    boundary only after the anti-template pool exists.
 5. Keep `handover_block` as a one-seed bimanual mechanism example unless the
    next table needs a fourth task for reviewer-facing breadth.
+
+Implementation update: the RoboTwin2 trace adapter now supports
+`--candidate-preset anti_template`, adding `repeat_middle`,
+`stride2_hold_endpoint`, `gripper_early_1`, `gripper_late_1`, and
+`contact_joint_perturb` probes with explicit `candidate_source` metadata. The
+next run should use this preset on the three existing tasks first, then add a
+fourth task only if the anti-template gates show real diverse successes and
+matched failures.
 
 Updated RoboWM next step:
 

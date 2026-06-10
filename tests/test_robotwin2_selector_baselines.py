@@ -7,6 +7,8 @@ from umm_reward_evaluator.benchmarks.robotwin2_selector_baselines import (
     evaluate_random_expected,
     evaluate_rank0,
 )
+from umm_reward_evaluator.benchmarks.robotwin2_antitemplate_diagnostics import diagnose_manifest
+from umm_reward_evaluator.benchmarks.robotwin2_gripper_aware_trace import build_candidates
 from umm_reward_evaluator.benchmarks.robotwin2_rank_randomization_sweep import (
     parse_prototype_config,
     parse_trace_distance_config,
@@ -102,6 +104,36 @@ class RoboTwin2SelectorBaselinesTest(unittest.TestCase):
         self.assertEqual(selector["overall"]["selector_success"], 4)
         self.assertEqual(selector["overall"]["selector_oracle_match"], 4)
         self.assertEqual(len(selector["scored_rows"]), len(self.rows))
+
+    def test_antitemplate_diagnostics_find_non_full_success_and_matched_negative(self):
+        rows = [
+            make_row("stack", "seed=0", "rank0", 0, False, [[0.0], [0.0]], [0.0, 0.0]),
+            make_row("stack", "seed=0", "full_gripper_aware", 1, True, [[1.0], [1.0]], [1.0, 1.0]),
+            make_row("stack", "seed=0", "drop_last", 2, True, [[1.0], [0.9]], [1.0, 1.0]),
+            make_row("stack", "seed=0", "late_grip_fail", 3, False, [[1.0], [1.0]], [1.0, 1.0]),
+            make_row("stack", "seed=1", "rank0", 0, False, [[0.0], [0.0]], [0.0, 0.0]),
+            make_row("stack", "seed=1", "full_gripper_aware", 1, True, [[1.1], [1.1]], [1.0, 1.0]),
+        ]
+        summary = diagnose_manifest(rows, feature_mode="dtw_joint_gripper")
+        self.assertEqual(summary["overall"]["cases"], 2)
+        self.assertEqual(summary["overall"]["non_full_success_cases"], 1)
+        self.assertEqual(summary["overall"]["diverse_non_full_success_cases"], 1)
+        self.assertEqual(summary["overall"]["matched_negative_cases"], 1)
+        self.assertEqual(summary["by_task"]["stack"]["non_full_success_cases"], 1)
+
+    def test_antitemplate_candidate_preset_adds_named_probe_sources(self):
+        actions = [[float(step + dim) for dim in range(14)] for step in range(4)]
+        candidates = build_candidates(actions, "anti_template")
+        by_id = {candidate.candidate_id: candidate for candidate in candidates}
+        self.assertIn("full_gripper_aware", by_id)
+        self.assertIn("repeat_middle", by_id)
+        self.assertIn("gripper_early_1", by_id)
+        self.assertIn("gripper_late_1", by_id)
+        self.assertIn("contact_joint_perturb", by_id)
+        self.assertEqual(by_id["full_gripper_aware"].candidate_source, "full_expert_trace")
+        self.assertEqual(by_id["gripper_late_1"].candidate_source, "matched_gripper_timing_negative_probe")
+        self.assertGreater(len(by_id["repeat_middle"].actions), len(actions))
+        self.assertLess(len(by_id["stride2_hold_endpoint"].actions), len(actions))
 
     def test_rank_randomization_sweep_aggregates_multiple_seeds(self):
         summary = run_sweep(

@@ -27,6 +27,12 @@ mostly be solved by nearest-positive trajectory similarity. This table should
 be reported as a diagnostic control, not as the final evidence that the verifier
 understands executability.
 
+An additional anti-template diagnostic makes this stricter. The current
+manifest has 10/15 nominal non-full-expert success cases, but all of them are
+DTW-zero to the full expert executed trace under joint+gripper distance. Under
+the diverse-success criterion, the current manifest has 0/15 hard positive
+cases and 0/15 matched low-DTW negative cases.
+
 ## Revised Claim Boundary
 
 Safe current claim:
@@ -81,6 +87,8 @@ Acceptance criterion:
 
 - at least 3 RoboTwin2 tasks have successful non-full-expert candidates;
 - at least 50 percent of cases have more than one successful candidate source;
+- at least 50 percent of cases have a successful non-full-expert candidate with
+  nonzero executed-trace DTW from the full expert candidate;
 - DTW-to-expert is no longer a near-oracle selector.
 
 ### 2. Matched Hard Negatives
@@ -146,3 +154,20 @@ RoboTwin2 candidate-generation pass that explicitly records:
 
 Only after this anti-template manifest exists should EEF/contact-direction
 features be added and evaluated.
+
+Implementation hook now available:
+
+```bash
+PYTHONPATH=/path/to/Executable-Future-Verification/src python -m umm_reward_evaluator.benchmarks.robotwin2_gripper_aware_trace \
+  --task-name stack_blocks_two \
+  --task-config demo_clean_smoke \
+  --all-seeds \
+  --max-seeds 5 \
+  --output-dir /tmp/robotwin2_antitemplate/stack_blocks_two \
+  --candidate-preset anti_template
+```
+
+The preset adds time-warp probes, gripper-timing shifts, and a contact-segment
+joint perturbation. These are not assumed to be good candidates; they are
+designed to produce an empirical pool from which real hard positives and
+matched hard negatives can be filtered by official success labels and DTW.

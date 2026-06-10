@@ -60,6 +60,9 @@ smoke has 15 cases and six candidates per case:
   source-only is 0.0/15, K=2 reaches 6.2/15, and K=4 reaches 12.0/15.
 - DTW nearest-positive trajectory-distance control reaches 14.0/15 with
   joint+gripper traces under the same anonymous remap protocol.
+- Anti-template diagnostics show the current pool has 10/15 nominal non-full
+  successes, but 0/15 diverse non-full successes under joint+gripper DTW and
+  0/15 matched low-DTW negative cases.
 
 The important control is that candidate-ID lookup collapses to 0/15 after
 anonymous remapping, while trace-based selectors remain above rank0 and simple
@@ -147,6 +150,29 @@ PYTHONPATH=src python -m umm_reward_evaluator.benchmarks.robotwin2_kshot_calibra
   --num-rank-seeds 10 \
   --num-support-seeds 5 \
   --remap-candidate-ids
+```
+
+Run anti-template diagnostics:
+
+```bash
+PYTHONPATH=src python -m umm_reward_evaluator.benchmarks.robotwin2_antitemplate_diagnostics \
+  --manifest /path/to/robotwin2_manifest.jsonl \
+  --output-json /path/to/antitemplate_diagnostics.json \
+  --output-md /path/to/antitemplate_diagnostics.md \
+  --feature-mode dtw_joint_gripper
+```
+
+Generate RoboTwin2 traces with anti-template candidate probes from an official
+RoboTwin checkout:
+
+```bash
+PYTHONPATH=/path/to/Executable-Future-Verification/src python -m umm_reward_evaluator.benchmarks.robotwin2_gripper_aware_trace \
+  --task-name stack_blocks_two \
+  --task-config demo_clean_smoke \
+  --all-seeds \
+  --max-seeds 5 \
+  --output-dir /tmp/robotwin2_antitemplate/stack_blocks_two \
+  --candidate-preset anti_template
 ```
 
 Run the local test suite:

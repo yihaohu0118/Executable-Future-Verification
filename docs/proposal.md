@@ -139,6 +139,14 @@ RoboTwin2 pool must include successful futures that are not simply the full
 expert trace and matched negatives that are close in joint/gripper DTW but fail
 because of contact or task constraints.
 
+Anti-template diagnostics make the issue sharper. The current pool has 10/15
+nominal non-full successes, but their executed joint+gripper trace is DTW-zero
+to the full expert trace, likely because execution stops as soon as the task
+success flag is reached. Under the stricter criterion, there are 0/15 diverse
+non-full success cases and 0/15 matched low-DTW negative cases. This confirms
+that the current RoboTwin2 result is a template-confound detector, not yet a
+hard executability benchmark.
+
 K-shot target-task calibration under the same anonymous remap protocol:
 
 | Selector | K=0 | K=1 | K=2 | K=4 |
@@ -194,6 +202,9 @@ Recommended contribution shape:
 - A strong DTW nearest-positive baseline reaches 14/15 on the current RoboTwin2
   table. Until hard positives and matched hard negatives are added, the result
   is vulnerable to the critique that the selector is expert-trace matching.
+- Current nominal non-full successes are not diverse under executed-trace DTW.
+  The anti-template diagnostic reports 0/15 diverse non-full successes and
+  0/15 matched low-DTW failures.
 - We have no real robot; the paper must be framed as executable-future
   verification in modern simulated/world-model benchmarks, not deployment.
 - RoboWM-Bench remains conceptually ideal, but current public-code friction
@@ -211,6 +222,12 @@ Recommended contribution shape:
    and learned binary/contrastive selector baselines.
 5. Keep `handover_block` as a one-seed bimanual mechanism example unless a
    fourth K=5 task is needed for breadth.
+
+Implementation status: `robotwin2_gripper_aware_trace.py` now has an
+`--candidate-preset anti_template` mode that adds time-warp, gripper-timing,
+and contact-segment perturbation probes with explicit `candidate_source`
+metadata. The next remote run should use this preset and filter by official
+task success to discover real hard positives and matched hard negatives.
 
 ## Legacy Direction
 

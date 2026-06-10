@@ -525,6 +525,20 @@ result should be treated as a mechanism diagnostic, not a final method table.
 The next RoboTwin2 result must add non-expert successful futures and matched
 low-DTW failures before claiming executability beyond template matching.
 
+Anti-template diagnostics further show:
+
+| Diagnostic | Count |
+| --- | ---: |
+| Nominal non-full-expert success cases | 10/15 |
+| Diverse non-full-expert success cases | 0/15 |
+| Matched low-DTW negative cases | 0/15 |
+
+The nominal non-full successes are DTW-zero to the full expert executed trace,
+so they should not be counted as hard positives. The trace adapter now supports
+`--candidate-preset anti_template`, which adds time-warp, gripper-timing, and
+contact perturbation probes with explicit `candidate_source` metadata for the
+next filtering pass.
+
 ### K-Shot Calibration Sweep
 
 RoboTwin2 now has a K-shot calibration sweep:

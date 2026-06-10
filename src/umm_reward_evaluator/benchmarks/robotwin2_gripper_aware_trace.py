@@ -17,11 +17,20 @@ import importlib
 import json
 import os
 import traceback
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import yaml
+
+
+@dataclass(frozen=True)
+class CandidateSpec:
+    candidate_id: str
+    rank: int
+    actions: list[list[float]]
+    candidate_source: str
 
 
 def class_decorator(task_name: str) -> Any:
@@ -187,6 +196,7 @@ def run_candidate(
     seed: int,
     instruction: str,
     candidate_id: str,
+    candidate_source: str,
     rank: int,
     action_seq: list[list[float]],
     expert_metadata: dict[str, Any],
@@ -222,6 +232,7 @@ def run_candidate(
             "success": success,
             "action_type": "qpos",
             "metadata": {
+                "candidate_source": candidate_source,
                 "future_source": "gripper_aware_expert_trace",
                 "future_representation": "actions_and_state_trace",
                 "verification_target": "task_success",
@@ -237,18 +248,92 @@ def run_candidate(
             traceback.print_exc()
 
 
-def build_default_candidates(actions: list[list[float]]) -> list[tuple[str, int, list[list[float]]]]:
+def as_action_list(actions: np.ndarray) -> list[list[float]]:
+    return actions.astype(float).tolist()
+
+
+def action_matrix(actions: list[list[float]]) -> np.ndarray:
     if not actions:
-        return [("noop", 0, [np.zeros(14, dtype=float).tolist()])]
+        return np.zeros((1, 14), dtype=float)
+    return np.asarray(actions, dtype=float)
+
+
+def shifted_gripper(actions: list[list[float]], shift: int) -> list[list[float]]:
+    arr = action_matrix(actions).copy()
+    if arr.shape[1] < 14 or len(arr) <= 1:
+        return as_action_list(arr)
+    for gripper_col in (6, 13):
+        arr[:, gripper_col] = np.roll(arr[:, gripper_col], shift)
+        if shift > 0:
+            arr[:shift, gripper_col] = arr[shift, gripper_col]
+        elif shift < 0:
+            arr[shift:, gripper_col] = arr[shift - 1, gripper_col]
+    return as_action_list(arr)
+
+
+def repeat_middle(actions: list[list[float]], repeats: int = 2) -> list[list[float]]:
+    if not actions:
+        return actions
+    mid = len(actions) // 2
+    return actions[:mid] + [actions[mid]] * max(1, repeats) + actions[mid:]
+
+
+def time_subsample_then_hold(actions: list[list[float]], stride: int = 2) -> list[list[float]]:
+    if len(actions) <= 2:
+        return actions
+    kept = actions[::stride]
+    if kept[-1] != actions[-1]:
+        kept.append(actions[-1])
+    return kept
+
+
+def perturb_contact_segment(actions: list[list[float]], *, scale: float = 0.08) -> list[list[float]]:
+    arr = action_matrix(actions).copy()
+    if len(arr) <= 2:
+        return as_action_list(arr)
+    start = max(0, int(len(arr) * 0.6))
+    base = arr[start - 1].copy() if start > 0 else arr[0].copy()
+    arr[start:, :6] = base[:6] + (arr[start:, :6] - base[:6]) * (1.0 + scale)
+    arr[start:, 7:13] = base[7:13] + (arr[start:, 7:13] - base[7:13]) * (1.0 - scale)
+    return as_action_list(arr)
+
+
+def build_default_candidates(actions: list[list[float]]) -> list[CandidateSpec]:
+    if not actions:
+        return [CandidateSpec("noop", 0, [np.zeros(14, dtype=float).tolist()], "noop")]
     mid = max(1, len(actions) // 2)
     return [
-        ("first_action_rank0", 0, actions[:1]),
-        ("full_gripper_aware", 1, actions),
-        ("first_half", 2, actions[:mid]),
-        ("drop_last", 3, actions[:-1] if len(actions) > 1 else actions[:1]),
-        ("reverse", 4, list(reversed(actions))),
-        ("noop", 5, [np.zeros(len(actions[0]), dtype=float).tolist()]),
+        CandidateSpec("first_action_rank0", 0, actions[:1], "first_action"),
+        CandidateSpec("full_gripper_aware", 1, actions, "full_expert_trace"),
+        CandidateSpec("first_half", 2, actions[:mid], "prefix_truncation"),
+        CandidateSpec("drop_last", 3, actions[:-1] if len(actions) > 1 else actions[:1], "suffix_truncation"),
+        CandidateSpec("reverse", 4, list(reversed(actions)), "time_reverse"),
+        CandidateSpec("noop", 5, [np.zeros(len(actions[0]), dtype=float).tolist()], "noop"),
     ]
+
+
+def build_antitemplate_candidates(actions: list[list[float]]) -> list[CandidateSpec]:
+    candidates = build_default_candidates(actions)
+    if not actions:
+        return candidates
+    candidates.extend(
+        [
+            CandidateSpec("repeat_middle", 6, repeat_middle(actions, repeats=2), "time_warp_hard_positive_probe"),
+            CandidateSpec("stride2_hold_endpoint", 7, time_subsample_then_hold(actions, stride=2), "time_warp_hard_positive_probe"),
+            CandidateSpec("gripper_early_1", 8, shifted_gripper(actions, shift=-1), "matched_gripper_timing_negative_probe"),
+            CandidateSpec("gripper_late_1", 9, shifted_gripper(actions, shift=1), "matched_gripper_timing_negative_probe"),
+            CandidateSpec("contact_joint_perturb", 10, perturb_contact_segment(actions), "matched_contact_direction_negative_probe"),
+        ]
+    )
+    return candidates
+
+
+def build_candidates(actions: list[list[float]], preset: str) -> list[CandidateSpec]:
+    if preset == "default":
+        return build_default_candidates(actions)
+    if preset == "anti_template":
+        return build_antitemplate_candidates(actions)
+    raise ValueError(f"unknown candidate preset: {preset}")
 
 
 def run_one_seed(
@@ -259,6 +344,7 @@ def run_one_seed(
     instruction: str,
     output: Path,
     skip_existing: bool,
+    candidate_preset: str,
 ) -> None:
     if skip_existing and output.exists() and output.stat().st_size > 0:
         print(f"skip existing {output}", flush=True)
@@ -269,20 +355,21 @@ def run_one_seed(
         raise SystemExit(f"expert rollout did not succeed for {task_name} seed {seed}")
 
     rows: list[dict[str, Any]] = []
-    for candidate_id, rank, action_seq in build_default_candidates(actions):
-        print(f"running seed={seed} {candidate_id} len={len(action_seq)}", flush=True)
+    for candidate in build_candidates(actions, candidate_preset):
+        print(f"running seed={seed} {candidate.candidate_id} len={len(candidate.actions)}", flush=True)
         row = run_candidate(
             task_name=task_name,
             task_config=task_config,
             seed=seed,
             instruction=instruction,
-            candidate_id=candidate_id,
-            rank=rank,
-            action_seq=action_seq,
+            candidate_id=candidate.candidate_id,
+            candidate_source=candidate.candidate_source,
+            rank=candidate.rank,
+            action_seq=candidate.actions,
             expert_metadata=expert_metadata,
         )
         print(
-            f"seed={seed} {candidate_id} success={row['success']} executed={len(row['actions'])}",
+            f"seed={seed} {candidate.candidate_id} success={row['success']} executed={len(row['actions'])}",
             flush=True,
         )
         rows.append(row)
@@ -305,6 +392,7 @@ def main() -> None:
     parser.add_argument("--max-seeds", type=int)
     parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--skip-existing", action="store_true")
+    parser.add_argument("--candidate-preset", choices=["default", "anti_template"], default="default")
     args = parser.parse_args()
 
     instruction = args.instruction or args.task_name.replace("_", " ")
@@ -323,6 +411,7 @@ def main() -> None:
                 instruction=instruction,
                 output=args.output_dir / f"seed_{seed}.jsonl",
                 skip_existing=args.skip_existing,
+                candidate_preset=args.candidate_preset,
             )
         return
 
@@ -336,6 +425,7 @@ def main() -> None:
         instruction=instruction,
         output=args.output,
         skip_existing=args.skip_existing,
+        candidate_preset=args.candidate_preset,
     )
 
 
