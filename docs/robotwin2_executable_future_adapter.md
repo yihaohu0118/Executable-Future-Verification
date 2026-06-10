@@ -246,6 +246,65 @@ The `drop_last` success is also useful: some post-success retreat actions are
 not necessary, so future corruptions should distinguish task-critical contact
 and release phases from redundant cleanup motions.
 
+### Gripper-Aware Multi-Task Smoke
+
+The gripper-aware trace probe was then formalized as
+`src/umm_reward_evaluator/benchmarks/robotwin2_gripper_aware_trace.py`. The
+script should be copied into an official RoboTwin checkout and run from the
+RoboTwin root. It records compact qpos targets during expert `play_once()`:
+
+```text
+[left_arm_qpos(6), left_gripper, right_arm_qpos(6), right_gripper]
+```
+
+It then replays six default candidate futures:
+
+| Candidate | Meaning |
+| --- | --- |
+| `first_action_rank0` | under-actuated default first candidate |
+| `full_gripper_aware` | full recorded expert trace |
+| `first_half` | truncated prefix |
+| `drop_last` | remove final action |
+| `reverse` | temporal reversal |
+| `noop` | zero action |
+
+One implementation detail mattered for `open_laptop`: the official
+`check_success()` expects `self.arm_tag`, which is set inside expert
+`play_once()` but not by `setup_demo()` alone. The adapter therefore restores
+`env.arm_tag` from the expert info binding `{a}` before replay. This keeps the
+official success function unchanged while reproducing task-local state expected
+by replay.
+
+Current one-seed gripper-aware results:
+
+| Task | Task type | Rank0 | Full trace | First half | Drop last | Reverse | Noop | Oracle better |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `stack_blocks_two` | multi-stage stack | 0 | 1 | 0 | 1 | 0 | 0 | 1 |
+| `stamp_seal` | precise contact | 0 | 1 | 0 | 0 | 0 | 0 | 1 |
+| `open_laptop` | articulated object | 0 | 1 | 0 | 1 | 0 | 0 | 1 |
+| `handover_block` | bimanual handover | 0 | 1 | 0 | 0 | 0 | 0 | 1 |
+
+All four traces converted with `robotwin2_trace_to_manifest.py` and validated
+with `validate_future_verification_manifest --require-future-metadata`. Each
+validated manifest has 6 rows, 1 case, 0 errors, rank0 success 0/1, oracle
+success 1/1, and oracle_better 1/1.
+
+Interpretation:
+
+- RoboTwin2 now passes the first kill-line condition: at least four 2025
+  benchmark tasks show oracle headroom under fixed expert-valid seeds.
+- `stack_blocks_two` proves endpoint-only reconstruction is insufficient for
+  multi-stage placement; gripper-aware traces recover the executable future.
+- `stamp_seal` and `handover_block` are stricter than the earlier
+  `press_stapler` smoke because reverse, half, drop-last, and noop all fail.
+- `open_laptop` shows the effect is not limited to rigid pick/place tasks, but
+  its `drop_last` success indicates the final actions are cleanup rather than
+  task-critical.
+- These are mechanism/protocol smokes, not final statistical results. The next
+  paper-quality step is to scale each task to multiple seeds and replace the
+  oracle/full-trace check with learned selector comparisons against action-only
+  and magnitude/smoothness controls.
+
 ## Why It Fits The Current Story
 
 RoboCasa365 already shows that action-envelope calibration can recover conservative-prior failures, but hard negatives require compact robot execution-envelope/contact evidence. RoboTwin 2.0 adds:

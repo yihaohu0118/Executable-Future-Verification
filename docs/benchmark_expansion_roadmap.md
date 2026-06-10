@@ -203,6 +203,28 @@ Current RoboTwin2 mechanism smoke:
 - `stack_blocks_two` gripper-aware trace: first-action rank0 fails, full
   gripper-aware trace succeeds, first-half fails, reverse fails, noop fails,
   and manifest validation gives rank0 0/1, oracle 1/1, oracle_better 1/1.
+- `stamp_seal` gripper-aware trace: rank0, first-half, drop-last, reverse, and
+  noop all fail; full trace succeeds. Manifest validation gives rank0 0/1,
+  oracle 1/1, oracle_better 1/1.
+- `open_laptop` gripper-aware trace: rank0, first-half, reverse, and noop fail;
+  full trace succeeds, and drop-last also succeeds because the final actions are
+  not task-critical. The adapter restores `arm_tag` from expert info before
+  replay because the official success check expects that task-local field.
+  Manifest validation gives rank0 0/1, oracle 1/1, oracle_better 1/1.
+- `handover_block` gripper-aware trace: rank0, first-half, drop-last, reverse,
+  and noop all fail; full trace succeeds. This is the cleanest current
+  dual-arm coordination case. Manifest validation gives rank0 0/1, oracle 1/1,
+  oracle_better 1/1.
+
+RoboTwin 2.0 has now passed the first kill-line condition at the smoke level:
+four tasks (`stack_blocks_two`, `stamp_seal`, `open_laptop`,
+`handover_block`) show rank0 0/1 and oracle 1/1 under fixed expert-valid seeds.
+This is not yet a paper table because each task has only one seed and the
+selector comparison is still oracle/full-trace based. The next required step is
+to scale these same tasks to multiple seeds and report learned selector
+baselines: random, rank0, action-only, magnitude/energy/smoothness,
+EEF/gripper execution-envelope, source-only/no-task-ID, and K-shot calibrated
+selectors.
 
 Updated RoboWM next step:
 
