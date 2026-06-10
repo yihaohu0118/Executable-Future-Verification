@@ -9,6 +9,7 @@ from umm_reward_evaluator.benchmarks.robotwin2_selector_baselines import (
 )
 from umm_reward_evaluator.benchmarks.robotwin2_antitemplate_diagnostics import diagnose_manifest
 from umm_reward_evaluator.benchmarks.robotwin2_gripper_aware_trace import build_candidates
+from umm_reward_evaluator.benchmarks.robotwin2_selector_failure_analysis import run_analysis
 from umm_reward_evaluator.benchmarks.robotwin2_rank_randomization_sweep import (
     parse_prototype_config,
     parse_trace_distance_config,
@@ -134,6 +135,25 @@ class RoboTwin2SelectorBaselinesTest(unittest.TestCase):
         self.assertEqual(by_id["gripper_late_1"].candidate_source, "matched_gripper_timing_negative_probe")
         self.assertGreater(len(by_id["repeat_middle"].actions), len(actions))
         self.assertLess(len(by_id["stride2_hold_endpoint"].actions), len(actions))
+
+    def test_selector_failure_analysis_tracks_sources_after_remap(self):
+        rows = []
+        for row in self.rows:
+            row = dict(row)
+            metadata = dict(row.get("metadata") or {})
+            metadata["candidate_source"] = "success_probe" if row["oracle_success"] else "failure_probe"
+            row["metadata"] = metadata
+            rows.append(row)
+        summary = run_analysis(
+            rows,
+            seeds=[0],
+            mode="failure_rank0_shuffle_rest",
+            remap_candidate_ids=True,
+        )
+        self.assertIn("heuristic:smoothness_max", summary["by_selector"])
+        self.assertGreater(summary["num_rows"], 0)
+        sources = summary["by_selector"]["heuristic:smoothness_max"]["source_counts"]
+        self.assertTrue(set(sources).issubset({"success_probe", "failure_probe"}))
 
     def test_rank_randomization_sweep_aggregates_multiple_seeds(self):
         summary = run_sweep(

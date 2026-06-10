@@ -109,6 +109,34 @@ The few-shot story survives the harder pool: source-only transfer is weak, and
 target-task support substantially improves selection. The claim should remain
 "few-shot task/contact calibration", not universal zero-shot verification.
 
+## Selector Failure Analysis
+
+Failure/source analysis over 10 anonymous remap seeds shows what the strong
+baselines are actually doing:
+
+| Selector | Success over 150 selections | Dominant selected sources | Failure sources |
+| --- | ---: | --- | --- |
+| energy_sum_max | 100/150 | time-warp 100, reverse 50 | reverse 50 |
+| smoothness_max | 90/150 | time-warp 150 | time-warp 60 |
+| phase-gripper same-task | 134/150 | time-warp 54, contact perturb 32, gripper timing 20 | prefix truncation 16 |
+| gripper same-task | 133/150 | time-warp 50, contact perturb 41, gripper timing 19 | time-warp 10, prefix truncation 7 |
+| DTW gripper | 135/150 | time-warp 54, contact perturb 31, gripper timing 20 | prefix truncation 15 |
+| DTW joint+gripper | 130/150 | time-warp 110, contact perturb 20, full expert 10 | prefix truncation 10, time-warp 10 |
+
+Interpretation:
+
+- Energy and length heuristics are not real verifiers; they mostly pick
+  long/high-energy candidates and fail on reverse trajectories.
+- DTW gripper and phase-gripper selectors behave similarly and fail mostly on
+  prefix truncations.
+- DTW joint+gripper over-selects time-warp candidates; its remaining failures
+  are not random but concentrated in time-warp and prefix-truncation cases.
+- Action DTW is specifically fooled by contact perturbations on `stamp_seal`.
+
+The next anti-template pool should therefore add near-neighbor failures around
+successful time-warp candidates and contact perturbations, rather than adding
+more broad random perturbations.
+
 ## Current Interpretation
 
 This result is stronger than the previous RoboTwin2 smoke because it creates

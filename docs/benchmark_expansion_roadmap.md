@@ -375,6 +375,12 @@ not yet a decisive method win: DTW remains competitive. The next pool should
 increase matched negatives, especially in `stack_blocks_two`, where the current
 anti-template negatives are not close enough to successful traces.
 
+Selector failure analysis narrows this down further: DTW gripper mostly fails
+on prefix truncations, DTW joint+gripper over-selects time-warp candidates, and
+action DTW is fooled by `stamp_seal` contact perturbations. The next preset
+should create near-neighbor failures around successful time-warp and contact
+perturb candidates.
+
 Updated RoboWM next step:
 
 1. Turn the reset-compatibility shim and Vulkan/EGL setup into a reproducible helper patch or documented benchmark fork diff.
