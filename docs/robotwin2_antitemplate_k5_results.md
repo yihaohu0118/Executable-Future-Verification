@@ -198,6 +198,20 @@ probes. Its purpose is not to increase oracle headroom; it is to check whether
 energy/length heuristics collapse once failed futures have comparable or larger
 action length and energy than the successful contact-repeat futures.
 
+The first `targeted_energy_matched` smoke on `stamp_seal` seed 0 confirms the
+shortcut control works locally. It keeps rank0 `0/1` and oracle `1/1`, while
+the new long failed probes all fail:
+
+- `long_gripper_contact_pulse`: fail, length 13;
+- `long_gripper_contact_pulse_wide`: fail, length 13;
+- `long_contact_joint_perturb_strong`: fail, length 13;
+- `long_gripper_late_1`: fail, length 13;
+- `long_reverse_contact`: fail, length 13.
+
+On this smoke, `energy_sum_max` selects `long_reverse_contact` and fails, while
+`length_max` selects `long_gripper_contact_pulse` and fails. The next evidence
+gate is whether this holds over the K=5 `stamp_seal` run.
+
 ## Current Interpretation
 
 This result is stronger than the previous RoboTwin2 smoke because it creates
@@ -209,4 +223,5 @@ contact or task completion fails. The `targeted_hard` smoke is the first pass
 at that next pool; the next remote run should scale it to K=5 before treating
 it as evidence. The newer `targeted_energy_matched` preset is the next
 shortcut-control step after the K=5 run showed that energy and length still
-solve `stamp_seal`.
+solve `stamp_seal`; seed 0 already shows the desired energy/length collapse,
+and the K=5 run is in progress.

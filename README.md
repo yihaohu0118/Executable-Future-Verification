@@ -75,6 +75,9 @@ smoke has 15 cases and six candidates per case:
   with 5/5 diverse non-full successes and 5/5 matched low-DTW negatives, but
   energy/length heuristics still reach 5/5. The next preset,
   `targeted_energy_matched`, adds long failed probes to remove that shortcut.
+- The `targeted_energy_matched` seed-0 smoke confirms the intended control:
+  `energy_sum_max` and `length_max` both select long failed probes rather than
+  the successful contact-repeat trajectory.
 
 The important control is that candidate-ID lookup collapses to 0/15 after
 anonymous remapping, while trace-based selectors remain above rank0 and simple
@@ -211,7 +214,8 @@ PYTHONPATH=src python -m unittest discover -s tests
 5. Scale the RoboTwin2 `targeted_hard` preset beyond the current one-case smoke
    and compare against DTW/template baselines.
 6. Run `targeted_energy_matched` on `stamp_seal` to determine whether the
-   current energy/length shortcut can be removed.
+   current energy/length shortcut can be removed. Seed 0 passes; K=5 is running
+   on dev2.
 7. Keep RoboWM-Bench as a world-model-specific diagnostic layer until its
    public evaluator ceiling is clarified.
 

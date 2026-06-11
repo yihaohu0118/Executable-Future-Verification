@@ -408,6 +408,11 @@ late-gripper, and reverse-contact probes. This is a stricter gate: it should
 make energy/length baselines fail before we claim that execution-envelope
 features are doing more than action-budget selection.
 
+`targeted_energy_matched` seed 0 has passed this gate: the added long failed
+probes are all failures, `energy_sum_max` selects `long_reverse_contact` and
+fails, and `length_max` selects `long_gripper_contact_pulse` and fails. The
+remaining question is whether this remains true over the K=5 run.
+
 Updated RoboWM next step:
 
 1. Turn the reset-compatibility shim and Vulkan/EGL setup into a reproducible helper patch or documented benchmark fork diff.

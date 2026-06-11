@@ -174,6 +174,12 @@ probes specifically to test whether the selector advantage survives when failed
 futures are at least as long and high-energy as the successful time-warp
 futures.
 
+The seed-0 `targeted_energy_matched` smoke gives the desired first signal:
+`energy_sum_max` selects a long reverse-contact failure, and `length_max`
+selects a long gripper-contact-pulse failure. This turns the previous
+energy/length shortcut into an explicit negative control, but it still needs
+the full K=5 result before it can support the main claim.
+
 K-shot target-task calibration under the same anonymous remap protocol:
 
 | Selector | K=0 | K=1 | K=2 | K=4 |
@@ -262,6 +268,7 @@ Recommended contribution shape:
    anti-template main table.
 7. Run `--candidate-preset targeted_energy_matched` on `stamp_seal` to verify
    that energy/length heuristics collapse when long failed futures are added.
+   Seed 0 has passed this gate; K=5 is the current remote run.
 
 Implementation status: `robotwin2_gripper_aware_trace.py` now has an
 `--candidate-preset anti_template` mode that adds time-warp, gripper-timing,
