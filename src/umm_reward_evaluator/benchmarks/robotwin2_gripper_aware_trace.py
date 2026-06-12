@@ -17,6 +17,7 @@ import importlib
 import json
 import os
 import traceback
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -40,6 +41,29 @@ def class_decorator(task_name: str) -> Any:
         return env_class()
     except Exception as exc:
         raise SystemExit(f"No such task: {task_name}") from exc
+
+
+@contextmanager
+def replay_without_planner(enabled: bool):
+    """Skip expensive planner construction while replaying fixed qpos candidates."""
+    if not enabled:
+        yield
+        return
+
+    robot_module = importlib.import_module("envs.robot.robot")
+    robot_class = getattr(robot_module, "Robot")
+    original_set_planner = robot_class.set_planner
+
+    def noop_set_planner(self, scene=None):
+        self.communication_flag = False
+        self.left_planner = None
+        self.right_planner = None
+
+    robot_class.set_planner = noop_set_planner
+    try:
+        yield
+    finally:
+        robot_class.set_planner = original_set_planner
 
 
 def get_embodiment_config(robot_file: str) -> dict[str, Any]:
@@ -205,10 +229,12 @@ def run_candidate(
     rank: int,
     action_seq: list[list[float]],
     expert_metadata: dict[str, Any],
+    skip_replay_planner: bool,
 ) -> dict[str, Any]:
     env = class_decorator(task_name)
-    args = build_args(task_name, task_config, eval_mode=True, need_plan=True)
-    env.setup_demo(now_ep_num=0, seed=seed, is_test=True, **args)
+    args = build_args(task_name, task_config, eval_mode=True, need_plan=False)
+    with replay_without_planner(skip_replay_planner):
+        env.setup_demo(now_ep_num=0, seed=seed, is_test=True, **args)
     restored_replay_state = restore_replay_state(env, expert_metadata)
     executed: list[list[float]] = []
     state_trace: list[dict[str, Any]] = []
@@ -543,6 +569,7 @@ def run_one_seed(
     output: Path,
     skip_existing: bool,
     candidate_preset: str,
+    skip_replay_planner: bool,
 ) -> None:
     if skip_existing and output.exists() and output.stat().st_size > 0:
         print(f"skip existing {output}", flush=True)
@@ -568,6 +595,7 @@ def run_one_seed(
                     rank=candidate.rank,
                     action_seq=candidate.actions,
                     expert_metadata=expert_metadata,
+                    skip_replay_planner=skip_replay_planner,
                 )
                 print(
                     f"seed={seed} {candidate.candidate_id} success={row['success']} executed={len(row['actions'])}",
@@ -602,6 +630,11 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--skip-existing", action="store_true")
     parser.add_argument(
+        "--with-replay-planner",
+        action="store_true",
+        help="Build the official planner for every replay candidate. Fixed qpos replay skips it by default.",
+    )
+    parser.add_argument(
         "--candidate-preset",
         choices=["default", "anti_template", "targeted_hard", "targeted_energy_matched"],
         default="default",
@@ -625,6 +658,7 @@ def main() -> None:
                 output=args.output_dir / f"seed_{seed}.jsonl",
                 skip_existing=args.skip_existing,
                 candidate_preset=args.candidate_preset,
+                skip_replay_planner=not args.with_replay_planner,
             )
         return
 
@@ -639,6 +673,7 @@ def main() -> None:
         output=args.output,
         skip_existing=args.skip_existing,
         candidate_preset=args.candidate_preset,
+        skip_replay_planner=not args.with_replay_planner,
     )
 
 
