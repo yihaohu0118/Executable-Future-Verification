@@ -5,9 +5,9 @@ Date: 2026-06-12 UTC
 This note records the current RoboTwin2 execution setup for executable-future
 verification runs on the GCP dev boxes.
 
-## Active Run
+## Completed Run
 
-The active `stamp_seal` `targeted_energy_matched` K=5 run is on dev2:
+The completed `stamp_seal` `targeted_energy_matched` K=5 run is on dev2:
 
 - root: `/home/yihao_hyh/efv_runs/robotwin2_targeted_energy_matched_k5_official_20260612`
 - raw traces: `raw/stamp_seal/seed_*.jsonl`
@@ -16,9 +16,9 @@ The active `stamp_seal` `targeted_energy_matched` K=5 run is on dev2:
 - EFV checkout: `/home/yihao_hyh/Executable-Future-Verification`
 - conda env: `/home/yihao_hyh/miniconda3/envs/robotwin2-favc`
 
-The run uses the default adapter path, which builds the official replay planner
+The run used the default adapter path, which builds the official replay planner
 for every candidate. This is slow but is the only currently trusted path for
-main-table results.
+main-table results. It completed five valid seeds: `0, 3, 4, 6, 9`.
 
 ## H100 cuRobo Fallback
 
@@ -51,6 +51,6 @@ use the default official planner path despite the runtime cost.
 
 ## Seed Handling
 
-For `stamp_seal`, seed 1 failed expert rollout in the official K=5 run. The
-active replacement queue on GPU1 tries seeds `2 5 7 8 9` and should use the
-first successful completed replacements to maintain at least five valid cases.
+For `stamp_seal`, seeds `1, 2, 5, 7, 8` failed expert rollout in the official
+K=5 run. Seed `9` was the successful replacement, and seed `6` completed on
+GPU0 after seed `0`.

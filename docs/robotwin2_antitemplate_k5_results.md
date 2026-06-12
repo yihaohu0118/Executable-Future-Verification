@@ -212,6 +212,86 @@ On this smoke, `energy_sum_max` selects `long_reverse_contact` and fails, while
 `length_max` selects `long_gripper_contact_pulse` and fails. The next evidence
 gate is whether this holds over the K=5 `stamp_seal` run.
 
+## Targeted-Energy-Matched K=5 Official Run
+
+Date: 2026-06-12 UTC
+
+Remote artifacts:
+
+- root: `/home/yihao_hyh/efv_runs/robotwin2_targeted_energy_matched_k5_official_20260612`
+- raw traces: `raw/stamp_seal/seed_{0,3,4,6,9}.jsonl`
+- manifest: `manifests/stamp_targeted_energy_matched_k5_manifest.jsonl`
+- diagnostics: `selectors/stamp_targeted_energy_matched_k5_diagnostics.{json,md}`
+- selector sweep: `selectors/stamp_targeted_energy_matched_k5_rankrand_sweep.json`
+- failure analysis: `selectors/stamp_targeted_energy_matched_k5_failure_analysis.{json,md}`
+
+This run used the default official replay planner path. A faster
+`--skip-replay-planner` diagnostic was tried and rejected because it made
+`full_gripper_aware` fail on `stamp_seal` seed 0, changing replay semantics.
+
+Main diagnostics:
+
+| Cases | Rank0 | Oracle | Diverse non-full success | Matched low-DTW negative |
+| ---: | ---: | ---: | ---: | ---: |
+| 5 | 0/5 | 5/5 | 5/5 | 5/5 |
+
+Candidate-source success:
+
+| Candidate source | Success |
+| --- | ---: |
+| full_expert_trace | 5/5 |
+| time_warp_hard_positive_probe | 9/10 |
+| targeted_time_warp_negative_probe | 15/20 |
+| matched_gripper_timing_negative_probe | 4/10 |
+| matched_contact_direction_negative_probe | 2/5 |
+| targeted_contact_negative_probe | 2/10 |
+| energy_matched_gripper_contact_negative_probe | 1/10 |
+| energy_matched_contact_negative_probe | 0/5 |
+| energy_matched_gripper_timing_negative_probe | 0/5 |
+| energy_matched_time_reverse_negative_probe | 0/5 |
+| targeted_gripper_contact_negative_probe | 0/10 |
+| suffix_truncation | 0/5 |
+| prefix_truncation | 0/5 |
+| first_action | 0/5 |
+| time_reverse | 0/5 |
+| noop | 0/5 |
+
+Anonymous rank/ID selector sweep over 10 remap seeds:
+
+| Selector | Success |
+| --- | ---: |
+| rank0 | 0.0/5 |
+| candidate-ID full-trace lookup | 0.0/5 |
+| random expected | 1.58/5 |
+| energy_sum_max heuristic | 0.0/5 |
+| length_max heuristic | 0.1/5 |
+| smoothness_max heuristic | 1.0/5 |
+| action distribution nearest-positive | 1.0/5 |
+| gripper distribution nearest-positive, all-task | 5.0/5 |
+| gripper distribution nearest-positive, same-task | 5.0/5 |
+| phase-gripper nearest-positive, all-task | 5.0/5 |
+| phase-gripper nearest-positive, same-task | 5.0/5 |
+| phase-joint nearest-positive, all-task | 3.0/5 |
+| phase-joint+gripper nearest-positive, all-task | 3.0/5 |
+| DTW action nearest-positive | 3.0/5 |
+| DTW gripper nearest-positive | 5.0/5 |
+| DTW joint nearest-positive | 3.0/5 |
+| DTW joint+gripper nearest-positive | 3.0/5 |
+
+Failure analysis confirms the intended shortcut control. Over 50 anonymized
+selection runs, `energy_sum_max` succeeds 0 times and selects only
+energy-matched failed probes. `length_max` succeeds once and otherwise selects
+energy-matched failed probes. In contrast, gripper-distribution,
+phase-gripper-distribution, and DTW-gripper selectors succeed in all 50/50
+selections.
+
+Interpretation: this is the first RoboTwin2 table that cleanly supports the
+paper mechanism. Rank, candidate ID, action energy, action length, smoothness,
+and action-distribution shortcuts fail, while compact gripper execution
+envelopes remain sufficient on the same anonymized candidate pool. The result
+is still single-task; the next requirement is to reproduce this shortcut
+control on at least three additional RoboTwin2 tasks.
+
 ## Current Interpretation
 
 This result is stronger than the previous RoboTwin2 smoke because it creates
