@@ -26,6 +26,8 @@ for task in "${TASKS[@]}"; do
   summary="$RUN_ROOT/manifests/${task}_targeted_energy_matched_summary.json"
   diagnostics_json="$RUN_ROOT/selectors/${task}_targeted_energy_matched_diagnostics.json"
   diagnostics_md="$RUN_ROOT/selectors/${task}_targeted_energy_matched_diagnostics.md"
+  trace_audit_json="$RUN_ROOT/selectors/${task}_targeted_energy_matched_trace_field_audit.json"
+  trace_audit_md="$RUN_ROOT/selectors/${task}_targeted_energy_matched_trace_field_audit.md"
   sweep_json="$RUN_ROOT/selectors/${task}_targeted_energy_matched_rankrand_sweep.json"
   failures_json="$RUN_ROOT/selectors/${task}_targeted_energy_matched_failure_analysis.json"
   failures_md="$RUN_ROOT/selectors/${task}_targeted_energy_matched_failure_analysis.md"
@@ -48,6 +50,11 @@ PY
     echo "skip selector analysis for $task: no complete cases"
     continue
   fi
+
+  python -m umm_reward_evaluator.benchmarks.robotwin2_trace_field_audit \
+    --manifest "$manifest" \
+    --output-json "$trace_audit_json" \
+    --output-md "$trace_audit_md"
 
   python -m umm_reward_evaluator.benchmarks.robotwin2_antitemplate_diagnostics \
     --manifest "$manifest" \
