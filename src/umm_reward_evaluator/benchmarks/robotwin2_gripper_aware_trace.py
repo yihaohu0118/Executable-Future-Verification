@@ -242,7 +242,7 @@ def run_candidate(
     skip_replay_planner: bool,
 ) -> dict[str, Any]:
     env = class_decorator(task_name)
-    args = build_args(task_name, task_config, eval_mode=True, need_plan=False)
+    args = build_args(task_name, task_config, eval_mode=True, need_plan=True)
     with replay_without_planner(skip_replay_planner):
         env.setup_demo(now_ep_num=0, seed=seed, is_test=True, **args)
     restored_replay_state = restore_replay_state(env, expert_metadata)
