@@ -85,6 +85,33 @@ class RoboTwin2SelectorBaselinesTest(unittest.TestCase):
         self.assertEqual(prototype["overall"]["selector_oracle_match"], 4)
         self.assertEqual(len(prototype["scored_rows"]), len(self.rows))
 
+    def test_nearest_pos_neg_uses_negative_neighbors(self):
+        rows = [
+            make_row("stack", "seed=0", "rank0", 0, False, [[0.0], [0.0]], [0.0, 0.0]),
+            make_row("stack", "seed=0", "success", 1, True, [[1.0], [1.0]], [1.0, 1.0]),
+            make_row("stack", "seed=0", "near_positive_failure", 2, False, [[1.0], [1.0]], [0.9, 0.9]),
+            make_row("stack", "seed=1", "rank0", 0, False, [[0.0], [0.0]], [0.0, 0.0]),
+            make_row("stack", "seed=1", "success", 1, True, [[1.0], [1.0]], [1.0, 1.0]),
+            make_row("stack", "seed=1", "near_positive_failure", 2, False, [[1.0], [1.0]], [0.9, 0.9]),
+        ]
+        nearest_positive = evaluate_prototype(
+            rows,
+            feature_mode="gripper_distribution",
+            scope="same_task",
+            prototype_mode="nearest_positive",
+        )
+        contrastive = evaluate_prototype(
+            rows,
+            feature_mode="gripper_distribution",
+            scope="same_task",
+            prototype_mode="nearest_pos_neg",
+        )
+        self.assertGreaterEqual(
+            contrastive["overall"]["selector_success"],
+            nearest_positive["overall"]["selector_success"],
+        )
+        self.assertEqual(contrastive["overall"]["selector_success"], 2)
+
     def test_phase_gripper_feature_is_fixed_width_across_trace_lengths(self):
         rows = list(self.rows)
         rows[1] = make_row("stack", "seed=0", "full", 1, True, [[1.0], [1.0], [1.0]], [1.0, 1.0, 1.0])
@@ -211,16 +238,16 @@ class RoboTwin2SelectorBaselinesTest(unittest.TestCase):
             mode="failure_rank0_shuffle_rest",
             remap_candidate_ids=True,
             heuristics=("smoothness_max",),
-            prototypes=(parse_prototype_config("gripper_distribution:same_task:nearest_positive"),),
+            prototypes=(parse_prototype_config("gripper_distribution:same_task:nearest_pos_neg"),),
             trace_distances=(parse_trace_distance_config("dtw_gripper:same_task"),),
         )
         selectors = {row["selector"] for row in summary["aggregate"]["selectors"]}
         self.assertIn("heuristic:smoothness_max", selectors)
-        self.assertIn("prototype:gripper_distribution:same_task:nearest_positive", selectors)
+        self.assertIn("prototype:gripper_distribution:same_task:nearest_pos_neg", selectors)
         self.assertIn("trace_distance:dtw_gripper:same_task:nearest_positive", selectors)
         self.assertNotIn("heuristic:energy_sum_max", selectors)
         self.assertEqual(summary["heuristics"], ["smoothness_max"])
-        self.assertEqual(summary["prototypes"], ["gripper_distribution:same_task:nearest_positive"])
+        self.assertEqual(summary["prototypes"], ["gripper_distribution:same_task:nearest_pos_neg"])
         self.assertEqual(summary["trace_distances"], ["dtw_gripper:same_task"])
 
     def test_kshot_sweep_reports_source_plus_target_calibration(self):

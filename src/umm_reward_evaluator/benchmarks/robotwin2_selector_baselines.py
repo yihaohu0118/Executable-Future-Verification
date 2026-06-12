@@ -33,7 +33,7 @@ PROTOTYPE_FEATURES = (
     "phase_joint_gripper_distribution",
 )
 PROTOTYPE_SCOPES = ("same_task", "all_tasks")
-PROTOTYPE_MODES = ("nearest_positive", "pos_neg_centroid", "pos_centroid")
+PROTOTYPE_MODES = ("nearest_positive", "nearest_pos_neg", "pos_neg_centroid", "pos_centroid")
 TRACE_DISTANCE_FEATURES = (
     "dtw_action",
     "dtw_joint",
@@ -304,6 +304,12 @@ def prototype_scores(x_train: np.ndarray, y_train: np.ndarray, x_test: np.ndarra
     if mode == "nearest_positive":
         dist = np.linalg.norm(x_test[:, None, :] - pos[None, :, :], axis=2)
         return -dist.min(axis=1)
+    if mode == "nearest_pos_neg":
+        pos_dist = np.linalg.norm(x_test[:, None, :] - pos[None, :, :], axis=2).min(axis=1)
+        if neg.size == 0:
+            return -pos_dist
+        neg_dist = np.linalg.norm(x_test[:, None, :] - neg[None, :, :], axis=2).min(axis=1)
+        return neg_dist - pos_dist
     pos_centroid = pos.mean(axis=0, keepdims=True)
     pos_dist = np.linalg.norm(x_test - pos_centroid, axis=1)
     if mode == "pos_centroid":

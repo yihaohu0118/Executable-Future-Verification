@@ -33,10 +33,13 @@ DEFAULT_PROTOTYPES = (
     ("action_distribution", "same_task", "nearest_positive"),
     ("gripper_distribution", "same_task", "nearest_positive"),
     ("gripper_distribution", "all_tasks", "nearest_positive"),
+    ("gripper_distribution", "same_task", "nearest_pos_neg"),
     ("phase_gripper_distribution", "same_task", "nearest_positive"),
     ("phase_gripper_distribution", "all_tasks", "nearest_positive"),
+    ("phase_gripper_distribution", "same_task", "nearest_pos_neg"),
     ("phase_joint_distribution", "all_tasks", "nearest_positive"),
     ("phase_joint_gripper_distribution", "all_tasks", "nearest_positive"),
+    ("phase_joint_gripper_distribution", "same_task", "nearest_pos_neg"),
 )
 DEFAULT_TRACE_DISTANCES = (
     ("dtw_action", "same_task"),

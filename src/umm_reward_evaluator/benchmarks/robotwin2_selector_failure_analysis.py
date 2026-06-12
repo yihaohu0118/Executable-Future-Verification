@@ -210,7 +210,9 @@ def main() -> None:
             "heuristic:energy_sum_max",
             "heuristic:smoothness_max",
             "prototype:phase_gripper_distribution:same_task:nearest_positive",
+            "prototype:phase_gripper_distribution:same_task:nearest_pos_neg",
             "prototype:gripper_distribution:same_task:nearest_positive",
+            "prototype:gripper_distribution:same_task:nearest_pos_neg",
             "trace_distance:dtw_gripper:same_task:nearest_positive",
             "trace_distance:dtw_joint_gripper:all_tasks:nearest_positive",
         ]
