@@ -32,6 +32,16 @@ Mean success over 10 anonymous rank/candidate-ID remaps:
 | `stack_blocks_two` | 0.92/2 | 0.0/2 | 0.2/2 | 0.0/2 | 0.0/2 | 0.0/2 | 0.0/2 |
 | `open_laptop` | 1.58/2 | 0.0/2 | 0.0/2 | 2.0/2 | 2.0/2 | 2.0/2 | 0.0/2 |
 
+Additional contrastive nearest-positive/nearest-negative baselines on
+`stack_blocks_two`:
+
+| Selector | Success |
+| --- | ---: |
+| gripper distribution, nearest-pos-neg | 1.0/2 |
+| phase-gripper distribution, nearest-pos-neg | 1.0/2 |
+| phase-joint distribution, nearest-pos-neg | 0.0/2 |
+| phase-joint+gripper, nearest-pos-neg | 0.0/2 |
+
 ## Interpretation
 
 `stack_blocks_two` is the more valuable next benchmark task. It has recoverable
@@ -46,6 +56,15 @@ negative probes and fail in 20/20 anonymized selections. Smoothness selects
 time-warp candidates and also fails in 20/20. This suggests the next verifier
 must include task-phase/contact direction or terminal task-state cues; pure
 gripper timing is too brittle for stacking.
+
+The contrastive nearest-pos-neg control only partially repairs this failure:
+gripper and phase-gripper features recover 1/2, while joint and joint+gripper
+features remain 0/2. This is useful because it separates two hypotheses.
+Negative-aware calibration matters, but the available trace fields
+(`joint_action_vector`, `left_gripper`, `right_gripper`) are still missing the
+state/contact signal needed to solve stacking. The next method experiment
+should instrument terminal object/block relation or contact-phase state, not
+just add another gripper-only distance metric.
 
 `open_laptop` is useful as a counterexample but weak as a headline task. It has
 rank0 headroom, but the candidate pool is permissive: random expected is
