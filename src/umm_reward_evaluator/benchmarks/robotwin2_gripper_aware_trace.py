@@ -166,8 +166,9 @@ def _pose_vector(actor: Any) -> list[float] | None:
 
 def compact_scene_state(env: Any, *, max_actors: int = 16) -> dict[str, Any]:
     actor_items: list[tuple[str, list[float]]] = []
+    excluded_names = {"robot", "scene", "viewer", "table", "wall", "ground"}
     for name, value in sorted(vars(env).items()):
-        if name.startswith("_") or name in {"robot", "scene", "viewer"}:
+        if name.startswith("_") or name in excluded_names:
             continue
         if not hasattr(value, "get_pose"):
             continue

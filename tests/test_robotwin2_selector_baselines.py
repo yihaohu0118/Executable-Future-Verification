@@ -142,6 +142,8 @@ class RoboTwin2SelectorBaselinesTest(unittest.TestCase):
         class Env:
             def __init__(self):
                 self.block1 = Actor()
+                self.table = Actor()
+                self.wall = Actor()
                 self.robot = Actor()
 
         state = compact_scene_state(Env())
