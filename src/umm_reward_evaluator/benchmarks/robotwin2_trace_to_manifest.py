@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from collections import Counter
+from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -81,6 +81,36 @@ def _candidate_id(record: dict[str, Any], fallback_index: int) -> str:
     return ":".join(parts)
 
 
+def filter_records_by_case_size(
+    records: list[dict[str, Any]],
+    *,
+    required_candidates_per_case: int | None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    if required_candidates_per_case is None:
+        return records, []
+
+    grouped: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    for record in records:
+        grouped[(str(record["task_name"]), _case_id(record))].append(record)
+
+    kept: list[dict[str, Any]] = []
+    dropped: list[dict[str, Any]] = []
+    for (task_name, case_id), case_records in sorted(grouped.items()):
+        count = len(case_records)
+        if count == required_candidates_per_case:
+            kept.extend(case_records)
+        else:
+            dropped.append(
+                {
+                    "task_name": task_name,
+                    "case_id": case_id,
+                    "candidate_count": count,
+                    "required_candidates_per_case": required_candidates_per_case,
+                }
+            )
+    return kept, dropped
+
+
 def convert_records(records: list[dict[str, Any]], *, default_suite: str) -> list[dict[str, Any]]:
     grouped_order: Counter[tuple[str, str]] = Counter()
     rows: list[dict[str, Any]] = []
@@ -144,13 +174,22 @@ def main() -> None:
     parser.add_argument("--output-manifest", type=Path, required=True)
     parser.add_argument("--output-summary", type=Path)
     parser.add_argument("--default-suite", default="demo_randomized")
+    parser.add_argument(
+        "--require-candidates-per-case",
+        type=int,
+        help="Drop entire cases unless they contain exactly this many candidates.",
+    )
     args = parser.parse_args()
 
     if args.input is None and args.input_dir is None:
         raise SystemExit("provide --input and/or --input-dir")
 
     records = _load_records(args.input, args.input_dir)
-    rows = convert_records(records, default_suite=args.default_suite)
+    filtered_records, dropped_cases = filter_records_by_case_size(
+        records,
+        required_candidates_per_case=args.require_candidates_per_case,
+    )
+    rows = convert_records(filtered_records, default_suite=args.default_suite)
     write_jsonl(args.output_manifest, rows)
 
     summary = summarize_headroom(rows)
@@ -158,6 +197,9 @@ def main() -> None:
         {
             "benchmark": "robotwin2",
             "input_records": len(records),
+            "filtered_input_records": len(filtered_records),
+            "dropped_cases": dropped_cases,
+            "required_candidates_per_case": args.require_candidates_per_case,
             "output_manifest": str(args.output_manifest),
         }
     )

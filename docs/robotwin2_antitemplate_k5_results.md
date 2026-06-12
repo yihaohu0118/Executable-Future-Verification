@@ -294,14 +294,19 @@ control on at least three additional RoboTwin2 tasks.
 
 ## Current Interpretation
 
-This result is stronger than the previous RoboTwin2 smoke because it creates
-real diverse successes and some matched failures. It is still not a finished
-main-table result because DTW and gripper-prototype baselines remain very
-strong. The next experiment should create harder matched negatives where
-joint/gripper DTW and gripper timing are close to successful trajectories but
-contact or task completion fails. The `targeted_hard` smoke is the first pass
-at that next pool; the next remote run should scale it to K=5 before treating
-it as evidence. The newer `targeted_energy_matched` preset is the next
-shortcut-control step after the K=5 run showed that energy and length still
-solve `stamp_seal`; seed 0 already shows the desired energy/length collapse,
-and the K=5 run is in progress.
+The `stamp_seal` targeted-energy-matched K=5 result is the strongest RoboTwin2
+mechanism evidence so far. It controls the main reviewer shortcuts that were
+still open after the targeted-hard run: fixed rank, candidate ID, action
+energy, action length, smoothness, and action-distribution nearest-positive
+all fail under anonymous remap, while gripper execution-envelope selectors
+remain oracle on the same candidate pool.
+
+The correct interpretation is narrow. This is not yet a general executable
+future verifier, and it should not be sold as evidence that the model
+understands physics. It shows that, on one official RoboTwin2 task with
+complete official-planner replays, the decisive signal is contact/gripper
+execution envelope rather than action magnitude or source labels. The next
+paper gate is multi-task reproduction: the same targeted-energy-matched
+shortcut-control table must hold on at least three additional RoboTwin2 tasks,
+using only complete 24-candidate seeds and treating terminated partial traces
+as diagnostics only.

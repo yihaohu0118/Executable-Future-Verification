@@ -166,19 +166,40 @@ cases. The useful observation is not the score itself; it is that very nearby
 trace edits split into successes and failures, which is the setting needed to
 test whether a verifier is doing more than expert-template matching.
 
-The first `stamp_seal` K=5 targeted-hard table confirms the near-neighbor part
-but also reveals a new shortcut: `energy_sum_max` and `length_max` are still
-5/5 because the longest contact-repeat candidate succeeds in every case. A
-new `targeted_energy_matched` preset adds longer failed gripper/contact/reverse
-probes specifically to test whether the selector advantage survives when failed
-futures are at least as long and high-energy as the successful time-warp
-futures.
+The first `stamp_seal` K=5 targeted-hard table confirmed the near-neighbor part
+but also revealed a new shortcut: `energy_sum_max` and `length_max` were still
+5/5 because the longest contact-repeat candidate succeeded in every case. A
+new `targeted_energy_matched` preset added longer failed
+gripper/contact/reverse probes specifically to test whether the selector
+advantage survives when failed futures are at least as long and high-energy as
+the successful time-warp futures.
 
-The seed-0 `targeted_energy_matched` smoke gives the desired first signal:
-`energy_sum_max` selects a long reverse-contact failure, and `length_max`
-selects a long gripper-contact-pulse failure. This turns the previous
-energy/length shortcut into an explicit negative control, but it still needs
-the full K=5 result before it can support the main claim.
+The official-planner `stamp_seal` K=5 `targeted_energy_matched` run gives the
+first reviewer-safe RoboTwin2 mechanism result:
+
+| Selector or bound | Success |
+| --- | ---: |
+| Rank0 | 0.0/5 |
+| Oracle-best | 5/5 |
+| Candidate-ID full-trace lookup under anonymous remap | 0.0/5 |
+| Uniform random expected | 1.58/5 |
+| Energy-sum max | 0.0/5 |
+| Length max | 0.1/5 |
+| Smoothness max | 1.0/5 |
+| Action-distribution nearest-positive | 1.0/5 |
+| DTW action | 3.0/5 |
+| DTW joint+gripper | 3.0/5 |
+| Gripper distribution nearest-positive | 5.0/5 |
+| Phase-gripper nearest-positive | 5.0/5 |
+| DTW gripper | 5.0/5 |
+
+The result should be interpreted narrowly. It does not prove a universal
+physics verifier. It shows that once rank, candidate ID, action energy, action
+length, smoothness, and action-distribution shortcuts are controlled, gripper
+execution-envelope signals still recover the executable future on a modern
+RoboTwin2 task. The remaining risk is that gripper timing itself may be a
+task-specific template, so the same shortcut-control pattern must be reproduced
+on additional tasks and with hard positives that are not full expert traces.
 
 K-shot target-task calibration under the same anonymous remap protocol:
 
@@ -241,11 +262,14 @@ Recommended contribution shape:
 - The new anti-template K=5 pool fixes most hard-positive coverage but not the
   strongest baseline problem. DTW is no longer oracle, but it is still close to
   the best selector.
-- The `targeted_hard` preset has only a one-case smoke so far. It must be
-  scaled before any claim about beating template matching is safe.
-- The `stamp_seal` targeted-hard K=5 run exposes an energy/length shortcut:
-  `energy_sum_max` and `length_max` are 5/5. This must be controlled before the
-  result can be used as a reviewer-safe method win.
+- The `stamp_seal` targeted-energy-matched K=5 run controls rank, candidate ID,
+  energy, length, smoothness, and action-distribution shortcuts, but it is still
+  a single-task result. It must be reproduced on at least three more RoboTwin2
+  tasks before it can carry a main-table claim.
+- Gripper-DTW and gripper-distribution baselines remain oracle on `stamp_seal`.
+  The paper should present this as the discovered mechanism, not hide it as a
+  weak baseline. The next task is to test when gripper timing stops being
+  sufficient.
 - We have no real robot; the paper must be framed as executable-future
   verification in modern simulated/world-model benchmarks, not deployment.
 - RoboWM-Bench remains conceptually ideal, but current public-code friction
@@ -253,22 +277,22 @@ Recommended contribution shape:
 
 ## Immediate Next Experiments
 
-1. Build a RoboTwin2 anti-template pool where at least one successful candidate
+1. Reproduce `targeted_energy_matched` shortcut control on at least three more
+   RoboTwin2 tasks using only complete 24-candidate official-planner cases.
+2. Build a RoboTwin2 anti-template pool where at least one successful candidate
    per case is not the full expert trace.
-2. Add hard positives: successful trajectories with different timing,
+3. Add hard positives: successful trajectories with different timing,
    intermediate joint path, or contact timing than the expert trace.
-3. Add matched hard negatives: low DTW distance to successful traces but failed
+4. Add matched hard negatives: low DTW distance to successful traces but failed
    contact direction, gripper timing, or task completion.
-4. Re-run rank0, random, action heuristic, phase prototype, DTW nearest-expert,
+5. Re-run rank0, random, action heuristic, phase prototype, DTW nearest-expert,
    and learned binary/contrastive selector baselines.
-5. Keep `handover_block` as a one-seed bimanual mechanism example unless a
-   fourth K=5 task is needed for breadth.
-6. Scale `--candidate-preset targeted_hard` from the current `stamp_seal`
-   seed-0 smoke to K=5, then decide whether it should replace or supplement the
-   anti-template main table.
-7. Run `--candidate-preset targeted_energy_matched` on `stamp_seal` to verify
-   that energy/length heuristics collapse when long failed futures are added.
-   Seed 0 has passed this gate; K=5 is the current remote run.
+6. Keep `handover_block` as the preferred bimanual mechanism task if complete
+   official-planner seeds can be generated; otherwise treat it as a one-seed
+   diagnostic rather than a main-table task.
+7. Use `open_laptop` and `press_stapler` cautiously: early logs show they may
+   accept too many perturbations, which makes them useful stress-test
+   counterexamples but weak headline tasks.
 
 Implementation status: `robotwin2_gripper_aware_trace.py` now has an
 `--candidate-preset anti_template` mode that adds time-warp, gripper-timing,
@@ -278,10 +302,11 @@ for the near-neighbor success/failure pairs needed to test template-matching
 baselines, plus a `targeted_energy_matched` mode for the stricter
 length/energy-shortcut control.
 
-Latest remote result: see `docs/robotwin2_antitemplate_k5_results.md`. The next
-candidate-generation pass should make matched negatives harder, especially by
-keeping joint/gripper DTW close while changing contact direction or terminal
-task completion.
+Latest remote result: see `docs/robotwin2_antitemplate_k5_results.md`. The
+active remote run is extending `targeted_energy_matched` to
+`stack_blocks_two`, `open_laptop`, `handover_block`, and `press_stapler`. Main
+tables should use only complete 24-candidate official-planner cases; incomplete
+or terminated seeds are diagnostics only.
 
 ## Legacy Direction
 
