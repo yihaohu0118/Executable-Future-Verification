@@ -165,6 +165,8 @@ official assets are available, SAPIEN render works, and a one-episode
 v0.7.8 hits an illegal-instruction error in the fused LBFGS CUDA extension;
 the working patch disables only that fused kernel and uses curobo's PyTorch/JIT
 fallback.
+The current H100 runbook and active `targeted_energy_matched` run paths are in
+`docs/robotwin2_h100_runbook.md`.
 
 Updated RoboTwin 2.0 next step:
 
