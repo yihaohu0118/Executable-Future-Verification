@@ -640,9 +640,9 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--skip-existing", action="store_true")
     parser.add_argument(
-        "--with-replay-planner",
+        "--skip-replay-planner",
         action="store_true",
-        help="Build the official planner for every replay candidate. Fixed qpos replay skips it by default.",
+        help="Experimental speed path: skip official planner construction during fixed qpos replay.",
     )
     parser.add_argument(
         "--candidate-preset",
@@ -668,7 +668,7 @@ def main() -> None:
                 output=args.output_dir / f"seed_{seed}.jsonl",
                 skip_existing=args.skip_existing,
                 candidate_preset=args.candidate_preset,
-                skip_replay_planner=not args.with_replay_planner,
+                skip_replay_planner=args.skip_replay_planner,
             )
         return
 
@@ -683,7 +683,7 @@ def main() -> None:
         output=args.output,
         skip_existing=args.skip_existing,
         candidate_preset=args.candidate_preset,
-        skip_replay_planner=not args.with_replay_planner,
+        skip_replay_planner=args.skip_replay_planner,
     )
 
 
