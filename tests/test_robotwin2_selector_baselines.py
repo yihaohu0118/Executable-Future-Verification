@@ -8,7 +8,7 @@ from umm_reward_evaluator.benchmarks.robotwin2_selector_baselines import (
     evaluate_rank0,
 )
 from umm_reward_evaluator.benchmarks.robotwin2_antitemplate_diagnostics import diagnose_manifest
-from umm_reward_evaluator.benchmarks.robotwin2_gripper_aware_trace import build_candidates
+from umm_reward_evaluator.benchmarks.robotwin2_gripper_aware_trace import build_candidates, compact_scene_state
 from umm_reward_evaluator.benchmarks.robotwin2_selector_failure_analysis import run_analysis
 from umm_reward_evaluator.benchmarks.robotwin2_rank_randomization_sweep import (
     parse_prototype_config,
@@ -18,9 +18,10 @@ from umm_reward_evaluator.benchmarks.robotwin2_rank_randomization_sweep import (
 from umm_reward_evaluator.benchmarks.robotwin2_kshot_calibration_sweep import run_kshot_sweep
 
 
-def make_row(task, case, candidate, rank, success, actions, left_gripper, right_gripper=None):
+def make_row(task, case, candidate, rank, success, actions, left_gripper, right_gripper=None, actor_pose=None):
     if right_gripper is None:
         right_gripper = left_gripper
+    actor_pose = actor_pose or [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
     return {
         "benchmark": "robotwin2",
         "suite": "unit",
@@ -36,6 +37,8 @@ def make_row(task, case, candidate, rank, success, actions, left_gripper, right_
                     "joint_action_vector": action,
                     "left_gripper": [left],
                     "right_gripper": [right],
+                    "actor_pose_vector": actor_pose,
+                    "actor_pairwise_distances": [0.0],
                 }
                 for action, left, right in zip(actions, left_gripper, right_gripper, strict=True)
             ],
@@ -111,6 +114,39 @@ class RoboTwin2SelectorBaselinesTest(unittest.TestCase):
             nearest_positive["overall"]["selector_success"],
         )
         self.assertEqual(contrastive["overall"]["selector_success"], 2)
+
+    def test_object_distribution_feature_uses_actor_pose_trace(self):
+        rows = [
+            make_row("stack", "seed=0", "rank0", 0, False, [[0.0]], [0.0], actor_pose=[0.0, 0.0, 0.0, 1, 0, 0, 0]),
+            make_row("stack", "seed=0", "success", 1, True, [[1.0]], [1.0], actor_pose=[1.0, 0.0, 0.0, 1, 0, 0, 0]),
+            make_row("stack", "seed=1", "rank0", 0, False, [[0.0]], [0.0], actor_pose=[0.1, 0.0, 0.0, 1, 0, 0, 0]),
+            make_row("stack", "seed=1", "success", 1, True, [[1.0]], [1.0], actor_pose=[1.1, 0.0, 0.0, 1, 0, 0, 0]),
+        ]
+        prototype = evaluate_prototype(
+            rows,
+            feature_mode="object_distribution",
+            scope="same_task",
+            prototype_mode="nearest_positive",
+        )
+        self.assertEqual(prototype["overall"]["selector_success"], 2)
+
+    def test_compact_scene_state_records_named_actor_poses(self):
+        class Pose:
+            p = [1.0, 2.0, 3.0]
+            q = [1.0, 0.0, 0.0, 0.0]
+
+        class Actor:
+            def get_pose(self):
+                return Pose()
+
+        class Env:
+            def __init__(self):
+                self.block1 = Actor()
+                self.robot = Actor()
+
+        state = compact_scene_state(Env())
+        self.assertEqual(state["actor_names"], ["block1"])
+        self.assertEqual(len(state["actor_pose_vector"]), 7)
 
     def test_phase_gripper_feature_is_fixed_width_across_trace_lengths(self):
         rows = list(self.rows)

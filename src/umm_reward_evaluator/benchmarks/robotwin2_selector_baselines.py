@@ -27,18 +27,23 @@ HEURISTICS = (
 PROTOTYPE_FEATURES = (
     "action_distribution",
     "state_distribution",
+    "object_distribution",
     "gripper_distribution",
     "phase_gripper_distribution",
+    "phase_object_distribution",
     "phase_joint_distribution",
     "phase_joint_gripper_distribution",
+    "phase_object_joint_gripper_distribution",
 )
 PROTOTYPE_SCOPES = ("same_task", "all_tasks")
 PROTOTYPE_MODES = ("nearest_positive", "nearest_pos_neg", "pos_neg_centroid", "pos_centroid")
 TRACE_DISTANCE_FEATURES = (
     "dtw_action",
     "dtw_joint",
+    "dtw_object",
     "dtw_gripper",
     "dtw_joint_gripper",
+    "dtw_object_joint_gripper",
 )
 TRACE_DISTANCE_SCOPES = ("same_task", "all_tasks")
 
@@ -275,17 +280,26 @@ def feature_vector(row: dict[str, Any], feature_mode: str, *, dims: dict[str, in
     if feature_mode == "state_distribution":
         keys = ["joint_action_vector", "left_gripper", "right_gripper"]
         return trace_distribution_features(state_trace(row), keys, dims or state_dims([row], keys))
+    if feature_mode == "object_distribution":
+        keys = ["actor_pose_vector", "actor_pairwise_distances"]
+        return trace_distribution_features(state_trace(row), keys, dims or state_dims([row], keys))
     if feature_mode == "gripper_distribution":
         keys = ["left_gripper", "right_gripper"]
         return trace_distribution_features(state_trace(row), keys, dims or state_dims([row], keys))
     if feature_mode == "phase_gripper_distribution":
         keys = ["left_gripper", "right_gripper"]
         return phase_trace_distribution_features(state_trace(row), keys, dims or state_dims([row], keys))
+    if feature_mode == "phase_object_distribution":
+        keys = ["actor_pose_vector", "actor_pairwise_distances"]
+        return phase_trace_distribution_features(state_trace(row), keys, dims or state_dims([row], keys))
     if feature_mode == "phase_joint_distribution":
         keys = ["joint_action_vector"]
         return phase_trace_distribution_features(state_trace(row), keys, dims or state_dims([row], keys))
     if feature_mode == "phase_joint_gripper_distribution":
         keys = ["joint_action_vector", "left_gripper", "right_gripper"]
+        return phase_trace_distribution_features(state_trace(row), keys, dims or state_dims([row], keys))
+    if feature_mode == "phase_object_joint_gripper_distribution":
+        keys = ["actor_pose_vector", "actor_pairwise_distances", "joint_action_vector", "left_gripper", "right_gripper"]
         return phase_trace_distribution_features(state_trace(row), keys, dims or state_dims([row], keys))
     raise ValueError(f"unknown prototype feature mode: {feature_mode}")
 
@@ -329,10 +343,14 @@ def trace_sequence(row: dict[str, Any], feature_mode: str, *, dims: dict[str, in
 
     if feature_mode == "dtw_joint":
         keys = ["joint_action_vector"]
+    elif feature_mode == "dtw_object":
+        keys = ["actor_pose_vector", "actor_pairwise_distances"]
     elif feature_mode == "dtw_gripper":
         keys = ["left_gripper", "right_gripper"]
     elif feature_mode == "dtw_joint_gripper":
         keys = ["joint_action_vector", "left_gripper", "right_gripper"]
+    elif feature_mode == "dtw_object_joint_gripper":
+        keys = ["actor_pose_vector", "actor_pairwise_distances", "joint_action_vector", "left_gripper", "right_gripper"]
     else:
         raise ValueError(f"unknown trace-distance feature mode: {feature_mode}")
 
@@ -406,7 +424,13 @@ def trace_distance_scores(
 
 def evaluate_prototype(rows: list[dict[str, Any]], *, feature_mode: str, scope: str, prototype_mode: str) -> dict[str, Any]:
     grouped = group_cases(rows)
-    all_keys = ["joint_action_vector", "left_gripper", "right_gripper"]
+    all_keys = [
+        "joint_action_vector",
+        "left_gripper",
+        "right_gripper",
+        "actor_pose_vector",
+        "actor_pairwise_distances",
+    ]
     dims = state_dims(rows, all_keys)
     selected = {}
     scored_rows: list[dict[str, Any]] = []
@@ -439,7 +463,16 @@ def evaluate_prototype(rows: list[dict[str, Any]], *, feature_mode: str, scope: 
 
 def evaluate_trace_distance(rows: list[dict[str, Any]], *, feature_mode: str, scope: str) -> dict[str, Any]:
     grouped = group_cases(rows)
-    dims = state_dims(rows, ["joint_action_vector", "left_gripper", "right_gripper"])
+    dims = state_dims(
+        rows,
+        [
+            "joint_action_vector",
+            "left_gripper",
+            "right_gripper",
+            "actor_pose_vector",
+            "actor_pairwise_distances",
+        ],
+    )
     selected = {}
     scored_rows: list[dict[str, Any]] = []
     for key, test_rows in sorted(grouped.items()):

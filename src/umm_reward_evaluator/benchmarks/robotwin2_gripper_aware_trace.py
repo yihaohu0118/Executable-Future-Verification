@@ -154,6 +154,46 @@ def current_action(env: Any) -> np.ndarray:
     ).astype(float)
 
 
+def _pose_vector(actor: Any) -> list[float] | None:
+    try:
+        pose = actor.get_pose()
+        p = np.asarray(pose.p, dtype=float).reshape(-1)
+        q = np.asarray(pose.q, dtype=float).reshape(-1)
+    except Exception:
+        return None
+    return np.concatenate([p, q]).astype(float).tolist()
+
+
+def compact_scene_state(env: Any, *, max_actors: int = 16) -> dict[str, Any]:
+    actor_items: list[tuple[str, list[float]]] = []
+    for name, value in sorted(vars(env).items()):
+        if name.startswith("_") or name in {"robot", "scene", "viewer"}:
+            continue
+        if not hasattr(value, "get_pose"):
+            continue
+        pose = _pose_vector(value)
+        if pose is not None:
+            actor_items.append((name, pose))
+        if len(actor_items) >= max_actors:
+            break
+
+    if not actor_items:
+        return {}
+
+    actor_pose_vector = np.concatenate([np.asarray(pose, dtype=float) for _, pose in actor_items]).astype(float)
+    centers = [np.asarray(pose[:3], dtype=float) for _, pose in actor_items]
+    pairwise_distances = []
+    for i in range(len(centers)):
+        for j in range(i + 1, len(centers)):
+            pairwise_distances.append(float(np.linalg.norm(centers[i] - centers[j])))
+
+    return {
+        "actor_names": [name for name, _ in actor_items],
+        "actor_pose_vector": actor_pose_vector.tolist(),
+        "actor_pairwise_distances": pairwise_distances,
+    }
+
+
 def control_endpoint(env: Any, control_seq: dict[str, Any]) -> np.ndarray:
     action = current_action(env)
     if control_seq.get("left_arm") is not None:
@@ -183,6 +223,7 @@ def compact_state(env: Any, obs: dict[str, Any] | None) -> dict[str, Any]:
         state["right_gripper"] = float(env.robot.get_right_gripper_val())
     except Exception:
         pass
+    state.update(compact_scene_state(env))
     return state
 
 
