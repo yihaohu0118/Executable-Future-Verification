@@ -54,10 +54,20 @@ def replay_without_planner(enabled: bool):
     robot_class = getattr(robot_module, "Robot")
     original_set_planner = robot_class.set_planner
 
+    class ReplayPlanner:
+        def plan_grippers(self, now_val, target_val):
+            num_step = 200
+            vals = np.linspace(now_val, target_val, num_step)
+            return {
+                "num_step": num_step,
+                "per_step": (target_val - now_val) / num_step,
+                "result": vals,
+            }
+
     def noop_set_planner(self, scene=None):
         self.communication_flag = False
-        self.left_planner = None
-        self.right_planner = None
+        self.left_planner = ReplayPlanner()
+        self.right_planner = ReplayPlanner()
 
     robot_class.set_planner = noop_set_planner
     try:
