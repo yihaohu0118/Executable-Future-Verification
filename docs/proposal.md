@@ -308,6 +308,15 @@ active remote run is extending `targeted_energy_matched` to
 tables should use only complete 24-candidate official-planner cases; incomplete
 or terminated seeds are diagnostics only.
 
+Interim multitask note: see `docs/robotwin2_multitask_interim_20260612.md`.
+The early two-case `stack_blocks_two` table is scientifically useful because it
+breaks the current gripper-only mechanism: rank0 is 0/2 and oracle is 2/2, but
+gripper-distribution, DTW-gripper, and DTW joint+gripper selectors all score
+0/2 under anonymous remap. If this holds at K=5, the next contribution should
+shift from "gripper timing is enough" to "execution-envelope verification must
+be task-phase/contact-aware; gripper-only succeeds on some tasks and fails
+catastrophically on multi-stage stacking."
+
 ## Legacy Direction
 
 The earlier UMM/NanoWM reward-evaluator proposal is preserved in
