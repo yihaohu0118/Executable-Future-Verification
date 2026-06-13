@@ -7,6 +7,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from umm_reward_evaluator.benchmarks.evidence_card_validator import validate_card
+
 
 MODERN_YEARS = {2025, 2026}
 EXECUTABLE_LAYERS = {"executable_primary", "executable_second"}
@@ -52,7 +54,37 @@ def _required_controls(layer: str) -> set[str]:
     return controls
 
 
-def _benchmark_passes(entry: dict[str, Any], *, min_cases: int, min_tasks: int, min_margin: float) -> bool:
+def _validate_evidence_card(entry: dict[str, Any], *, root: Path | None) -> dict[str, Any]:
+    path_value = entry.get("evidence_card")
+    if path_value is None:
+        return {"required": root is not None, "present": False, "valid": False, "errors": ["missing evidence_card"], "warnings": []}
+    if root is None:
+        return {"required": False, "present": True, "valid": None, "errors": [], "warnings": []}
+    path = root / str(path_value)
+    if not path.exists():
+        return {"required": True, "present": False, "valid": False, "errors": [f"evidence_card not found: {path_value}"], "warnings": []}
+    with path.open("r", encoding="utf-8") as f:
+        payload = json.load(f)
+    if not isinstance(payload, dict):
+        return {"required": True, "present": True, "valid": False, "errors": ["evidence_card is not a JSON object"], "warnings": []}
+    result = validate_card(payload, base_dir=root)
+    return {
+        "required": True,
+        "present": True,
+        "valid": bool(result["passed"]),
+        "errors": result["errors"],
+        "warnings": result["warnings"],
+    }
+
+
+def _benchmark_passes(
+    entry: dict[str, Any],
+    *,
+    min_cases: int,
+    min_tasks: int,
+    min_margin: float,
+    evidence_card_ok: bool = True,
+) -> bool:
     cases = _as_int(entry.get("cases"))
     tasks = _as_int(entry.get("tasks"), 1)
     method = _as_float(entry.get("method_success"))
@@ -69,6 +101,7 @@ def _benchmark_passes(entry: dict[str, Any], *, min_cases: int, min_tasks: int, 
         and oracle > rank0
         and method >= baseline + min_margin
         and _required_controls(layer).issubset(controls)
+        and evidence_card_ok
     )
 
 
@@ -85,16 +118,21 @@ def evaluate_evidence_stack(
     min_cases_per_passed_benchmark: int = 16,
     min_tasks_per_passed_executable: int = 4,
     min_selector_margin: float = 1.0,
+    require_evidence_cards: bool = False,
+    evidence_card_root: Path | None = None,
 ) -> dict[str, Any]:
     normalized: list[dict[str, Any]] = []
     for entry in entries:
         layer = str(entry.get("layer", "unknown"))
         min_tasks = min_tasks_per_passed_executable if layer in EXECUTABLE_LAYERS else 1
+        evidence_card = _validate_evidence_card(entry, root=evidence_card_root if require_evidence_cards else None)
+        evidence_card_ok = (not require_evidence_cards) or bool(evidence_card.get("valid"))
         passed = _benchmark_passes(
             entry,
             min_cases=min_cases_per_passed_benchmark,
             min_tasks=min_tasks,
             min_margin=min_selector_margin,
+            evidence_card_ok=evidence_card_ok,
         )
         controls = set(entry.get("shortcut_controls") or [])
         required_controls = _required_controls(layer)
@@ -104,6 +142,7 @@ def evaluate_evidence_stack(
                 "gate_passed": passed,
                 "missing_controls": sorted(required_controls - controls),
                 "required_controls": sorted(required_controls),
+                "evidence_card_validation": evidence_card,
                 "modern_year": int(entry.get("year", 0)) in MODERN_YEARS,
                 "selector_margin": _as_float(entry.get("method_success")) - _as_float(entry.get("best_non_oracle_baseline_success")),
             }
@@ -163,6 +202,7 @@ def evaluate_evidence_stack(
             "min_cases_per_passed_benchmark": min_cases_per_passed_benchmark,
             "min_tasks_per_passed_executable": min_tasks_per_passed_executable,
             "min_selector_margin": min_selector_margin,
+            "require_evidence_cards": require_evidence_cards,
         },
     }
 
@@ -191,13 +231,24 @@ def render_markdown(result: dict[str, Any], *, title: str = "ICLR Evidence Stack
     lines.extend(
         [
             "",
-            "| Benchmark | Year | Layer | Status | Cases | Tasks | Rank0 | Oracle | Method | Best baseline | Margin | Missing controls |",
-            "| --- | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
+            "| Benchmark | Year | Layer | Status | Cases | Tasks | Rank0 | Oracle | Method | Best baseline | Margin | Missing controls | Evidence card |",
+            "| --- | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |",
         ]
     )
     for entry in result["benchmarks"]:
+        card = entry.get("evidence_card_validation") or {}
+        if card.get("valid") is True:
+            card_status = "valid"
+        elif card.get("valid") is False and entry.get("status") == "passed":
+            card_status = "invalid"
+        elif card.get("valid") is False and card.get("required"):
+            card_status = "missing"
+        elif card.get("present"):
+            card_status = "present"
+        else:
+            card_status = "not required"
         lines.append(
-            "| {benchmark} | {year} | {layer} | {status} | {cases} | {tasks} | {rank0:.1f} | {oracle:.1f} | {method:.1f} | {baseline:.1f} | {margin:.1f} | {missing} |".format(
+            "| {benchmark} | {year} | {layer} | {status} | {cases} | {tasks} | {rank0:.1f} | {oracle:.1f} | {method:.1f} | {baseline:.1f} | {margin:.1f} | {missing} | {card} |".format(
                 benchmark=entry.get("benchmark", "-"),
                 year=int(entry.get("year", 0)),
                 layer=entry.get("layer", "-"),
@@ -210,6 +261,7 @@ def render_markdown(result: dict[str, Any], *, title: str = "ICLR Evidence Stack
                 baseline=_as_float(entry.get("best_non_oracle_baseline_success")),
                 margin=_as_float(entry.get("selector_margin")),
                 missing=", ".join(entry.get("missing_controls") or []) or "-",
+                card=card_status,
             )
         )
     lines.extend(
@@ -237,6 +289,8 @@ def main() -> None:
     parser.add_argument("--min-cases-per-passed-benchmark", type=int, default=16)
     parser.add_argument("--min-tasks-per-passed-executable", type=int, default=4)
     parser.add_argument("--min-selector-margin", type=float, default=1.0)
+    parser.add_argument("--require-evidence-cards", action="store_true")
+    parser.add_argument("--evidence-card-root", type=Path, default=Path("."))
     args = parser.parse_args()
 
     payload = _load_json(args.evidence_json)
@@ -251,6 +305,8 @@ def main() -> None:
         min_cases_per_passed_benchmark=args.min_cases_per_passed_benchmark,
         min_tasks_per_passed_executable=args.min_tasks_per_passed_executable,
         min_selector_margin=args.min_selector_margin,
+        require_evidence_cards=args.require_evidence_cards,
+        evidence_card_root=args.evidence_card_root,
     )
     text = json.dumps(result, indent=2, sort_keys=True) + "\n"
     if args.output_json:

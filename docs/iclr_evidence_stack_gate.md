@@ -8,6 +8,7 @@ Run:
 ```bash
 python -m umm_reward_evaluator.benchmarks.iclr_evidence_stack_gate \
   --evidence-json docs/iclr_evidence_stack_registry.json \
+  --require-evidence-cards \
   --output-json docs/iclr_evidence_stack_gate_result.json \
   --output-md docs/iclr_evidence_stack_gate_result.md
 ```

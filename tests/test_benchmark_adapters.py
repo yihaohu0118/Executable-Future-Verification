@@ -661,6 +661,78 @@ class BenchmarkAdaptersTest(unittest.TestCase):
         mira = [entry for entry in weak_diagnostic["benchmarks"] if entry["benchmark"] == "MiraBench"][0]
         self.assertIn("visual_or_model_score_proxy", mira["missing_controls"])
 
+    def test_iclr_evidence_stack_gate_can_require_evidence_cards(self):
+        controls = [
+            "rank0",
+            "random",
+            "energy_or_magnitude",
+            "action_only",
+            "candidate_id_or_rank_remap",
+        ]
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            card_path = root / "cards" / "robocasa.json"
+            card_path.parent.mkdir()
+            card_path.write_text(
+                json.dumps(
+                    {
+                        "benchmark": "RoboCasa365",
+                        "year": 2026,
+                        "layer": "executable_primary",
+                        "status": "passed",
+                        "cases": 64,
+                        "tasks": 4,
+                        "rank0_success": 0,
+                        "oracle_success": 64,
+                        "method_success": 63,
+                        "best_non_oracle_baseline_success": 31,
+                        "shortcut_controls": controls,
+                        "mechanism_claim": "EEF/gripper envelopes recover executable futures.",
+                        "counterintuitive_observation": "Robot traces beat object-only traces.",
+                        "claim_boundary": "Few-shot task/contact-conditioned only.",
+                        "evidence_docs": ["docs/robocasa365_demo_candidate_probe.md"],
+                        "registry_evidence": "rank0 0/64, oracle 64/64, method 63/64.",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            entry = {
+                "benchmark": "RoboCasa365",
+                "year": 2026,
+                "layer": "executable_primary",
+                "status": "passed",
+                "cases": 64,
+                "tasks": 4,
+                "rank0_success": 0,
+                "oracle_success": 64,
+                "method_success": 63,
+                "best_non_oracle_baseline_success": 31,
+                "shortcut_controls": controls,
+                "evidence_card": "cards/robocasa.json",
+            }
+            with_card = evaluate_evidence_stack(
+                [entry],
+                min_total_passed=1,
+                min_executable_passed=1,
+                min_diagnostic_passed=0,
+                require_evidence_cards=True,
+                evidence_card_root=root,
+            )
+            self.assertTrue(with_card["benchmarks"][0]["gate_passed"])
+            self.assertTrue(with_card["benchmarks"][0]["evidence_card_validation"]["valid"])
+
+            missing = dict(entry)
+            missing.pop("evidence_card")
+            without_card = evaluate_evidence_stack(
+                [missing],
+                min_total_passed=1,
+                min_executable_passed=1,
+                min_diagnostic_passed=0,
+                require_evidence_cards=True,
+                evidence_card_root=root,
+            )
+            self.assertFalse(without_card["benchmarks"][0]["gate_passed"])
+
     def test_iclr_claim_report_prevents_overclaiming_current_stack(self):
         controls = [
             "rank0",
