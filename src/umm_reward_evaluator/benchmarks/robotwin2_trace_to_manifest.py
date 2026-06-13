@@ -85,8 +85,9 @@ def filter_records_by_case_size(
     records: list[dict[str, Any]],
     *,
     required_candidates_per_case: int | None,
+    drop_cases_with_candidate_error: bool = False,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    if required_candidates_per_case is None:
+    if required_candidates_per_case is None and not drop_cases_with_candidate_error:
         return records, []
 
     grouped: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
@@ -97,17 +98,34 @@ def filter_records_by_case_size(
     dropped: list[dict[str, Any]] = []
     for (task_name, case_id), case_records in sorted(grouped.items()):
         count = len(case_records)
-        if count == required_candidates_per_case:
+        error_records = [
+            record
+            for record in case_records
+            if record.get("candidate_error") or (record.get("metadata") or {}).get("candidate_error")
+        ]
+        wrong_case_size = required_candidates_per_case is not None and count != required_candidates_per_case
+        has_candidate_error = drop_cases_with_candidate_error and bool(error_records)
+        if not wrong_case_size and not has_candidate_error:
             kept.extend(case_records)
         else:
-            dropped.append(
-                {
-                    "task_name": task_name,
-                    "case_id": case_id,
-                    "candidate_count": count,
-                    "required_candidates_per_case": required_candidates_per_case,
-                }
-            )
+            drop_reasons = []
+            if wrong_case_size:
+                drop_reasons.append("candidate_count_mismatch")
+            if has_candidate_error:
+                drop_reasons.append("candidate_error")
+            dropped_case = {
+                "task_name": task_name,
+                "case_id": case_id,
+                "candidate_count": count,
+                "required_candidates_per_case": required_candidates_per_case,
+                "drop_reasons": drop_reasons,
+            }
+            if error_records:
+                dropped_case["candidate_error_count"] = len(error_records)
+                dropped_case["candidate_error_candidate_ids"] = [
+                    _candidate_id(record, idx) for idx, record in enumerate(error_records)
+                ]
+            dropped.append(dropped_case)
     return kept, dropped
 
 
@@ -179,6 +197,11 @@ def main() -> None:
         type=int,
         help="Drop entire cases unless they contain exactly this many candidates.",
     )
+    parser.add_argument(
+        "--drop-cases-with-candidate-error",
+        action="store_true",
+        help="Drop entire cases containing system-error candidates, such as CUDA OOM rows.",
+    )
     args = parser.parse_args()
 
     if args.input is None and args.input_dir is None:
@@ -188,6 +211,7 @@ def main() -> None:
     filtered_records, dropped_cases = filter_records_by_case_size(
         records,
         required_candidates_per_case=args.require_candidates_per_case,
+        drop_cases_with_candidate_error=args.drop_cases_with_candidate_error,
     )
     rows = convert_records(filtered_records, default_suite=args.default_suite)
     write_jsonl(args.output_manifest, rows)
@@ -199,6 +223,7 @@ def main() -> None:
             "input_records": len(records),
             "filtered_input_records": len(filtered_records),
             "dropped_cases": dropped_cases,
+            "drop_cases_with_candidate_error": args.drop_cases_with_candidate_error,
             "required_candidates_per_case": args.require_candidates_per_case,
             "output_manifest": str(args.output_manifest),
         }

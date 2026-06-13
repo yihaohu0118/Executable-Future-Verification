@@ -99,6 +99,33 @@ class BenchmarkAdaptersTest(unittest.TestCase):
         self.assertTrue(any(row["oracle_success"] for row in rows))
         self.assertEqual({row["case_id"] for row in rows}, {"seed=0|instruction="})
 
+    def test_robotwin2_trace_filter_drops_candidate_error_cases(self):
+        records = [
+            {"task_name": "stack_blocks_two", "seed": 0, "candidate_seed": 0, "actions": [[0]], "success": False},
+            {
+                "task_name": "stack_blocks_two",
+                "seed": 0,
+                "candidate_seed": 1,
+                "actions": [[1]],
+                "success": False,
+                "metadata": {"candidate_error": "OutOfMemoryError"},
+            },
+            {"task_name": "stack_blocks_two", "seed": 1, "candidate_seed": 0, "actions": [[0]], "success": False},
+            {"task_name": "stack_blocks_two", "seed": 1, "candidate_seed": 1, "actions": [[1]], "success": True},
+        ]
+        filtered, dropped = filter_records_by_case_size(
+            records,
+            required_candidates_per_case=2,
+            drop_cases_with_candidate_error=True,
+        )
+        rows = convert_robotwin2(filtered, default_suite="demo_clean_k5")
+        self.assertEqual(len(filtered), 2)
+        self.assertEqual({row["case_id"] for row in rows}, {"seed=1|instruction="})
+        self.assertEqual(len(dropped), 1)
+        self.assertEqual(dropped[0]["drop_reasons"], ["candidate_error"])
+        self.assertEqual(dropped[0]["candidate_error_count"], 1)
+        self.assertEqual(dropped[0]["candidate_error_candidate_ids"], ["policy:ckpt:1"])
+
     def test_world_model_diagnostic_label_and_score_conversion(self):
         rows = convert_diagnostic(
             [

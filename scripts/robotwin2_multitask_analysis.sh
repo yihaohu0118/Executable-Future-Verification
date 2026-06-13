@@ -37,7 +37,8 @@ for task in "${TASKS[@]}"; do
     --output-manifest "$manifest" \
     --output-summary "$summary" \
     --default-suite "$DEFAULT_SUITE" \
-    --require-candidates-per-case "$REQUIRE_CANDIDATES_PER_CASE"
+    --require-candidates-per-case "$REQUIRE_CANDIDATES_PER_CASE" \
+    --drop-cases-with-candidate-error
 
   cases="$(python - "$summary" <<'PY'
 import json
