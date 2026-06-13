@@ -241,6 +241,32 @@ PYTHONPATH=src python -m umm_reward_evaluator.benchmarks.robotwin2_antitemplate_
   --feature-mode dtw_joint_gripper
 ```
 
+Run the world-model diagnostic pipeline after a benchmark provides
+multi-candidate judgment records:
+
+```bash
+PYTHONPATH=src python -m umm_reward_evaluator.benchmarks.world_model_diagnostic_pipeline \
+  --input /path/to/diagnostic_records.jsonl \
+  --run-root /path/to/diagnostic_run \
+  --benchmark MiraBench \
+  --year 2026 \
+  --layer world_model_diagnostic \
+  --suite action_conditioned_reliability \
+  --verification-target action_conditioned_reliability \
+  --feature-key metadata.motion_consistency \
+  --feature-key metadata.action_following_score \
+  --categorical-key metadata.scenario \
+  --category-key metadata.scenario \
+  --shortcut-control energy_or_magnitude \
+  --shortcut-control action_only \
+  --shortcut-control candidate_id_or_rank_remap \
+  --output-md /path/to/diagnostic_run/world_model_diagnostic_pipeline_summary.md
+```
+
+The pipeline writes the manifest, diagnostic gate, selector table, readiness
+gate, registry-entry proposal, and evidence-card validation. It does not edit
+the ICLR evidence registry; passed outputs must be inspected first.
+
 Generate RoboTwin2 traces with anti-template candidate probes from an official
 RoboTwin checkout:
 

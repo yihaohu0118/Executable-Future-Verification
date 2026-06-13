@@ -102,6 +102,7 @@ from umm_reward_evaluator.benchmarks.world_model_diagnostic_closure_plan import 
     build_closure_plan,
     render_markdown as render_diagnostic_closure_markdown,
 )
+from umm_reward_evaluator.benchmarks.world_model_diagnostic_pipeline import run_pipeline
 
 
 class BenchmarkAdaptersTest(unittest.TestCase):
@@ -1914,6 +1915,63 @@ class BenchmarkAdaptersTest(unittest.TestCase):
         self.assertEqual(rows[0]["metadata"]["scenario"], "Counterfactual")
         self.assertEqual(rows[0]["metadata"]["failure_category"], "Object Absence")
         self.assertEqual(rows[0]["metadata"]["file_name"], "data/C_Counterfactual_007.png")
+
+    def test_world_model_diagnostic_pipeline_closes_proxy_failure_loop(self):
+        with TemporaryDirectory() as tmp:
+            records = []
+            for case_id in ("case0", "case1"):
+                records.extend(
+                    [
+                        {
+                            "benchmark": "MiraBench",
+                            "task_name": "pick_mug",
+                            "case_id": case_id,
+                            "candidate_id": "visually_plausible",
+                            "rank": 0,
+                            "label": "fail",
+                            "planner_score": 0.95,
+                            "actions": [[0.1, 0.1]],
+                            "metadata": {"efv_score": 0.1, "scenario": "contact"},
+                        },
+                        {
+                            "benchmark": "MiraBench",
+                            "task_name": "pick_mug",
+                            "case_id": case_id,
+                            "candidate_id": "action_faithful",
+                            "rank": 1,
+                            "label": "pass",
+                            "planner_score": 0.25,
+                            "actions": [[0.4, 0.2]],
+                            "metadata": {"efv_score": 0.9, "scenario": "contact"},
+                        },
+                    ]
+                )
+
+            summary = run_pipeline(
+                records=records,
+                run_root=Path(tmp),
+                benchmark="MiraBench",
+                year=2026,
+                layer="world_model_diagnostic",
+                suite="unit",
+                verification_target="action_conditioned_reliability",
+                calibrate_verifier=False,
+                min_cases=2,
+                min_tasks=1,
+                category_keys=["metadata.scenario"],
+                shortcut_controls=["energy_or_magnitude", "action_only", "candidate_id_or_rank_remap"],
+                repo_root=Path(tmp),
+            )
+
+            self.assertTrue(summary["diagnostic_gate_passed"])
+            self.assertTrue(summary["readiness_gate_passed"])
+            self.assertEqual(summary["registry_status"], "passed")
+            self.assertTrue(summary["evidence_card_validation_passed"])
+            self.assertTrue(Path(summary["outputs"]["selector_table"]).exists())
+            selector_table = json.loads(Path(summary["outputs"]["selector_table"]).read_text(encoding="utf-8"))
+            selectors = {row["selector"]: row for row in selector_table["selectors"]}
+            self.assertEqual(selectors["planner_or_model_score"]["selector_success"], 0.0)
+            self.assertEqual(selectors["verifier_score:metadata.efv_score"]["selector_success"], 2.0)
 
     def test_world_model_diagnostic_calibration_scores_leave_one_case_out(self):
         rows = []

@@ -128,6 +128,37 @@ support the EFV claim that future selection is brittle.
 Only update `docs/iclr_evidence_stack_registry.json` after this diagnostic gate
 passes and the selector result beats the planner-score or visual-proxy baseline.
 
+For the research/debugging stage, the preferred entry point is the Python
+pipeline. It converts diagnostic records, optionally adds an EFV score, runs all
+gates, and writes a pending registry/card proposal even when a gate fails:
+
+```bash
+python -m umm_reward_evaluator.benchmarks.world_model_diagnostic_pipeline \
+  --input RUN_ROOT/manifests/diagnostic_records.jsonl \
+  --run-root RUN_ROOT \
+  --benchmark MiraBench \
+  --year 2026 \
+  --layer world_model_diagnostic \
+  --suite action_conditioned_reliability \
+  --verification-target action_conditioned_reliability \
+  --score-key scores.action_following \
+  --threshold 0.8 \
+  --feature-key metadata.motion_consistency \
+  --feature-key metadata.action_following_score \
+  --categorical-key metadata.scenario \
+  --category-key metadata.scenario \
+  --shortcut-control energy_or_magnitude \
+  --shortcut-control action_only \
+  --shortcut-control candidate_id_or_rank_remap \
+  --output-md RUN_ROOT/world_model_diagnostic_pipeline_summary.md
+```
+
+Use `--no-calibrate-verifier` only when the input records already contain the
+verifier score at `metadata.efv_score` or the key passed by
+`--verifier-score-key`. Use `--strict` only for final evidence generation; in
+early diagnostic runs it is better to keep the failed reports so the missing
+control is explicit.
+
 If the manifest does not already contain `metadata.efv_score`, generate it with
 the leave-one-case-out diagnostic calibrator. The calibrator uses labels from
 other cases only, writes a verifier score back into candidate metadata, and
