@@ -12,6 +12,11 @@ from umm_reward_evaluator.benchmarks.iclr_claim_report import (
     build_claim_report,
     render_markdown as render_claim_report_markdown,
 )
+from umm_reward_evaluator.benchmarks.iclr_registry_proposal import (
+    propose_diagnostic_entry,
+    propose_robotwin2_entry,
+    render_markdown as render_registry_proposal_markdown,
+)
 from umm_reward_evaluator.benchmarks.randomize_planner_rank import randomize_manifest_rows
 from umm_reward_evaluator.benchmarks.robotwin2_main_table_gate import evaluate_gate
 from umm_reward_evaluator.benchmarks.robotwin2_paper_readiness_gate import (
@@ -724,6 +729,80 @@ class BenchmarkAdaptersTest(unittest.TestCase):
         self.assertEqual(report["claim_level"], "multi_benchmark_ready")
         self.assertIn("MiraBench", report["passed_diagnostic_benchmarks"])
         self.assertFalse(any("multiple mainstream benchmarks" in claim for claim in report["prohibited_claims"]))
+
+    def test_iclr_registry_proposal_builds_robotwin2_entry_only_from_passed_gate(self):
+        readiness = {
+            "tasks": [
+                {"task_name": "task_a", "cases": 4, "rank0_success": 0, "oracle_success": 4},
+                {"task_name": "task_b", "cases": 4, "rank0_success": 1, "oracle_success": 4},
+            ]
+        }
+        selector_table = {
+            "tasks": [
+                {"task_name": "task_a", "cases": 4, "rank0": 0.0, "random": 1.0, "energy": 0.0, "action": 1.0, "gripper": 4.0},
+                {"task_name": "task_b", "cases": 4, "rank0": 1.0, "random": 1.0, "smooth": 1.0, "dtw_gripper": 2.0, "relation": 4.0},
+            ]
+        }
+        entry = propose_robotwin2_entry(readiness_report=readiness, selector_table=selector_table, paper_gate={"passed": True})
+        self.assertEqual(entry["status"], "passed")
+        self.assertEqual(entry["cases"], 8)
+        self.assertEqual(entry["tasks"], 2)
+        self.assertEqual(entry["rank0_success"], 1.0)
+        self.assertEqual(entry["oracle_success"], 8.0)
+        self.assertEqual(entry["method_success"], 8.0)
+        self.assertEqual(entry["best_non_oracle_baseline_success"], 3.0)
+        self.assertIn("candidate_id_or_rank_remap", entry["shortcut_controls"])
+
+        pending = propose_robotwin2_entry(readiness_report=readiness, selector_table=selector_table, paper_gate={"passed": False})
+        self.assertEqual(pending["status"], "pending")
+
+    def test_iclr_registry_proposal_requires_diagnostic_verifier_margin(self):
+        diagnostic_gate = {"passed": True, "summary": {"cases": 2, "tasks": ["a", "b"], "oracle_success": 2}}
+        selector_table = {
+            "summary": {"cases": 2, "tasks": ["a", "b"]},
+            "selectors": [
+                {"selector": "rank0", "selector_success": 0.0},
+                {"selector": "random_expected", "selector_success": 1.0},
+                {"selector": "planner_or_model_score", "selector_success": 2.0},
+                {"selector": "verifier_score:metadata.efv_score", "selector_success": 1.0},
+                {"selector": "oracle", "selector_success": 2.0},
+            ],
+        }
+        pending = propose_diagnostic_entry(
+            benchmark="MiraBench",
+            year=2026,
+            layer="world_model_diagnostic",
+            diagnostic_gate=diagnostic_gate,
+            selector_table=selector_table,
+            verifier_selector="verifier_score:metadata.efv_score",
+        )
+        self.assertEqual(pending["status"], "pending")
+        self.assertEqual(pending["best_non_oracle_baseline_success"], 2.0)
+
+        selector_table["selectors"][3]["selector_success"] = 2.5
+        missing_controls = propose_diagnostic_entry(
+            benchmark="MiraBench",
+            year=2026,
+            layer="world_model_diagnostic",
+            diagnostic_gate=diagnostic_gate,
+            selector_table=selector_table,
+            verifier_selector="verifier_score:metadata.efv_score",
+        )
+        self.assertEqual(missing_controls["status"], "pending")
+
+        passed = propose_diagnostic_entry(
+            benchmark="MiraBench",
+            year=2026,
+            layer="world_model_diagnostic",
+            diagnostic_gate=diagnostic_gate,
+            selector_table=selector_table,
+            verifier_selector="verifier_score:metadata.efv_score",
+            extra_controls=["energy_or_magnitude", "action_only", "candidate_id_or_rank_remap"],
+        )
+        self.assertEqual(passed["status"], "passed")
+        self.assertIn("visual_or_model_score_proxy", passed["shortcut_controls"])
+        markdown = render_registry_proposal_markdown(passed)
+        self.assertIn("MiraBench", markdown)
 
     def test_world_model_diagnostic_label_and_score_conversion(self):
         rows = convert_diagnostic(

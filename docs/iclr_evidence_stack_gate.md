@@ -25,6 +25,37 @@ The claim report is the safer artifact to read before writing paper text: it
 translates gate status into allowed claims, prohibited claims, and the next
 missing evidence.
 
+After a benchmark-level gate passes, generate a registry-entry proposal instead
+of editing `docs/iclr_evidence_stack_registry.json` by hand:
+
+```bash
+python -m umm_reward_evaluator.benchmarks.iclr_registry_proposal robotwin2 \
+  --readiness-json RUN_ROOT/selectors/robotwin2_readiness_report.json \
+  --selector-table-json RUN_ROOT/selectors/robotwin2_selector_table.json \
+  --paper-gate-json RUN_ROOT/selectors/robotwin2_paper_readiness_gate.json \
+  --output-json RUN_ROOT/selectors/robotwin2_registry_entry_proposal.json
+```
+
+For world-model diagnostics:
+
+```bash
+python -m umm_reward_evaluator.benchmarks.iclr_registry_proposal diagnostic \
+  --benchmark MiraBench \
+  --year 2026 \
+  --layer world_model_diagnostic \
+  --diagnostic-gate-json RUN_ROOT/selectors/world_model_diagnostic_gate.json \
+  --selector-table-json RUN_ROOT/selectors/world_model_diagnostic_selector_table.json \
+  --verifier-selector verifier_score:metadata.efv_score \
+  --shortcut-control energy_or_magnitude \
+  --shortcut-control action_only \
+  --shortcut-control candidate_id_or_rank_remap \
+  --output-json RUN_ROOT/selectors/mirabench_registry_entry_proposal.json
+```
+
+The proposal tool remains conservative: failed gates, missing diagnostic
+controls, or verifier scores that do not beat the visual/model-score proxy
+produce `status: pending`.
+
 The default gate requires:
 
 | Requirement | Default |
