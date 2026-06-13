@@ -69,12 +69,16 @@ Default thresholds are intentionally strict:
 | Relation-ready tasks | 1 |
 | Tasks with non-template successful candidates | 2 |
 | Tasks with matched/energy-controlled negative candidates | 3 |
+| Tasks with DTW-diverse non-full-expert successes | 2 |
+| Tasks with low-DTW failed negatives near the expert trace | 2 |
 | Tasks where an envelope selector beats the strongest simple baseline | 3 |
 | Tasks where relation features rescue gripper/DTW-gripper failure | 1 |
 
 Passing this gate means the RoboTwin2 result set is strong enough to support
-the main ICLR evidence package. Failing it means the result can still be a
-diagnostic, but the paper should not rely on it as the second benchmark.
+the main ICLR evidence package. The DTW-diverse success and low-DTW negative
+requirements are specifically there to block the "nearest expert template"
+failure mode. Failing it means the result can still be a diagnostic, but the
+paper should not rely on it as the second benchmark.
 
 ## Task Roles
 

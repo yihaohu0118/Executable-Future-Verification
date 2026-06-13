@@ -118,6 +118,31 @@ def collect_manifest_evidence(manifests_dir: Path) -> dict[str, dict[str, Any]]:
     return evidence
 
 
+def collect_antitemplate_evidence(selectors_dir: Path) -> dict[str, dict[str, Any]]:
+    evidence: dict[str, dict[str, Any]] = {}
+    for path in sorted(selectors_dir.glob("*_targeted_energy_matched_diagnostics.json")):
+        payload = _load_json(path)
+        by_task = payload.get("by_task") or {}
+        if by_task:
+            for task_name, counts in by_task.items():
+                evidence[str(task_name)] = {
+                    "diagnostics_path": str(path),
+                    "cases": int(counts.get("cases", 0) or 0),
+                    "diverse_non_full_success_cases": int(counts.get("diverse_non_full_success_cases", 0) or 0),
+                    "matched_low_dtw_negative_cases": int(counts.get("matched_negative_cases", 0) or 0),
+                }
+        else:
+            task_name = path.name.removesuffix("_targeted_energy_matched_diagnostics.json")
+            overall = payload.get("overall") or {}
+            evidence[task_name] = {
+                "diagnostics_path": str(path),
+                "cases": int(overall.get("cases", 0) or 0),
+                "diverse_non_full_success_cases": int(overall.get("diverse_non_full_success_cases", 0) or 0),
+                "matched_low_dtw_negative_cases": int(overall.get("matched_negative_cases", 0) or 0),
+            }
+    return evidence
+
+
 def _rows_by_task(path: Path | None) -> dict[str, dict[str, Any]]:
     if path is None or not path.exists():
         return {}
@@ -147,21 +172,26 @@ def evaluate_paper_readiness(
     readiness_rows: dict[str, dict[str, Any]],
     selector_rows: dict[str, dict[str, Any]],
     manifest_evidence: dict[str, dict[str, Any]],
+    antitemplate_evidence: dict[str, dict[str, Any]] | None = None,
     min_base_ready_tasks: int = 4,
     min_relation_ready_tasks: int = 1,
     min_non_template_success_tasks: int = 2,
     min_matched_negative_tasks: int = 3,
+    min_diverse_antitemplate_tasks: int = 2,
+    min_low_dtw_negative_tasks: int = 2,
     min_strong_envelope_tasks: int = 3,
     min_relation_rescue_tasks: int = 1,
     min_relation_coverage: float = 1.0,
     min_selector_margin: float = 0.5,
 ) -> dict[str, Any]:
-    all_tasks = sorted(set(readiness_rows) | set(selector_rows) | set(manifest_evidence))
+    antitemplate_evidence = antitemplate_evidence or {}
+    all_tasks = sorted(set(readiness_rows) | set(selector_rows) | set(manifest_evidence) | set(antitemplate_evidence))
     task_rows: list[dict[str, Any]] = []
     for task in all_tasks:
         ready = readiness_rows.get(task, {})
         selector = selector_rows.get(task, {})
         manifest = manifest_evidence.get(task, {})
+        antitemplate = antitemplate_evidence.get(task, {})
         best_envelope = _max_value(selector, ENVELOPE_COLUMNS)
         strongest_baseline = _max_value(selector, BASELINE_COLUMNS)
         best_relation = _max_value(selector, RELATION_COLUMNS)
@@ -192,6 +222,8 @@ def evaluate_paper_readiness(
                 "non_template_success_cases": int(manifest.get("non_template_success_cases", 0) or 0),
                 "matched_negative_cases": int(manifest.get("matched_negative_cases", 0) or 0),
                 "energy_matched_negative_cases": int(manifest.get("energy_matched_negative_cases", 0) or 0),
+                "diverse_antitemplate_success_cases": int(antitemplate.get("diverse_non_full_success_cases", 0) or 0),
+                "matched_low_dtw_negative_cases": int(antitemplate.get("matched_low_dtw_negative_cases", 0) or 0),
                 "best_envelope": best_envelope,
                 "strongest_baseline": strongest_baseline,
                 "strong_envelope": strong_envelope,
@@ -207,6 +239,8 @@ def evaluate_paper_readiness(
     relation_ready_tasks = [row["task_name"] for row in task_rows if row["relation_gate_passed"]]
     non_template_tasks = [row["task_name"] for row in task_rows if row["non_template_success_cases"] > 0]
     matched_negative_tasks = [row["task_name"] for row in task_rows if row["matched_negative_cases"] > 0]
+    diverse_antitemplate_tasks = [row["task_name"] for row in task_rows if row["diverse_antitemplate_success_cases"] > 0]
+    low_dtw_negative_tasks = [row["task_name"] for row in task_rows if row["matched_low_dtw_negative_cases"] > 0]
     strong_envelope_tasks = [row["task_name"] for row in task_rows if row["strong_envelope"]]
     relation_rescue_tasks = [row["task_name"] for row in task_rows if row["relation_rescue"]]
 
@@ -226,6 +260,24 @@ def evaluate_paper_readiness(
             "matched_negative_tasks",
             len(matched_negative_tasks) >= min_matched_negative_tasks,
             {"tasks": matched_negative_tasks, "minimum": min_matched_negative_tasks},
+        ),
+        _check(
+            "diverse_antitemplate_success_tasks",
+            len(diverse_antitemplate_tasks) >= min_diverse_antitemplate_tasks,
+            {
+                "tasks": diverse_antitemplate_tasks,
+                "minimum": min_diverse_antitemplate_tasks,
+                "meaning": "successful candidates are not just the full expert trace under DTW",
+            },
+        ),
+        _check(
+            "matched_low_dtw_negative_tasks",
+            len(low_dtw_negative_tasks) >= min_low_dtw_negative_tasks,
+            {
+                "tasks": low_dtw_negative_tasks,
+                "minimum": min_low_dtw_negative_tasks,
+                "meaning": "failures exist near the expert trace, so nearest-template matching is not enough",
+            },
         ),
         _check(
             "strong_envelope_tasks",
@@ -256,6 +308,8 @@ def evaluate_paper_readiness(
             "min_relation_ready_tasks": min_relation_ready_tasks,
             "min_non_template_success_tasks": min_non_template_success_tasks,
             "min_matched_negative_tasks": min_matched_negative_tasks,
+            "min_diverse_antitemplate_tasks": min_diverse_antitemplate_tasks,
+            "min_low_dtw_negative_tasks": min_low_dtw_negative_tasks,
             "min_strong_envelope_tasks": min_strong_envelope_tasks,
             "min_relation_rescue_tasks": min_relation_rescue_tasks,
             "min_relation_coverage": min_relation_coverage,
@@ -279,13 +333,13 @@ def render_markdown(result: dict[str, Any], *, title: str = "RoboTwin2 Paper Rea
     lines.extend(
         [
             "",
-            "| Task | Cases | Base | Relation | Oracle better | Non-template succ | Matched neg | Best env | Strong base | Relation rescue |",
-            "| --- | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |",
+            "| Task | Cases | Base | Relation | Oracle better | Non-template succ | Matched neg | Diverse anti-template succ | Low-DTW neg | Best env | Strong base | Relation rescue |",
+            "| --- | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
         ]
     )
     for row in result["tasks"]:
         lines.append(
-            "| {task} | {cases} | {base} | {relation} | {oracle} | {positive} | {negative} | {env} | {baseline} | {rescue} |".format(
+            "| {task} | {cases} | {base} | {relation} | {oracle} | {positive} | {negative} | {diverse} | {low_dtw} | {env} | {baseline} | {rescue} |".format(
                 task=row["task_name"],
                 cases=row["cases"],
                 base="pass" if row["base_gate_passed"] else "fail",
@@ -293,6 +347,8 @@ def render_markdown(result: dict[str, Any], *, title: str = "RoboTwin2 Paper Rea
                 oracle=row["oracle_better"],
                 positive=row["non_template_success_cases"],
                 negative=row["matched_negative_cases"],
+                diverse=row["diverse_antitemplate_success_cases"],
+                low_dtw=row["matched_low_dtw_negative_cases"],
                 env="-" if row["best_envelope"] is None else f"{row['best_envelope']:.1f}",
                 baseline="-" if row["strongest_baseline"] is None else f"{row['strongest_baseline']:.1f}",
                 rescue="yes" if row["relation_rescue"] else "no",
@@ -304,7 +360,7 @@ def render_markdown(result: dict[str, Any], *, title: str = "RoboTwin2 Paper Rea
             "Interpretation:",
             "",
             "- This gate is deliberately stricter than the per-task main-table gate.",
-            "- Passing it means the RoboTwin2 evidence covers clean headroom, shortcut-controlled candidates, selector margins, and at least one relation-rescue mechanism task.",
+            "- Passing it means the RoboTwin2 evidence covers clean headroom, shortcut-controlled candidates, distance-based anti-template controls, selector margins, and at least one relation-rescue mechanism task.",
             "- Failing it does not invalidate diagnostics; it means the result set should not yet be used as the main ICLR evidence package.",
             "",
         ]
@@ -323,6 +379,8 @@ def main() -> None:
     parser.add_argument("--min-relation-ready-tasks", type=int, default=1)
     parser.add_argument("--min-non-template-success-tasks", type=int, default=2)
     parser.add_argument("--min-matched-negative-tasks", type=int, default=3)
+    parser.add_argument("--min-diverse-antitemplate-tasks", type=int, default=2)
+    parser.add_argument("--min-low-dtw-negative-tasks", type=int, default=2)
     parser.add_argument("--min-strong-envelope-tasks", type=int, default=3)
     parser.add_argument("--min-relation-rescue-tasks", type=int, default=1)
     parser.add_argument("--min-relation-coverage", type=float, default=1.0)
@@ -337,10 +395,13 @@ def main() -> None:
         readiness_rows=_rows_by_task(selectors_dir / "robotwin2_readiness_report.json"),
         selector_rows=_rows_by_task(selectors_dir / "robotwin2_selector_table.json"),
         manifest_evidence=collect_manifest_evidence(manifests_dir),
+        antitemplate_evidence=collect_antitemplate_evidence(selectors_dir),
         min_base_ready_tasks=args.min_base_ready_tasks,
         min_relation_ready_tasks=args.min_relation_ready_tasks,
         min_non_template_success_tasks=args.min_non_template_success_tasks,
         min_matched_negative_tasks=args.min_matched_negative_tasks,
+        min_diverse_antitemplate_tasks=args.min_diverse_antitemplate_tasks,
+        min_low_dtw_negative_tasks=args.min_low_dtw_negative_tasks,
         min_strong_envelope_tasks=args.min_strong_envelope_tasks,
         min_relation_rescue_tasks=args.min_relation_rescue_tasks,
         min_relation_coverage=args.min_relation_coverage,

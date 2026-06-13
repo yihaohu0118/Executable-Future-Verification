@@ -11,6 +11,7 @@ from umm_reward_evaluator.benchmarks.iclr_evidence_stack_gate import (
 from umm_reward_evaluator.benchmarks.randomize_planner_rank import randomize_manifest_rows
 from umm_reward_evaluator.benchmarks.robotwin2_main_table_gate import evaluate_gate
 from umm_reward_evaluator.benchmarks.robotwin2_paper_readiness_gate import (
+    collect_antitemplate_evidence,
     collect_manifest_evidence,
     evaluate_paper_readiness,
     render_markdown as render_paper_readiness_markdown,
@@ -353,6 +354,8 @@ class BenchmarkAdaptersTest(unittest.TestCase):
     def test_robotwin2_paper_readiness_gate_requires_mechanism_evidence(self):
         with TemporaryDirectory() as tmp:
             manifests_dir = Path(tmp)
+            selectors_dir = manifests_dir / "selectors"
+            selectors_dir.mkdir()
             manifest = manifests_dir / "stack_blocks_two_targeted_energy_matched_manifest.jsonl"
             rows = [
                 {
@@ -390,8 +393,23 @@ class BenchmarkAdaptersTest(unittest.TestCase):
                 },
             ]
             manifest.write_text("\n".join(json.dumps(row) for row in rows) + "\n", encoding="utf-8")
+            (selectors_dir / "stack_blocks_two_targeted_energy_matched_diagnostics.json").write_text(
+                json.dumps(
+                    {
+                        "by_task": {
+                            "stack_blocks_two": {
+                                "cases": 1,
+                                "diverse_non_full_success_cases": 1,
+                                "matched_negative_cases": 1,
+                            }
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
 
             manifest_evidence = collect_manifest_evidence(manifests_dir)
+            antitemplate_evidence = collect_antitemplate_evidence(selectors_dir)
             result = evaluate_paper_readiness(
                 readiness_rows={
                     "stack_blocks_two": {
@@ -417,25 +435,32 @@ class BenchmarkAdaptersTest(unittest.TestCase):
                     }
                 },
                 manifest_evidence=manifest_evidence,
+                antitemplate_evidence=antitemplate_evidence,
                 min_base_ready_tasks=1,
                 min_relation_ready_tasks=1,
                 min_non_template_success_tasks=1,
                 min_matched_negative_tasks=1,
+                min_diverse_antitemplate_tasks=1,
+                min_low_dtw_negative_tasks=1,
                 min_strong_envelope_tasks=1,
                 min_relation_rescue_tasks=1,
             )
             self.assertTrue(result["passed"])
             markdown = render_paper_readiness_markdown(result)
             self.assertIn("`relation_rescue_tasks` | pass", markdown)
+            self.assertIn("`matched_low_dtw_negative_tasks` | pass", markdown)
 
             failed = evaluate_paper_readiness(
                 readiness_rows={"stack_blocks_two": {"cases": 1, "base_gate_passed": True, "relation_gate_passed": True, "oracle_better": 1}},
                 selector_rows={"stack_blocks_two": {"cases": 1, "rank0": 0.0, "gripper": 1.0, "relation": 1.0, "relation_min_coverage": 1.0}},
                 manifest_evidence={"stack_blocks_two": {"cases": 1}},
+                antitemplate_evidence={"stack_blocks_two": {"cases": 1}},
                 min_base_ready_tasks=1,
                 min_relation_ready_tasks=1,
                 min_non_template_success_tasks=1,
                 min_matched_negative_tasks=1,
+                min_diverse_antitemplate_tasks=1,
+                min_low_dtw_negative_tasks=1,
                 min_strong_envelope_tasks=1,
                 min_relation_rescue_tasks=1,
             )
