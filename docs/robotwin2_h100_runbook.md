@@ -79,6 +79,34 @@ compute app appears on the same GPU after the trace job starts, the wrapper
 terminates only its own RoboTwin2 child process and exits with code `75`.
 It does not kill the foreign process.
 
+For long evidence windows on shared machines, wrap the bounded launcher with the
+persistent retry wrapper instead of hand-writing a tmux `while` loop:
+
+```bash
+cd /home/yihao_hyh/Executable-Future-Verification
+tmux new-session -d -s efv_pwait_stack_blocks_gpu5 \
+  "EXECUTE=1 GPU_ID=5 WAIT_FOR_GPU=1 GPU_WAIT_SECONDS=300 GPU_STABLE_SECONDS=120 \
+   TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched \
+   TASKS=stack_blocks_two SEEDS=0-3 RESUME_PARTIAL=1 \
+   scripts/robotwin2_persistent_bounded_window_launcher.sh \
+   /home/yihao_hyh/efv_runs/robotwin2_parallel_YYYYMMDD/stack_blocks_two \
+   > /home/yihao_hyh/efv_runs/robotwin2_parallel_YYYYMMDD/stack_blocks_two/logs/pwait_gpu5.log 2>&1"
+```
+
+The persistent wrapper retries only exit code `75`, which is reserved for
+"GPU busy" or "foreign GPU process appeared" conditions. Exit code `0` stops
+the loop as success; any other nonzero code stops the loop as a real failure.
+This keeps EFV from occupying a GPU while another user's training or Ray job is
+active, while still allowing the evidence window to resume once the card is
+actually free.
+
+Check disk space before launching persistent waiters. The wrapper can wait for
+GPUs, but it cannot recover from a full filesystem if logs or atomic raw temp
+files cannot be written. On dev2, recent `checkpoints/evogym/qwen3_8b_*`
+training checkpoints can consume tens of GB within minutes; do not delete those
+without explicit approval. Clear only reproducible caches or `/tmp` experiment
+scratch when space is needed.
+
 Seed files are published atomically. A seed writes to a hidden temporary file
 first and replaces `raw/<task>/seed_<n>.jsonl` only after the full candidate
 pool finishes. Interrupted runs therefore should not create official partial
