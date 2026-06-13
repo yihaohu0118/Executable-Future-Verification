@@ -695,7 +695,10 @@ def run_one_seed(
 
     candidates = build_candidates(actions, candidate_preset)
     output.parent.mkdir(parents=True, exist_ok=True)
-    with output.open("w", encoding="utf-8") as f:
+    tmp_output = output.with_name(f".{output.name}.tmp.{os.getpid()}")
+    if tmp_output.exists():
+        tmp_output.unlink()
+    with tmp_output.open("w", encoding="utf-8") as f:
         for candidate in candidates:
             print(f"running seed={seed} {candidate.candidate_id} len={len(candidate.actions)}", flush=True)
             try:
@@ -729,6 +732,7 @@ def run_one_seed(
                 print(f"seed={seed} {candidate.candidate_id} success=False error={exc!r}", flush=True)
             f.write(json.dumps(row, sort_keys=True) + "\n")
             f.flush()
+    tmp_output.replace(output)
     print(f"wrote {output}", flush=True)
 
 

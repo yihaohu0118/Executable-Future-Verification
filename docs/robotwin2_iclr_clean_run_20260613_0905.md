@@ -157,6 +157,12 @@ cases for `candidate_count_mismatch`; the paper readiness gate correctly failed
 with zero usable cases. This run should therefore be cited only as an
 operational/debugging window, not as RoboTwin2 evidence.
 
+Follow-up fix: after this interrupted window, the trace path was hardened so
+future runs publish seed files atomically and the shell wrapper stops only its
+own RoboTwin2 child if a foreign GPU compute app appears mid-run. This should
+prevent the same interruption mode from leaving official partial JSONL files in
+`raw/`.
+
 ## Launch Command
 
 The run was started as a background driver. Each task is launched through

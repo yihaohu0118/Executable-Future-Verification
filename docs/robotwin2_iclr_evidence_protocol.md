@@ -152,3 +152,14 @@ window even if a GPU appears briefly idle.
 With a fixed `GPU_ID`, the lower-level run script still waits for the same
 memory-and-process free condition before starting. Low GPU utilization is not
 enough; a card with tens of GB allocated is not considered free.
+
+The lower-level run script also protects training jobs after launch. With the
+default `GPU_CONFLICT_MONITOR=1`, it periodically checks the selected GPU and
+terminates only its own RoboTwin2 child if another compute app appears. The
+exit code is `75`, matching the "not safe to run now" path.
+
+Raw seed files are atomically published. A seed is first written to a hidden
+temporary file and is moved into `raw/<task>/seed_<n>.jsonl` only after all
+candidates for that seed are complete. This keeps interrupted windows from
+producing partial JSONL files that later fail the manifest gate with
+`candidate_count_mismatch`.

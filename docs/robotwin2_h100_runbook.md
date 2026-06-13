@@ -74,6 +74,16 @@ empty by default but does not kill or stop any existing process. "Empty" means
 both no compute process and `memory.used <= GPU_FREE_MAX_MEMORY_MB` after a
 stability recheck. Do not treat low utilization alone as safe; Ray or another
 training job can hold tens of GB while utilization is temporarily near zero.
+During execution, `GPU_CONFLICT_MONITOR=1` is enabled by default. If another
+compute app appears on the same GPU after the trace job starts, the wrapper
+terminates only its own RoboTwin2 child process and exits with code `75`.
+It does not kill the foreign process.
+
+Seed files are published atomically. A seed writes to a hidden temporary file
+first and replaces `raw/<task>/seed_<n>.jsonl` only after the full candidate
+pool finishes. Interrupted runs therefore should not create official partial
+JSONL files in `raw/`; hidden temp files can be inspected for debugging but
+must not be converted into manifests for paper tables.
 Do not use `--skip-replay-planner` for main-table data. Set
 `RUN_ANALYSIS_AFTER=1` or run `scripts/robotwin2_multitask_analysis.sh`
 afterward, and require the generated relation gate to pass before using

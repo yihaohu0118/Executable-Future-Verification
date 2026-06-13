@@ -18,10 +18,14 @@ GPU_FREE_MAX_MEMORY_MB="${GPU_FREE_MAX_MEMORY_MB:-1024}"
 RUN_ANALYSIS_AFTER="${RUN_ANALYSIS_AFTER:-0}"
 DRY_RUN="${DRY_RUN:-0}"
 CONTINUE_ON_SEED_ERROR="${CONTINUE_ON_SEED_ERROR:-1}"
+GPU_CONFLICT_MONITOR="${GPU_CONFLICT_MONITOR:-1}"
+GPU_CONFLICT_CHECK_SECONDS="${GPU_CONFLICT_CHECK_SECONDS:-30}"
+GPU_CONFLICT_TERM_GRACE_SECONDS="${GPU_CONFLICT_TERM_GRACE_SECONDS:-10}"
 
 RAW_DIR="$RUN_ROOT/raw/$TASK_NAME"
 LOG_DIR="$RUN_ROOT/logs"
 LOG_FILE="$LOG_DIR/${TASK_NAME}_${CANDIDATE_PRESET}_seeds_${SEEDS//[^0-9A-Za-z_-]/_}.log"
+CONFLICT_FILE="$LOG_DIR/.${TASK_NAME}_${CANDIDATE_PRESET}_seeds_${SEEDS//[^0-9A-Za-z_-]/_}.gpu_conflict"
 
 mkdir -p "$RAW_DIR" "$LOG_DIR"
 
@@ -43,6 +47,21 @@ gpu_is_free() {
   busy="$(nvidia-smi -i "$gpu" --query-compute-apps=pid --format=csv,noheader,nounits 2>/dev/null | tr -d '[:space:]')"
   memory_used="$(nvidia-smi -i "$gpu" --query-gpu=memory.used --format=csv,noheader,nounits 2>/dev/null | tr -d '[:space:]')"
   [ -z "$busy" ] && [ -n "$memory_used" ] && [ "$memory_used" -le "$GPU_FREE_MAX_MEMORY_MB" ]
+}
+
+foreign_compute_apps() {
+  gpu="$1"
+  own_pid="$2"
+  nvidia-smi -i "$gpu" --query-compute-apps=pid,process_name,used_memory --format=csv,noheader,nounits 2>/dev/null \
+    | awk -F, -v own_pid="$own_pid" '
+      {
+        pid=$1
+        gsub(/[[:space:]]/, "", pid)
+        if (pid != "" && pid != own_pid) {
+          print $0
+        }
+      }
+    '
 }
 
 if [ "$GPU_ID" = "auto" ] && [ "$DRY_RUN" != "1" ]; then
@@ -84,6 +103,7 @@ echo "ROBOTWIN_ROOT=$ROBOTWIN_ROOT"
 echo "EFV_ROOT=$EFV_ROOT"
 echo "LOG_FILE=$LOG_FILE"
 echo "CONTINUE_ON_SEED_ERROR=$CONTINUE_ON_SEED_ERROR"
+echo "GPU_CONFLICT_MONITOR=$GPU_CONFLICT_MONITOR"
 printf 'COMMAND='
 printf '%q ' "CUDA_VISIBLE_DEVICES=$GPU_ID" "${cmd[@]}"
 printf '\n'
@@ -115,7 +135,49 @@ export PYTHONPATH="$EFV_ROOT/src:${PYTHONPATH:-}"
 
 cd "$ROBOTWIN_ROOT"
 echo "$(date -Is) start $TASK_NAME seeds=$SEEDS preset=$CANDIDATE_PRESET" | tee "$LOG_FILE"
-CUDA_VISIBLE_DEVICES="$GPU_ID" "${cmd[@]}" 2>&1 | tee -a "$LOG_FILE"
+rm -f "$CONFLICT_FILE"
+CUDA_VISIBLE_DEVICES="$GPU_ID" "${cmd[@]}" > >(tee -a "$LOG_FILE") 2>&1 &
+child_pid="$!"
+monitor_pid=""
+if [ "$GPU_CONFLICT_MONITOR" = "1" ]; then
+  (
+    while kill -0 "$child_pid" >/dev/null 2>&1; do
+      foreign="$(foreign_compute_apps "$GPU_ID" "$child_pid" || true)"
+      if [ -n "$foreign" ]; then
+        {
+          echo "$(date -Is) foreign GPU compute app detected on GPU $GPU_ID while $TASK_NAME is running; terminating own child $child_pid"
+          echo "$foreign"
+        } | tee -a "$LOG_FILE"
+        printf '%s\n' "$foreign" > "$CONFLICT_FILE"
+        kill -TERM "$child_pid" >/dev/null 2>&1 || true
+        sleep "$GPU_CONFLICT_TERM_GRACE_SECONDS"
+        if kill -0 "$child_pid" >/dev/null 2>&1; then
+          echo "$(date -Is) own child $child_pid still alive after TERM; sending KILL" | tee -a "$LOG_FILE"
+          kill -KILL "$child_pid" >/dev/null 2>&1 || true
+        fi
+        exit 0
+      fi
+      sleep "$GPU_CONFLICT_CHECK_SECONDS"
+    done
+  ) &
+  monitor_pid="$!"
+fi
+set +e
+wait "$child_pid"
+child_status="$?"
+set -e
+if [ -n "$monitor_pid" ]; then
+  kill "$monitor_pid" >/dev/null 2>&1 || true
+  wait "$monitor_pid" >/dev/null 2>&1 || true
+fi
+if [ -f "$CONFLICT_FILE" ]; then
+  echo "$(date -Is) stopped $TASK_NAME because another compute app appeared on GPU $GPU_ID" | tee -a "$LOG_FILE"
+  exit 75
+fi
+if [ "$child_status" -ne 0 ]; then
+  echo "$(date -Is) $TASK_NAME failed with exit code $child_status" | tee -a "$LOG_FILE"
+  exit "$child_status"
+fi
 echo "$(date -Is) finish $TASK_NAME seeds=$SEEDS preset=$CANDIDATE_PRESET" | tee -a "$LOG_FILE"
 
 if [ "$RUN_ANALYSIS_AFTER" = "1" ]; then

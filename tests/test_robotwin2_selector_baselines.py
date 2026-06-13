@@ -1,5 +1,9 @@
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest import mock
 
+from umm_reward_evaluator.benchmarks import robotwin2_gripper_aware_trace as trace
 from umm_reward_evaluator.benchmarks.robotwin2_selector_baselines import (
     evaluate_trace_distance,
     evaluate_heuristic,
@@ -10,10 +14,12 @@ from umm_reward_evaluator.benchmarks.robotwin2_selector_baselines import (
 )
 from umm_reward_evaluator.benchmarks.robotwin2_antitemplate_diagnostics import diagnose_manifest
 from umm_reward_evaluator.benchmarks.robotwin2_gripper_aware_trace import (
+    CandidateSpec,
     build_candidates,
     compact_scene_state,
     discover_scene_actors,
     parse_seed_list,
+    run_one_seed,
 )
 from umm_reward_evaluator.benchmarks.robotwin2_selector_failure_analysis import run_analysis
 from umm_reward_evaluator.benchmarks.robotwin2_rank_randomization_sweep import (
@@ -299,6 +305,77 @@ class RoboTwin2SelectorBaselinesTest(unittest.TestCase):
             parse_seed_list("4-2")
         with self.assertRaises(ValueError):
             parse_seed_list(" , ")
+
+    def test_run_one_seed_writes_completed_outputs_atomically(self):
+        with TemporaryDirectory() as tmp:
+            output = Path(tmp) / "seed_0.jsonl"
+            with (
+                mock.patch.object(
+                    trace,
+                    "record_expert_actions",
+                    return_value=([[1.0] * 14], {"expert_success": True, "expert_info": {}, "num_expert_actions": 1}),
+                ),
+                mock.patch.object(
+                    trace,
+                    "build_candidates",
+                    return_value=[CandidateSpec("full", 0, [[1.0] * 14], "full_expert_trace")],
+                ),
+                mock.patch.object(
+                    trace,
+                    "run_candidate",
+                    return_value={
+                        "candidate_id": "full",
+                        "success": True,
+                        "actions": [[1.0] * 14],
+                        "metadata": {"candidate_source": "full_expert_trace"},
+                    },
+                ),
+            ):
+                run_one_seed(
+                    task_name="unit_task",
+                    task_config="unit_config",
+                    seed=0,
+                    instruction="unit",
+                    output=output,
+                    skip_existing=False,
+                    candidate_preset="targeted_energy_matched",
+                    skip_replay_planner=False,
+                )
+
+            self.assertTrue(output.exists())
+            self.assertEqual(len(output.read_text(encoding="utf-8").splitlines()), 1)
+            self.assertEqual(list(Path(tmp).glob("*.tmp.*")), [])
+
+    def test_run_one_seed_does_not_publish_interrupted_outputs(self):
+        with TemporaryDirectory() as tmp:
+            output = Path(tmp) / "seed_0.jsonl"
+            with (
+                mock.patch.object(
+                    trace,
+                    "record_expert_actions",
+                    return_value=([[1.0] * 14], {"expert_success": True, "expert_info": {}, "num_expert_actions": 1}),
+                ),
+                mock.patch.object(
+                    trace,
+                    "build_candidates",
+                    return_value=[CandidateSpec("full", 0, [[1.0] * 14], "full_expert_trace")],
+                ),
+                mock.patch.object(trace, "run_candidate", side_effect=KeyboardInterrupt),
+            ):
+                with self.assertRaises(KeyboardInterrupt):
+                    run_one_seed(
+                        task_name="unit_task",
+                        task_config="unit_config",
+                        seed=0,
+                        instruction="unit",
+                        output=output,
+                        skip_existing=False,
+                        candidate_preset="targeted_energy_matched",
+                        skip_replay_planner=False,
+                    )
+
+            self.assertFalse(output.exists())
+            self.assertEqual(len(list(Path(tmp).glob("*.jsonl"))), 0)
 
     def test_phase_gripper_feature_is_fixed_width_across_trace_lengths(self):
         rows = list(self.rows)
