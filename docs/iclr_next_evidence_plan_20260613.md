@@ -65,7 +65,9 @@ Each serious RoboTwin2 task should include:
 - route-diverse or time-warped successes when the task permits them.
 
 The key table should show whether the verifier can prefer diverse successful
-futures over near-template failures.
+futures over near-template failures. DTW nearest-positive selectors are treated
+as template baselines; they do not count as evidence that the proposed execution
+envelope mechanism has beaten the expert-template shortcut.
 
 ### 3. One World-Model Diagnostic Layer
 
@@ -93,6 +95,8 @@ after the next RoboTwin2 window:
 - fewer than four RoboTwin2 tasks have clean oracle headroom;
 - successful candidates are mostly full expert traces;
 - DTW nearest-positive matches the best learned/envelope verifier;
+- successful candidates have unknown source labels and cannot be separated from
+  full-template variants;
 - relation/contact features never rescue gripper-only or endpoint-only failure;
 - many failures are simulator, reset, CUDA, or incomplete-run artifacts.
 

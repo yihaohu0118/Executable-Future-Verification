@@ -16,27 +16,32 @@ FULL_TEMPLATE_SOURCES = {
     "full_gripper_aware",
     "rank0",
 }
-HARD_POSITIVE_MARKERS = ("hard_positive", "positive_probe", "time_warp")
+FULL_TEMPLATE_MARKERS = ("full_expert", "full_gripper_aware", "demo_original", "rank0", "first_action")
+HARD_POSITIVE_MARKERS = ("hard_positive", "positive_probe", "time_warp", "suffix_truncation")
 MATCHED_NEGATIVE_MARKERS = ("matched_", "energy_matched", "negative_probe")
 ENVELOPE_COLUMNS = (
     "gripper",
     "phase_gripper",
     "relation",
     "phase_relation_robot",
-    "dtw_relation",
 )
 BASELINE_COLUMNS = (
     "rank0",
     "random",
     "energy",
     "smooth",
+    "length",
     "action",
+    "dtw_action",
     "dtw_gripper",
+    "dtw_joint",
+    "dtw_joint_gripper",
+    "dtw_relation",
+    "dtw_relation_joint_gripper",
 )
 RELATION_COLUMNS = (
     "relation",
     "phase_relation_robot",
-    "dtw_relation",
 )
 
 
@@ -53,13 +58,23 @@ def _candidate_source(row: dict[str, Any]) -> str:
     return str(metadata.get("candidate_source", metadata.get("original_candidate_id", row.get("candidate_id", ""))))
 
 
+def _is_full_template_source(source: str) -> bool:
+    lowered = source.lower()
+    return source in FULL_TEMPLATE_SOURCES or any(marker in lowered for marker in FULL_TEMPLATE_MARKERS)
+
+
+def _is_explicit_hard_positive_source(source: str) -> bool:
+    lowered = source.lower()
+    return any(marker in lowered for marker in HARD_POSITIVE_MARKERS)
+
+
 def _is_non_template_success(row: dict[str, Any]) -> bool:
     source = _candidate_source(row)
     if not bool(row.get("oracle_success")):
         return False
-    if source in FULL_TEMPLATE_SOURCES:
+    if _is_full_template_source(source):
         return False
-    return any(marker in source for marker in HARD_POSITIVE_MARKERS) or source not in FULL_TEMPLATE_SOURCES
+    return _is_explicit_hard_positive_source(source)
 
 
 def _is_matched_negative(row: dict[str, Any]) -> bool:
@@ -87,6 +102,8 @@ def collect_manifest_evidence(manifests_dir: Path) -> dict[str, dict[str, Any]]:
         non_template_success_cases = 0
         matched_negative_cases = 0
         energy_matched_negative_cases = 0
+        unknown_success_cases = 0
+        full_template_success_cases = 0
         source_counts: dict[str, int] = defaultdict(int)
         success_source_counts: dict[str, int] = defaultdict(int)
         failure_source_counts: dict[str, int] = defaultdict(int)
@@ -97,6 +114,15 @@ def collect_manifest_evidence(manifests_dir: Path) -> dict[str, dict[str, Any]]:
                 matched_negative_cases += 1
             if any((not bool(row.get("oracle_success"))) and "energy_matched" in _candidate_source(row) for row in case_rows):
                 energy_matched_negative_cases += 1
+            if any(bool(row.get("oracle_success")) and _is_full_template_source(_candidate_source(row)) for row in case_rows):
+                full_template_success_cases += 1
+            if any(
+                bool(row.get("oracle_success"))
+                and not _is_full_template_source(_candidate_source(row))
+                and not _is_explicit_hard_positive_source(_candidate_source(row))
+                for row in case_rows
+            ):
+                unknown_success_cases += 1
             for row in case_rows:
                 source = _candidate_source(row)
                 source_counts[source] += 1
@@ -111,6 +137,8 @@ def collect_manifest_evidence(manifests_dir: Path) -> dict[str, dict[str, Any]]:
             "non_template_success_cases": non_template_success_cases,
             "matched_negative_cases": matched_negative_cases,
             "energy_matched_negative_cases": energy_matched_negative_cases,
+            "full_template_success_cases": full_template_success_cases,
+            "unknown_success_cases": unknown_success_cases,
             "source_counts": dict(sorted(source_counts.items())),
             "success_source_counts": dict(sorted(success_source_counts.items())),
             "failure_source_counts": dict(sorted(failure_source_counts.items())),
@@ -220,6 +248,8 @@ def evaluate_paper_readiness(
                 "relation_gate_passed": bool(ready.get("relation_gate_passed")),
                 "oracle_better": int(ready.get("oracle_better", 0) or 0),
                 "non_template_success_cases": int(manifest.get("non_template_success_cases", 0) or 0),
+                "full_template_success_cases": int(manifest.get("full_template_success_cases", 0) or 0),
+                "unknown_success_cases": int(manifest.get("unknown_success_cases", 0) or 0),
                 "matched_negative_cases": int(manifest.get("matched_negative_cases", 0) or 0),
                 "energy_matched_negative_cases": int(manifest.get("energy_matched_negative_cases", 0) or 0),
                 "diverse_antitemplate_success_cases": int(antitemplate.get("diverse_non_full_success_cases", 0) or 0),
@@ -333,19 +363,20 @@ def render_markdown(result: dict[str, Any], *, title: str = "RoboTwin2 Paper Rea
     lines.extend(
         [
             "",
-            "| Task | Cases | Base | Relation | Oracle better | Non-template succ | Matched neg | Diverse anti-template succ | Low-DTW neg | Best env | Strong base | Relation rescue |",
-            "| --- | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
+            "| Task | Cases | Base | Relation | Oracle better | Non-template succ | Unknown succ | Matched neg | Diverse anti-template succ | Low-DTW neg | Best env | Strong base | Relation rescue |",
+            "| --- | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
         ]
     )
     for row in result["tasks"]:
         lines.append(
-            "| {task} | {cases} | {base} | {relation} | {oracle} | {positive} | {negative} | {diverse} | {low_dtw} | {env} | {baseline} | {rescue} |".format(
+            "| {task} | {cases} | {base} | {relation} | {oracle} | {positive} | {unknown} | {negative} | {diverse} | {low_dtw} | {env} | {baseline} | {rescue} |".format(
                 task=row["task_name"],
                 cases=row["cases"],
                 base="pass" if row["base_gate_passed"] else "fail",
                 relation="pass" if row["relation_gate_passed"] else "fail",
                 oracle=row["oracle_better"],
                 positive=row["non_template_success_cases"],
+                unknown=row["unknown_success_cases"],
                 negative=row["matched_negative_cases"],
                 diverse=row["diverse_antitemplate_success_cases"],
                 low_dtw=row["matched_low_dtw_negative_cases"],

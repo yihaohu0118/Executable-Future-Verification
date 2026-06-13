@@ -484,6 +484,17 @@ class BenchmarkAdaptersTest(unittest.TestCase):
                     "oracle_success": False,
                     "metadata": {"candidate_source": "energy_matched_contact_negative_probe"},
                 },
+                {
+                    "benchmark": "robotwin2",
+                    "suite": "unit",
+                    "task_name": "stack_blocks_two",
+                    "case_id": "seed=0",
+                    "candidate_id": "unknown_success",
+                    "candidate_rank_by_planner": 3,
+                    "actions": [[2.0]],
+                    "oracle_success": True,
+                    "metadata": {"candidate_source": "policy_rollout"},
+                },
             ]
             manifest.write_text("\n".join(json.dumps(row) for row in rows) + "\n", encoding="utf-8")
             (selectors_dir / "stack_blocks_two_targeted_energy_matched_diagnostics.json").write_text(
@@ -502,6 +513,8 @@ class BenchmarkAdaptersTest(unittest.TestCase):
             )
 
             manifest_evidence = collect_manifest_evidence(manifests_dir)
+            self.assertEqual(manifest_evidence["stack_blocks_two"]["non_template_success_cases"], 1)
+            self.assertEqual(manifest_evidence["stack_blocks_two"]["unknown_success_cases"], 1)
             antitemplate_evidence = collect_antitemplate_evidence(selectors_dir)
             result = evaluate_paper_readiness(
                 readiness_rows={
@@ -542,6 +555,45 @@ class BenchmarkAdaptersTest(unittest.TestCase):
             markdown = render_paper_readiness_markdown(result)
             self.assertIn("`relation_rescue_tasks` | pass", markdown)
             self.assertIn("`matched_low_dtw_negative_tasks` | pass", markdown)
+
+            dtw_shortcut_failed = evaluate_paper_readiness(
+                readiness_rows={
+                    "stack_blocks_two": {
+                        "cases": 1,
+                        "base_gate_passed": True,
+                        "relation_gate_passed": True,
+                        "oracle_better": 1,
+                    }
+                },
+                selector_rows={
+                    "stack_blocks_two": {
+                        "cases": 1,
+                        "rank0": 0.0,
+                        "random": 0.3,
+                        "energy": 0.0,
+                        "smooth": 0.0,
+                        "action": 0.0,
+                        "dtw_joint_gripper": 1.0,
+                        "gripper": 0.0,
+                        "dtw_gripper": 0.0,
+                        "relation": 1.0,
+                        "phase_relation_robot": 1.0,
+                        "relation_min_coverage": 1.0,
+                    }
+                },
+                manifest_evidence=manifest_evidence,
+                antitemplate_evidence=antitemplate_evidence,
+                min_base_ready_tasks=1,
+                min_relation_ready_tasks=1,
+                min_non_template_success_tasks=1,
+                min_matched_negative_tasks=1,
+                min_diverse_antitemplate_tasks=1,
+                min_low_dtw_negative_tasks=1,
+                min_strong_envelope_tasks=1,
+                min_relation_rescue_tasks=1,
+            )
+            self.assertFalse(dtw_shortcut_failed["passed"])
+            self.assertFalse(next(check for check in dtw_shortcut_failed["checks"] if check["name"] == "strong_envelope_tasks")["passed"])
 
             failed = evaluate_paper_readiness(
                 readiness_rows={"stack_blocks_two": {"cases": 1, "base_gate_passed": True, "relation_gate_passed": True, "oracle_better": 1}},

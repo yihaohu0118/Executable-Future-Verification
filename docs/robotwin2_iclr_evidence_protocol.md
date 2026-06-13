@@ -77,8 +77,10 @@ Default thresholds are intentionally strict:
 Passing this gate means the RoboTwin2 result set is strong enough to support
 the main ICLR evidence package. The DTW-diverse success and low-DTW negative
 requirements are specifically there to block the "nearest expert template"
-failure mode. Failing it means the result can still be a diagnostic, but the
-paper should not rely on it as the second benchmark.
+failure mode. DTW nearest-positive selectors, including joint+gripper DTW, are
+treated as template-matching baselines rather than as mechanism evidence. Failing
+the gate means the result can still be a diagnostic, but the paper should not
+rely on it as the second benchmark.
 
 ## Task Roles
 
@@ -118,6 +120,9 @@ needed by the paper-level gate:
 
 If a task produces no successful non-template candidates, it should be reported
 as a limitation or diagnostic, not as proof that the verifier generalizes.
+Successful candidates with unknown source labels are also not counted as
+non-template evidence until they are explicitly labeled or confirmed by the DTW
+anti-template diagnostic.
 
 ## Decision Rule
 

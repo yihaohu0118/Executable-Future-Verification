@@ -13,13 +13,18 @@ SELECTOR_COLUMNS = (
     ("random", "random_expected"),
     ("energy", "heuristic:energy_sum_max"),
     ("smooth", "heuristic:smoothness_max"),
+    ("length", "heuristic:length_max"),
     ("action", "prototype:action_distribution:same_task:nearest_positive"),
     ("gripper", "prototype:gripper_distribution:same_task:nearest_positive"),
     ("phase_gripper", "prototype:phase_gripper_distribution:same_task:nearest_positive"),
+    ("dtw_action", "trace_distance:dtw_action:same_task:nearest_positive"),
     ("dtw_gripper", "trace_distance:dtw_gripper:same_task:nearest_positive"),
+    ("dtw_joint", "trace_distance:dtw_joint:all_tasks:nearest_positive"),
+    ("dtw_joint_gripper", "trace_distance:dtw_joint_gripper:all_tasks:nearest_positive"),
     ("relation", "prototype:object_relation_distribution:same_task:nearest_positive"),
     ("phase_relation_robot", "prototype:phase_object_relation_joint_gripper_distribution:same_task:nearest_pos_neg"),
     ("dtw_relation", "trace_distance:dtw_object_relation:same_task:nearest_positive"),
+    ("dtw_relation_joint_gripper", "trace_distance:dtw_object_relation_joint_gripper:same_task:nearest_positive"),
 )
 
 
@@ -98,21 +103,23 @@ def render_markdown(rows: list[dict[str, Any]], *, title: str = "RoboTwin2 Selec
     lines = [
         f"# {title}",
         "",
-        "| Task | Cases | Rank0 | Random | Energy | Smooth | Gripper | DTW grip | Relation | Relation+robot | Rel cov |",
-        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+        "| Task | Cases | Rank0 | Random | Energy | Smooth | Length | Gripper | DTW grip | DTW J+G | Relation | Relation+robot | Rel cov |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
     for row in rows:
         cases = int(row.get("cases", 0))
         lines.append(
-            "| {task} | {cases} | {rank0} | {random} | {energy} | {smooth} | {gripper} | {dtw_gripper} | {relation} | {phase_relation_robot} | {coverage} |".format(
+            "| {task} | {cases} | {rank0} | {random} | {energy} | {smooth} | {length} | {gripper} | {dtw_gripper} | {dtw_joint_gripper} | {relation} | {phase_relation_robot} | {coverage} |".format(
                 task=row["task_name"],
                 cases=cases,
                 rank0=_fmt(row.get("rank0"), cases),
                 random=_fmt(row.get("random"), cases),
                 energy=_fmt(row.get("energy"), cases),
                 smooth=_fmt(row.get("smooth"), cases),
+                length=_fmt(row.get("length"), cases),
                 gripper=_fmt(row.get("gripper"), cases),
                 dtw_gripper=_fmt(row.get("dtw_gripper"), cases),
+                dtw_joint_gripper=_fmt(row.get("dtw_joint_gripper"), cases),
                 relation=_fmt(row.get("relation"), cases),
                 phase_relation_robot=_fmt(row.get("phase_relation_robot"), cases),
                 coverage=_fmt(row.get("relation_min_coverage")),
@@ -124,6 +131,7 @@ def render_markdown(rows: list[dict[str, Any]], *, title: str = "RoboTwin2 Selec
             "Notes:",
             "",
             "- Values are mean successes over anonymous rank/candidate-ID remap seeds.",
+            "- DTW columns are nearest-positive template baselines, not evidence that template matching has been ruled out.",
             "- Relation columns require relation coverage; `Rel cov` below 1.00 means the relation number is diagnostic only.",
             "",
         ]
