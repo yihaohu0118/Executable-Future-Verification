@@ -4,6 +4,10 @@ from tempfile import TemporaryDirectory
 import json
 
 from umm_reward_evaluator.benchmarks.common import annotate_oracle_best, summarize_headroom
+from umm_reward_evaluator.benchmarks.iclr_evidence_stack_gate import (
+    evaluate_evidence_stack,
+    render_markdown as render_iclr_stack_markdown,
+)
 from umm_reward_evaluator.benchmarks.randomize_planner_rank import randomize_manifest_rows
 from umm_reward_evaluator.benchmarks.robotwin2_main_table_gate import evaluate_gate
 from umm_reward_evaluator.benchmarks.robotwin2_paper_readiness_gate import (
@@ -428,6 +432,96 @@ class BenchmarkAdaptersTest(unittest.TestCase):
                 min_relation_rescue_tasks=1,
             )
             self.assertFalse(failed["passed"])
+
+    def test_iclr_evidence_stack_gate_requires_three_modern_layers(self):
+        controls = [
+            "rank0",
+            "random",
+            "energy_or_magnitude",
+            "action_only",
+            "candidate_id_or_rank_remap",
+        ]
+        complete = evaluate_evidence_stack(
+            [
+                {
+                    "benchmark": "RoboCasa365",
+                    "year": 2026,
+                    "layer": "executable_primary",
+                    "status": "passed",
+                    "cases": 64,
+                    "tasks": 4,
+                    "rank0_success": 0,
+                    "oracle_success": 64,
+                    "method_success": 63,
+                    "best_non_oracle_baseline_success": 31,
+                    "shortcut_controls": controls,
+                },
+                {
+                    "benchmark": "RoboTwin2",
+                    "year": 2025,
+                    "layer": "executable_second",
+                    "status": "passed",
+                    "cases": 32,
+                    "tasks": 4,
+                    "rank0_success": 2,
+                    "oracle_success": 28,
+                    "method_success": 24,
+                    "best_non_oracle_baseline_success": 18,
+                    "shortcut_controls": controls,
+                },
+                {
+                    "benchmark": "MiraBench",
+                    "year": 2026,
+                    "layer": "world_model_diagnostic",
+                    "status": "passed",
+                    "cases": 80,
+                    "tasks": 8,
+                    "rank0_success": 30,
+                    "oracle_success": 65,
+                    "method_success": 54,
+                    "best_non_oracle_baseline_success": 45,
+                    "shortcut_controls": controls,
+                },
+            ],
+            min_cases_per_passed_benchmark=16,
+        )
+        self.assertTrue(complete["passed"])
+        self.assertIn("`diagnostic_layers` | pass", render_iclr_stack_markdown(complete))
+
+        incomplete = evaluate_evidence_stack(
+            [
+                {
+                    "benchmark": "RoboCasa365",
+                    "year": 2026,
+                    "layer": "executable_primary",
+                    "status": "passed",
+                    "cases": 64,
+                    "tasks": 4,
+                    "rank0_success": 0,
+                    "oracle_success": 64,
+                    "method_success": 63,
+                    "best_non_oracle_baseline_success": 31,
+                    "shortcut_controls": controls,
+                },
+                {
+                    "benchmark": "RoboTwin2",
+                    "year": 2025,
+                    "layer": "executable_second",
+                    "status": "pending",
+                    "cases": 5,
+                    "tasks": 1,
+                    "rank0_success": 0,
+                    "oracle_success": 5,
+                    "method_success": 5,
+                    "best_non_oracle_baseline_success": 3,
+                    "shortcut_controls": controls,
+                },
+            ]
+        )
+        self.assertFalse(incomplete["passed"])
+        checks = {check["name"]: check["passed"] for check in incomplete["checks"]}
+        self.assertFalse(checks["total_passed_benchmarks"])
+        self.assertFalse(checks["diagnostic_layers"])
 
     def test_world_model_diagnostic_label_and_score_conversion(self):
         rows = convert_diagnostic(

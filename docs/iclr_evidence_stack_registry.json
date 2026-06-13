@@ -1,0 +1,86 @@
+{
+  "benchmarks": [
+    {
+      "benchmark": "RoboCasa365",
+      "year": 2026,
+      "layer": "executable_primary",
+      "status": "passed",
+      "cases": 64,
+      "tasks": 4,
+      "rank0_success": 0,
+      "oracle_success": 64,
+      "method_success": 63.6,
+      "best_non_oracle_baseline_success": 31.0,
+      "shortcut_controls": [
+        "rank0",
+        "random",
+        "energy_or_magnitude",
+        "action_only",
+        "candidate_id_or_rank_remap"
+      ],
+      "evidence": "RoboCasa365 regenerated random-position n16 hard-negative table: EEF+gripper distribution-only 63.6/64, object-only 31.0/64, action-only 28.4/64, rank0 0/64, oracle 64/64."
+    },
+    {
+      "benchmark": "RoboTwin2",
+      "year": 2025,
+      "layer": "executable_second",
+      "status": "pending",
+      "cases": 5,
+      "tasks": 1,
+      "rank0_success": 0,
+      "oracle_success": 5,
+      "method_success": 5,
+      "best_non_oracle_baseline_success": 3,
+      "shortcut_controls": [
+        "rank0",
+        "random",
+        "energy_or_magnitude",
+        "action_only",
+        "candidate_id_or_rank_remap"
+      ],
+      "evidence": "stamp_seal K=5 is clean, but the ICLR gate requires a six-task primary window with at least four base-ready tasks and at least one relation-rescue task."
+    },
+    {
+      "benchmark": "MiraBench",
+      "year": 2026,
+      "layer": "world_model_diagnostic",
+      "status": "pending",
+      "cases": 0,
+      "tasks": 0,
+      "rank0_success": 0,
+      "oracle_success": 0,
+      "method_success": 0,
+      "best_non_oracle_baseline_success": 0,
+      "shortcut_controls": [],
+      "evidence": "Adapter exists through world_model_diagnostic_to_manifest.py, but public judgment data has not been imported into a manifest yet."
+    },
+    {
+      "benchmark": "RoboTrustBench",
+      "year": 2026,
+      "layer": "trust_diagnostic",
+      "status": "pending",
+      "cases": 0,
+      "tasks": 0,
+      "rank0_success": 0,
+      "oracle_success": 0,
+      "method_success": 0,
+      "best_non_oracle_baseline_success": 0,
+      "shortcut_controls": [],
+      "evidence": "Use only if public data is available before MiraBench or as an optional trust/counterfactual diagnostic layer."
+    },
+    {
+      "benchmark": "RoboWM-Bench",
+      "year": 2026,
+      "layer": "robustness_diagnostic",
+      "status": "pending",
+      "cases": 10,
+      "tasks": 1,
+      "rank0_success": 7,
+      "oracle_success": 7,
+      "method_success": 0,
+      "best_non_oracle_baseline_success": 0,
+      "shortcut_controls": [],
+      "evidence": "Current public evaluator audit found Pick reset API mismatch and 7/10 GT replay under a local reset shim; keep conditional until official clarification."
+    }
+  ]
+}
