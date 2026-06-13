@@ -6,6 +6,11 @@ import json
 from umm_reward_evaluator.benchmarks.common import annotate_oracle_best, summarize_headroom
 from umm_reward_evaluator.benchmarks.randomize_planner_rank import randomize_manifest_rows
 from umm_reward_evaluator.benchmarks.robotwin2_main_table_gate import evaluate_gate
+from umm_reward_evaluator.benchmarks.robotwin2_paper_readiness_gate import (
+    collect_manifest_evidence,
+    evaluate_paper_readiness,
+    render_markdown as render_paper_readiness_markdown,
+)
 from umm_reward_evaluator.benchmarks.robotwin2_readiness_report import collect_reports, render_markdown
 from umm_reward_evaluator.benchmarks.robotwin2_selector_table import (
     collect_selector_rows,
@@ -332,6 +337,97 @@ class BenchmarkAdaptersTest(unittest.TestCase):
             self.assertEqual(rows[0]["relation"], 2.0)
             self.assertEqual(rows[0]["relation_min_coverage"], 1.0)
             self.assertIn("| stack_blocks_two | 2 | 0.0/2 | 0.9/2 | 0.0/2", markdown)
+
+    def test_robotwin2_paper_readiness_gate_requires_mechanism_evidence(self):
+        with TemporaryDirectory() as tmp:
+            manifests_dir = Path(tmp)
+            manifest = manifests_dir / "stack_blocks_two_targeted_energy_matched_manifest.jsonl"
+            rows = [
+                {
+                    "benchmark": "robotwin2",
+                    "suite": "unit",
+                    "task_name": "stack_blocks_two",
+                    "case_id": "seed=0",
+                    "candidate_id": "rank0",
+                    "candidate_rank_by_planner": 0,
+                    "actions": [[0.0]],
+                    "oracle_success": False,
+                    "metadata": {"candidate_source": "rank0_default"},
+                },
+                {
+                    "benchmark": "robotwin2",
+                    "suite": "unit",
+                    "task_name": "stack_blocks_two",
+                    "case_id": "seed=0",
+                    "candidate_id": "warp",
+                    "candidate_rank_by_planner": 1,
+                    "actions": [[1.0]],
+                    "oracle_success": True,
+                    "metadata": {"candidate_source": "time_warp_hard_positive_probe"},
+                },
+                {
+                    "benchmark": "robotwin2",
+                    "suite": "unit",
+                    "task_name": "stack_blocks_two",
+                    "case_id": "seed=0",
+                    "candidate_id": "matched_bad",
+                    "candidate_rank_by_planner": 2,
+                    "actions": [[1.0]],
+                    "oracle_success": False,
+                    "metadata": {"candidate_source": "energy_matched_contact_negative_probe"},
+                },
+            ]
+            manifest.write_text("\n".join(json.dumps(row) for row in rows) + "\n", encoding="utf-8")
+
+            manifest_evidence = collect_manifest_evidence(manifests_dir)
+            result = evaluate_paper_readiness(
+                readiness_rows={
+                    "stack_blocks_two": {
+                        "cases": 1,
+                        "base_gate_passed": True,
+                        "relation_gate_passed": True,
+                        "oracle_better": 1,
+                    }
+                },
+                selector_rows={
+                    "stack_blocks_two": {
+                        "cases": 1,
+                        "rank0": 0.0,
+                        "random": 0.3,
+                        "energy": 0.0,
+                        "smooth": 0.0,
+                        "action": 0.0,
+                        "gripper": 0.0,
+                        "dtw_gripper": 0.0,
+                        "relation": 1.0,
+                        "phase_relation_robot": 1.0,
+                        "relation_min_coverage": 1.0,
+                    }
+                },
+                manifest_evidence=manifest_evidence,
+                min_base_ready_tasks=1,
+                min_relation_ready_tasks=1,
+                min_non_template_success_tasks=1,
+                min_matched_negative_tasks=1,
+                min_strong_envelope_tasks=1,
+                min_relation_rescue_tasks=1,
+            )
+            self.assertTrue(result["passed"])
+            markdown = render_paper_readiness_markdown(result)
+            self.assertIn("`relation_rescue_tasks` | pass", markdown)
+
+            failed = evaluate_paper_readiness(
+                readiness_rows={"stack_blocks_two": {"cases": 1, "base_gate_passed": True, "relation_gate_passed": True, "oracle_better": 1}},
+                selector_rows={"stack_blocks_two": {"cases": 1, "rank0": 0.0, "gripper": 1.0, "relation": 1.0, "relation_min_coverage": 1.0}},
+                manifest_evidence={"stack_blocks_two": {"cases": 1}},
+                min_base_ready_tasks=1,
+                min_relation_ready_tasks=1,
+                min_non_template_success_tasks=1,
+                min_matched_negative_tasks=1,
+                min_strong_envelope_tasks=1,
+                min_relation_rescue_tasks=1,
+            )
+            self.assertFalse(failed["passed"])
 
     def test_world_model_diagnostic_label_and_score_conversion(self):
         rows = convert_diagnostic(

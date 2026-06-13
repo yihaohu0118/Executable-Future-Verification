@@ -20,6 +20,8 @@ readiness_json="$RUN_ROOT/selectors/robotwin2_readiness_report.json"
 readiness_md="$RUN_ROOT/selectors/robotwin2_readiness_report.md"
 selector_table_json="$RUN_ROOT/selectors/robotwin2_selector_table.json"
 selector_table_md="$RUN_ROOT/selectors/robotwin2_selector_table.md"
+paper_gate_json="$RUN_ROOT/selectors/robotwin2_paper_readiness_gate.json"
+paper_gate_md="$RUN_ROOT/selectors/robotwin2_paper_readiness_gate.md"
 
 for task in "${TASKS[@]}"; do
   input_dir="$RUN_ROOT/raw/$task"
@@ -120,3 +122,12 @@ python -m umm_reward_evaluator.benchmarks.robotwin2_selector_table \
   --selectors-dir "$RUN_ROOT/selectors" \
   --output-json "$selector_table_json" \
   --output-md "$selector_table_md"
+
+if python -m umm_reward_evaluator.benchmarks.robotwin2_paper_readiness_gate \
+  --run-root "$RUN_ROOT" \
+  --output-json "$paper_gate_json" \
+  --output-md "$paper_gate_md"; then
+  echo "paper readiness gate passed: $paper_gate_json"
+else
+  echo "paper readiness gate failed: $paper_gate_json"
+fi
