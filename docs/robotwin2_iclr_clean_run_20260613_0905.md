@@ -180,7 +180,7 @@ for each task/gpu:
     scripts/robotwin2_run_clean_traces.sh "$RUN_ROOT" "$task" "$SEEDS"
 
 PYTHONPATH=src PYTHON_BIN=python3 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 \
-  scripts/robotwin2_multitask_analysis.sh "$RUN_ROOT" "${TASKS[@]}"
+  scripts/robotwin2_finalize_run.sh "$RUN_ROOT" "${TASKS[@]}"
 ```
 
 ## Initial Health Check

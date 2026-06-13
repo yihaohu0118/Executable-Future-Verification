@@ -89,6 +89,7 @@ Before manifest conversion, run `robotwin2_raw_integrity_report.py` on
 `RUN_ANALYSIS_AFTER=1`; a failed audit means the raw directory is not paper-table
 ready.
 Do not use `--skip-replay-planner` for main-table data. Set
-`RUN_ANALYSIS_AFTER=1` or run `scripts/robotwin2_multitask_analysis.sh`
-afterward, and require the generated relation gate to pass before using
-object-relation selector numbers in a paper table.
+`RUN_ANALYSIS_AFTER=1` or run `scripts/robotwin2_finalize_run.sh` afterward.
+The finalize script runs the raw audit, selector analysis, paper-readiness gate,
+and registry-entry proposal. Require the generated relation gate to pass before
+using object-relation selector numbers in a paper table.

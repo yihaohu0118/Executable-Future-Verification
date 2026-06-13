@@ -191,6 +191,20 @@ The bounded launcher runs this audit automatically before multitask analysis
 when `RUN_ANALYSIS_AFTER=1`. If the audit fails, do not convert the raw traces
 into a paper-table manifest.
 
+For a completed run root, use the finalize script instead of calling analysis
+pieces by hand:
+
+```bash
+PYTHONPATH=src PYTHON_BIN=python3 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 \
+  scripts/robotwin2_finalize_run.sh RUN_ROOT \
+  stack_blocks_two stamp_seal place_object_basket stack_bowls_two
+```
+
+This script performs the raw integrity audit, multitask selector analysis,
+paper-readiness gate, and a conservative registry-entry proposal. It does not
+edit `docs/iclr_evidence_stack_registry.json`; inspect
+`RUN_ROOT/selectors/robotwin2_registry_entry_proposal.json` first.
+
 Use the full six-task `robotwin2_iclr_window_launcher.sh` only after the
 bounded window confirms complete candidate pools and at least three base-ready
 tasks.
