@@ -20,6 +20,12 @@ Latest CPU-only existing-artifact mechanism reanalysis run root on dev2:
 /home/yihao_hyh/efv_runs/robotwin2_existing_mechanism_reanalysis_20260613
 ```
 
+Latest partial raw rescue plan on dev2:
+
+```text
+/home/yihao_hyh/efv_runs/robotwin2_iclr_clean_20260613_0905/selectors/robotwin2_partial_raw_rescue_plan.md
+```
+
 This is a CPU-only audit of already-generated artifacts. No new simulation,
 training, GPU job, or user process was started.
 
@@ -118,3 +124,22 @@ The strongest current statement is:
 The next paper-relevant milestone is at least four base-ready RoboTwin2 tasks,
 with at least two pressured tasks where an EFV-family verifier beats the best
 DTW template baseline by the anti-template pressure gate.
+
+## Next Raw Completion Targets
+
+The partial raw rescue plan for
+`/home/yihao_hyh/efv_runs/robotwin2_iclr_clean_20260613_0905/raw` identifies
+three high-value partial seeds:
+
+| Task | Seed | Existing candidates | Missing candidates | Success | Failure | Object-state rows | Priority |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| `handover_block` | 0 | 9 | 15 | 2 | 7 | 9 | high-value partial |
+| `place_object_basket` | 1 | 8 | 16 | 2 | 6 | 8 | high-value partial |
+| `press_stapler` | 1 | 8 | 16 | 5 | 3 | 8 | high-value partial |
+
+These are the best next GPU targets because they already contain mixed
+success/failure candidates and object-state traces. Completing them to 24
+candidates per seed can test both the phase-gripper mechanism and the missing
+relation/contact verifier claim. By contrast, the partial `open_laptop` and
+`stamp_seal` seeds only contain one failed candidate each and should not be
+prioritized.

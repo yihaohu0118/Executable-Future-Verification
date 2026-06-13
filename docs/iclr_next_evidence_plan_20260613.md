@@ -46,6 +46,12 @@ because DTW-gripper also reaches oracle.
 This makes the next milestone a mechanism-preserving expansion under pressure,
 not just a larger rerun.
 
+The next RoboTwin2 GPU window should prioritize high-value partial raw seeds
+already found in `robotwin2_iclr_clean_20260613_0905`: `handover_block` seed 0,
+`place_object_basket` seed 1, and `press_stapler` seed 1. Each already contains
+mixed success/failure candidates and object-state traces, but needs completion
+to 24 candidates before manifest conversion.
+
 ## Required Evidence Before A Strong Submission
 
 ### 1. RoboTwin2 Second Benchmark
