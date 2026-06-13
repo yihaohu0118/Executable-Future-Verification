@@ -70,9 +70,11 @@ When GPUs are free, run the six-task primary window:
 
 ```bash
 cd /home/yihao_hyh/Executable-Future-Verification
-EXECUTE=1 GPU_ID=0 SEEDS=0-7 scripts/robotwin2_iclr_window_launcher.sh \
+EXECUTE=1 GPU_ID=auto SEEDS=0-7 scripts/robotwin2_iclr_window_launcher.sh \
   /home/yihao_hyh/efv_runs/robotwin2_iclr_window_YYYYMMDD
 ```
 
-The launcher waits for the selected GPU and does not kill existing processes.
-Do not run it while the current Ray training jobs occupy all GPUs.
+With `GPU_ID=auto`, the launcher starts only if a GPU is already free; if all
+GPUs are occupied, it exits without waiting, killing, or preempting processes.
+Do not run with an explicit GPU while the current Ray training jobs occupy all
+GPUs.

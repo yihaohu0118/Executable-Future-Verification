@@ -4,7 +4,7 @@ set -euo pipefail
 RUN_ROOT="${1:-/home/yihao_hyh/efv_runs/robotwin2_iclr_window_$(date +%Y%m%d)}"
 SEEDS="${SEEDS:-0-7}"
 TASKS="${TASKS:-stack_blocks_two stamp_seal open_microwave place_object_basket stack_bowls_two press_stapler}"
-GPU_ID="${GPU_ID:-0}"
+GPU_ID="${GPU_ID:-auto}"
 TASK_CONFIG="${TASK_CONFIG:-demo_clean_k5}"
 CANDIDATE_PRESET="${CANDIDATE_PRESET:-targeted_energy_matched}"
 EXECUTE="${EXECUTE:-0}"
@@ -18,6 +18,9 @@ echo "TASK_CONFIG=$TASK_CONFIG"
 echo "CANDIDATE_PRESET=$CANDIDATE_PRESET"
 echo "EXECUTE=$EXECUTE"
 echo "RUN_ANALYSIS_AFTER=$RUN_ANALYSIS_AFTER"
+if [ "$EXECUTE" = "1" ] && [ "$GPU_ID" = "auto" ]; then
+  echo "GPU_ID=auto: each task starts only if a GPU is free; otherwise the launcher exits without waiting"
+fi
 
 for task in $TASKS; do
   echo

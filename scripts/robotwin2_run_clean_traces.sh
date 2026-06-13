@@ -22,6 +22,29 @@ LOG_FILE="$LOG_DIR/${TASK_NAME}_${CANDIDATE_PRESET}_seeds_${SEEDS//[^0-9A-Za-z_-
 
 mkdir -p "$RAW_DIR" "$LOG_DIR"
 
+find_free_gpu() {
+  if ! command -v nvidia-smi >/dev/null 2>&1; then
+    return 1
+  fi
+  for gpu in $(nvidia-smi --query-gpu=index --format=csv,noheader,nounits 2>/dev/null); do
+    busy="$(nvidia-smi -i "$gpu" --query-compute-apps=pid --format=csv,noheader,nounits 2>/dev/null | tr -d '[:space:]')"
+    if [ -z "$busy" ]; then
+      echo "$gpu"
+      return 0
+    fi
+  done
+  return 1
+}
+
+if [ "$GPU_ID" = "auto" ] && [ "$DRY_RUN" != "1" ]; then
+  selected_gpu="$(find_free_gpu || true)"
+  if [ -z "$selected_gpu" ]; then
+    echo "$(date -Is) no free GPU found for $TASK_NAME; exiting without starting simulation" >&2
+    exit 75
+  fi
+  GPU_ID="$selected_gpu"
+fi
+
 cmd=(
   python -m umm_reward_evaluator.benchmarks.robotwin2_gripper_aware_trace
   --task-name "$TASK_NAME"

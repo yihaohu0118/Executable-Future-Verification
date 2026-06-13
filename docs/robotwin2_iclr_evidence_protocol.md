@@ -135,10 +135,10 @@ the six-task command matrix without executing simulations:
 
 ```bash
 cd /home/yihao_hyh/Executable-Future-Verification
-GPU_ID=0 SEEDS=0-7 scripts/robotwin2_iclr_window_launcher.sh \
+GPU_ID=auto SEEDS=0-7 scripts/robotwin2_iclr_window_launcher.sh \
   /home/yihao_hyh/efv_runs/robotwin2_iclr_window_YYYYMMDD
 ```
 
-Set `EXECUTE=1` only when the GPU is free. The launcher calls the safe
-per-task runner, waits for the selected GPU, and does not kill existing
-processes.
+Set `EXECUTE=1` only when the GPU is free. With `GPU_ID=auto`, the launcher
+starts only if a GPU is already idle; otherwise it exits without waiting,
+killing, or preempting processes.
