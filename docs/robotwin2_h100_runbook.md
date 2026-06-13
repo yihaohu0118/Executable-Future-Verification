@@ -62,18 +62,22 @@ seeds, GPU wait, and `--skip-existing` behavior are consistent:
 
 ```bash
 cd /home/yihao_hyh/Executable-Future-Verification
-DRY_RUN=1 GPU_ID=0 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched \
+DRY_RUN=1 GPU_ID=auto AUTO_GPU_IDS="2 3 4 5 6 7" \
+  TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched \
   scripts/robotwin2_run_clean_traces.sh \
   /home/yihao_hyh/efv_runs/robotwin2_stack_clean_energy_matched_YYYYMMDD \
   stack_blocks_two \
   0-7
 ```
 
-Remove `DRY_RUN=1` to execute. The launcher waits for the selected GPU to be
-empty by default but does not kill or stop any existing process. "Empty" means
-both no compute process and `memory.used <= GPU_FREE_MAX_MEMORY_MB` after a
-stability recheck. Do not treat low utilization alone as safe; Ray or another
-training job can hold tens of GB while utilization is temporarily near zero.
+Remove `DRY_RUN=1` to execute. By default `GPU_ID=auto` searches only
+`AUTO_GPU_IDS="2 3 4 5 6 7"`, leaving GPU0/1 available for active training.
+Override `AUTO_GPU_IDS` only after checking ownership. The launcher waits for
+the selected GPU to be empty by default but does not kill or stop any existing
+process. "Empty" means both no compute process and
+`memory.used <= GPU_FREE_MAX_MEMORY_MB` after a stability recheck. Do not treat
+low utilization alone as safe; Ray or another training job can hold tens of GB
+while utilization is temporarily near zero.
 During execution, `GPU_CONFLICT_MONITOR=1` is enabled by default. If another
 compute app appears on the same GPU after the trace job starts, the wrapper
 terminates only its own RoboTwin2 child process and exits with code `75`.
@@ -102,10 +106,14 @@ actually free.
 
 Check disk space before launching persistent waiters. The wrapper can wait for
 GPUs, but it cannot recover from a full filesystem if logs or atomic raw temp
-files cannot be written. On dev2, recent `checkpoints/evogym/qwen3_8b_*`
-training checkpoints can consume tens of GB within minutes; do not delete those
-without explicit approval. Clear only reproducible caches or `/tmp` experiment
-scratch when space is needed.
+files cannot be written. `robotwin2_run_clean_traces.sh` now checks
+`MIN_FREE_DISK_MB` before and after GPU waiting; the default is `2048` MB. If
+the filesystem is below that threshold, it exits with code `76`, which the
+persistent wrapper treats as a real failure rather than a retryable GPU-busy
+condition. On dev2, recent `checkpoints/evogym/qwen3_8b_*` training checkpoints
+can consume tens of GB within minutes; do not delete those without explicit
+approval. Clear only reproducible caches or `/tmp` experiment scratch when space
+is needed.
 
 Seed files are published atomically. A seed writes to a hidden temporary file
 first and replaces `raw/<task>/seed_<n>.jsonl` only after the full candidate

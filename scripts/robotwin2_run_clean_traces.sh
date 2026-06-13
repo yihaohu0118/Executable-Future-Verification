@@ -10,7 +10,8 @@ EFV_ROOT="${EFV_ROOT:-/home/yihao_hyh/Executable-Future-Verification}"
 CONDA_ENV="${CONDA_ENV:-robotwin2-favc}"
 TASK_CONFIG="${TASK_CONFIG:-demo_clean_k5}"
 CANDIDATE_PRESET="${CANDIDATE_PRESET:-targeted_energy_matched}"
-GPU_ID="${GPU_ID:-0}"
+GPU_ID="${GPU_ID:-auto}"
+AUTO_GPU_IDS="${AUTO_GPU_IDS:-2 3 4 5 6 7}"
 WAIT_FOR_GPU="${WAIT_FOR_GPU:-1}"
 GPU_WAIT_SECONDS="${GPU_WAIT_SECONDS:-60}"
 GPU_STABLE_SECONDS="${GPU_STABLE_SECONDS:-30}"
@@ -22,6 +23,7 @@ RESUME_PARTIAL="${RESUME_PARTIAL:-0}"
 GPU_CONFLICT_MONITOR="${GPU_CONFLICT_MONITOR:-1}"
 GPU_CONFLICT_CHECK_SECONDS="${GPU_CONFLICT_CHECK_SECONDS:-30}"
 GPU_CONFLICT_TERM_GRACE_SECONDS="${GPU_CONFLICT_TERM_GRACE_SECONDS:-10}"
+MIN_FREE_DISK_MB="${MIN_FREE_DISK_MB:-2048}"
 
 RAW_DIR="$RUN_ROOT/raw/$TASK_NAME"
 LOG_DIR="$RUN_ROOT/logs"
@@ -36,7 +38,7 @@ find_free_gpu() {
   if ! command -v nvidia-smi >/dev/null 2>&1; then
     return 1
   fi
-  for gpu in $(nvidia-smi --query-gpu=index --format=csv,noheader,nounits 2>/dev/null); do
+  for gpu in $AUTO_GPU_IDS; do
     if gpu_is_free "$gpu"; then
       echo "$gpu"
       return 0
@@ -65,6 +67,24 @@ foreign_compute_apps() {
         }
       }
     '
+}
+
+available_disk_mb() {
+  path="$1"
+  df -Pm "$path" 2>/dev/null | awk 'NR==2 {print $4}'
+}
+
+check_free_disk() {
+  path="$1"
+  available="$(available_disk_mb "$path" || true)"
+  if [ -z "$available" ]; then
+    echo "$(date -Is) could not determine free disk space for $path" >&2
+    exit 76
+  fi
+  if [ "$available" -lt "$MIN_FREE_DISK_MB" ]; then
+    echo "$(date -Is) insufficient disk for $TASK_NAME: available_mb=$available min_required_mb=$MIN_FREE_DISK_MB path=$path" >&2
+    exit 76
+  fi
 }
 
 if [ "$GPU_ID" = "auto" ] && [ "$DRY_RUN" != "1" ]; then
@@ -105,12 +125,14 @@ echo "RUN_ROOT=$RUN_ROOT"
 echo "TASK_NAME=$TASK_NAME"
 echo "SEEDS=$SEEDS"
 echo "GPU_ID=$GPU_ID"
+echo "AUTO_GPU_IDS=$AUTO_GPU_IDS"
 echo "ROBOTWIN_ROOT=$ROBOTWIN_ROOT"
 echo "EFV_ROOT=$EFV_ROOT"
 echo "LOG_FILE=$LOG_FILE"
 echo "CONTINUE_ON_SEED_ERROR=$CONTINUE_ON_SEED_ERROR"
 echo "RESUME_PARTIAL=$RESUME_PARTIAL"
 echo "GPU_CONFLICT_MONITOR=$GPU_CONFLICT_MONITOR"
+echo "MIN_FREE_DISK_MB=$MIN_FREE_DISK_MB"
 printf 'COMMAND='
 printf '%q ' "CUDA_VISIBLE_DEVICES=$GPU_ID" "${cmd[@]}"
 printf '\n'
@@ -118,6 +140,8 @@ printf '\n'
 if [ "$DRY_RUN" = "1" ]; then
   exit 0
 fi
+
+check_free_disk "$RUN_ROOT"
 
 if [ "$WAIT_FOR_GPU" = "1" ]; then
   while ! gpu_is_free "$GPU_ID"; do
@@ -135,6 +159,8 @@ if [ "$WAIT_FOR_GPU" = "1" ]; then
     fi
   fi
 fi
+
+check_free_disk "$RUN_ROOT"
 
 source /home/yihao_hyh/miniconda3/etc/profile.d/conda.sh
 conda activate "$CONDA_ENV"
