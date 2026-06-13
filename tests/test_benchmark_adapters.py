@@ -2,6 +2,7 @@ import unittest
 
 from umm_reward_evaluator.benchmarks.common import annotate_oracle_best, summarize_headroom
 from umm_reward_evaluator.benchmarks.randomize_planner_rank import randomize_manifest_rows
+from umm_reward_evaluator.benchmarks.robotwin2_main_table_gate import evaluate_gate
 from umm_reward_evaluator.benchmarks.robotwin2_trace_to_manifest import (
     convert_records as convert_robotwin2,
     filter_records_by_case_size,
@@ -125,6 +126,91 @@ class BenchmarkAdaptersTest(unittest.TestCase):
         self.assertEqual(dropped[0]["drop_reasons"], ["candidate_error"])
         self.assertEqual(dropped[0]["candidate_error_count"], 1)
         self.assertEqual(dropped[0]["candidate_error_candidate_ids"], ["policy:ckpt:1"])
+
+    def test_robotwin2_main_table_gate_checks_errors_and_feature_coverage(self):
+        rows = convert_robotwin2(
+            [
+                {
+                    "task_name": "stack_blocks_two",
+                    "seed": 0,
+                    "candidate_id": "rank0",
+                    "candidate_seed": 0,
+                    "candidate_rank_by_planner": 0,
+                    "actions": [[0]],
+                    "success": False,
+                    "metadata": {
+                        "future_source": "unit",
+                        "future_representation": "actions_and_state_trace",
+                        "verification_target": "task_success",
+                        "state_trace": [
+                            {
+                                "actor_pose_vector": [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0],
+                                "actor_pairwise_distances": [1.0],
+                                "left_gripper": [0.0],
+                                "right_gripper": [0.0],
+                                "joint_action_vector": [0.0],
+                            }
+                        ],
+                    },
+                },
+                {
+                    "task_name": "stack_blocks_two",
+                    "seed": 0,
+                    "candidate_id": "success",
+                    "candidate_seed": 1,
+                    "candidate_rank_by_planner": 1,
+                    "actions": [[1]],
+                    "success": True,
+                    "metadata": {
+                        "future_source": "unit",
+                        "future_representation": "actions_and_state_trace",
+                        "verification_target": "task_success",
+                        "state_trace": [
+                            {
+                                "actor_pose_vector": [0, 0, 0, 1, 0, 0, 0, 0.2, 0, 0, 1, 0, 0, 0],
+                                "actor_pairwise_distances": [0.2],
+                                "left_gripper": [1.0],
+                                "right_gripper": [1.0],
+                                "joint_action_vector": [1.0],
+                            }
+                        ],
+                    },
+                },
+            ],
+            default_suite="demo_clean_k5",
+        )
+        passed = evaluate_gate(
+            rows,
+            required_candidates_per_case=2,
+            min_cases=1,
+            min_oracle_better_cases=1,
+            required_feature_modes=["object_relation_distribution"],
+        )
+        self.assertTrue(passed["passed"])
+
+        with_error = [dict(row) for row in rows]
+        with_error[1]["metadata"] = dict(with_error[1]["metadata"])
+        with_error[1]["metadata"]["candidate_error"] = "OutOfMemoryError"
+        failed_error = evaluate_gate(with_error, required_candidates_per_case=2)
+        self.assertFalse(failed_error["passed"])
+        self.assertFalse({check["name"]: check["passed"] for check in failed_error["checks"]}["candidate_error_free"])
+
+        missing_object = [dict(row) for row in rows]
+        for row in missing_object:
+            row["metadata"] = dict(row["metadata"])
+            row["metadata"]["state_trace"] = [
+                {key: value for key, value in snapshot.items() if not key.startswith("actor_")}
+                for snapshot in row["metadata"]["state_trace"]
+            ]
+        failed_coverage = evaluate_gate(
+            missing_object,
+            required_candidates_per_case=2,
+            required_feature_modes=["object_relation_distribution"],
+        )
+        self.assertFalse(failed_coverage["passed"])
+        checks = {check["name"]: check for check in failed_coverage["checks"]}
+        self.assertFalse(checks["feature_coverage:object_relation_distribution"]["passed"])
+        self.assertEqual(checks["feature_coverage:object_relation_distribution"]["detail"]["case_coverage_rate"], 0.0)
 
     def test_world_model_diagnostic_label_and_score_conversion(self):
         rows = convert_diagnostic(

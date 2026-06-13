@@ -183,6 +183,13 @@ new failure mode introduced by relation features: old manifests without
 scores, but their coverage will be 0 and they must not be used for object-
 relation claims.
 
+The repository also includes `robotwin2_main_table_gate.py`, a stricter
+readiness check for paper tables. It combines schema validation, exact
+candidate-count checks, `candidate_error` exclusion, oracle-headroom checks, and
+required feature coverage. The intended workflow is: generate traces, convert
+with `--drop-cases-with-candidate-error`, run the main-table gate, and only then
+run selector sweeps for numbers that may appear in the paper.
+
 ## Paper Story After This Update
 
 The strongest current story is not "gripper timing solves executable future

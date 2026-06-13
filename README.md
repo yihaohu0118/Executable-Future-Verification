@@ -166,6 +166,18 @@ Prototype and trace-distance outputs include `feature_coverage`. Do not use an
 object or object-relation selector in a main table unless all main-table cases
 have complete required trace keys.
 
+Check whether a RoboTwin2 manifest is ready for a main table:
+
+```bash
+PYTHONPATH=src python -m umm_reward_evaluator.benchmarks.robotwin2_main_table_gate \
+  --manifest /path/to/robotwin2_manifest.jsonl \
+  --required-candidates-per-case 24 \
+  --min-cases 5 \
+  --min-oracle-better-cases 5 \
+  --require-feature object_relation_distribution \
+  --require-feature phase_object_relation_joint_gripper_distribution
+```
+
 Run the multi-seed anonymous rank/candidate-ID sweep:
 
 ```bash
