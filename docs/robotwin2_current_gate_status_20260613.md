@@ -5,8 +5,9 @@ Date: 2026-06-13
 ## GPU / Run Status
 
 At the latest dev2 check, all 8 H100 GPUs were occupied by `ray::WorkerDict`
-processes using roughly 53 GB each, with 84-86% utilization. No RoboTwin2
-benchmark run was started, and no training process was stopped.
+processes. The most recent check at `2026-06-13T07:58:50Z` showed roughly
+55 GB used per GPU with 96% utilization. No RoboTwin2 benchmark run was
+started, and no training process was stopped.
 
 The attempted clean stack run directory
 `/home/yihao_hyh/efv_runs/robotwin2_stack_clean_energy_matched_gpu0_20260613`
@@ -78,3 +79,10 @@ With `GPU_ID=auto`, the launcher starts only if a GPU is already free; if all
 GPUs are occupied, it exits without waiting, killing, or preempting processes.
 Do not run with an explicit GPU while the current Ray training jobs occupy all
 GPUs.
+
+Check whether it is safe to start with:
+
+```bash
+cd /home/yihao_hyh/Executable-Future-Verification
+scripts/robotwin2_gpu_status.sh
+```
