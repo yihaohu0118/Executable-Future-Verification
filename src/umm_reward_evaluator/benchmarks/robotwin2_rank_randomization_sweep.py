@@ -119,6 +119,8 @@ def compact_result(result: dict[str, Any]) -> dict[str, Any]:
     }
     if "feature_coverage" in result:
         payload["feature_coverage"] = result["feature_coverage"]
+    if "calibration_support" in result:
+        payload["calibration_support"] = result["calibration_support"]
     return payload
 
 
@@ -165,11 +167,23 @@ def aggregate_seed_results(seed_results: list[dict[str, Any]]) -> dict[str, Any]
         rates = np.asarray([float(result["success_rate"]) for result in results], dtype=np.float32)
         by_task_values: dict[str, list[float]] = defaultdict(list)
         coverage_values = []
+        support_rates = []
+        min_train_rows = []
+        min_positive_train_rows = []
+        min_negative_train_rows = []
+        unsupported_cases = []
         for result in results:
             for task, value in result["by_task_success"].items():
                 by_task_values[task].append(float(value))
             if "feature_coverage" in result:
                 coverage_values.append(float(result["feature_coverage"].get("case_coverage_rate", 0.0)))
+            if "calibration_support" in result:
+                support = result["calibration_support"]
+                support_rates.append(float(support.get("support_rate", 0.0)))
+                min_train_rows.append(int(support.get("min_train_rows", 0)))
+                min_positive_train_rows.append(int(support.get("min_positive_train_rows", 0)))
+                min_negative_train_rows.append(int(support.get("min_negative_train_rows", 0)))
+                unsupported_cases.append(int(support.get("unsupported_cases", 0)))
         item = {
             "selector": selector,
             "seeds": len(results),
@@ -187,6 +201,14 @@ def aggregate_seed_results(seed_results: list[dict[str, Any]]) -> dict[str, Any]
             coverage = np.asarray(coverage_values, dtype=np.float32)
             item["min_feature_case_coverage"] = float(coverage.min())
             item["mean_feature_case_coverage"] = float(coverage.mean())
+        if support_rates:
+            support = np.asarray(support_rates, dtype=np.float32)
+            item["min_calibration_support_rate"] = float(support.min())
+            item["mean_calibration_support_rate"] = float(support.mean())
+            item["min_train_rows"] = int(min(min_train_rows))
+            item["min_positive_train_rows"] = int(min(min_positive_train_rows))
+            item["min_negative_train_rows"] = int(min(min_negative_train_rows))
+            item["max_unsupported_cases"] = int(max(unsupported_cases))
         aggregate.append(
             item
         )

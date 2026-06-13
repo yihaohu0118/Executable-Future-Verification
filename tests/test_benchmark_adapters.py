@@ -617,6 +617,35 @@ class BenchmarkAdaptersTest(unittest.TestCase):
             self.assertEqual(rows[0]["relation_min_coverage"], 1.0)
             self.assertIn("| stack_blocks_two | 2 | 0.0/2 | 0.9/2 | 0.0/2", markdown)
 
+    def test_robotwin2_selector_table_marks_unsupported_calibrated_selectors(self):
+        with TemporaryDirectory() as tmp:
+            selectors_dir = Path(tmp)
+            sweep = {
+                "seed_results": [{"selectors": [{"selector": "rank0", "cases": 1}]}],
+                "aggregate": {
+                    "selectors": [
+                        {"selector": "rank0", "mean_success": 0.0},
+                        {"selector": "random_expected", "mean_success": 0.5},
+                        {"selector": "heuristic:energy_sum_max", "mean_success": 0.0},
+                        {
+                            "selector": "prototype:gripper_distribution:same_task:nearest_positive",
+                            "mean_success": 0.0,
+                            "min_calibration_support_rate": 0.0,
+                        },
+                    ]
+                },
+            }
+            (selectors_dir / "handover_block_targeted_energy_matched_rankrand_sweep.json").write_text(
+                json.dumps(sweep),
+                encoding="utf-8",
+            )
+
+            rows = collect_selector_rows(selectors_dir)
+            markdown = render_selector_table_markdown(rows)
+            self.assertFalse(rows[0]["gripper_supported"])
+            self.assertEqual(rows[0]["gripper_support_rate"], 0.0)
+            self.assertIn("unsup(0.00)", markdown)
+
     def test_robotwin2_paper_readiness_gate_requires_mechanism_evidence(self):
         with TemporaryDirectory() as tmp:
             manifests_dir = Path(tmp)

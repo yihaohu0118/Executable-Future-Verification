@@ -127,6 +127,9 @@ class RoboTwin2SelectorBaselinesTest(unittest.TestCase):
         )
         self.assertEqual(prototype["overall"]["cases"], 1)
         self.assertEqual(len(prototype["scored_rows"]), len(rows))
+        self.assertEqual(prototype["calibration_support"]["cases_without_train_rows"], 1)
+        self.assertEqual(prototype["calibration_support"]["unsupported_cases"], 1)
+        self.assertEqual(prototype["calibration_support"]["support_rate"], 0.0)
 
         summary = run_sweep(
             rows,
@@ -140,6 +143,13 @@ class RoboTwin2SelectorBaselinesTest(unittest.TestCase):
         )
         selectors = {item["selector"] for item in summary["aggregate"]["selectors"]}
         self.assertIn("prototype:gripper_distribution:same_task:nearest_positive", selectors)
+        prototype_row = next(
+            item
+            for item in summary["aggregate"]["selectors"]
+            if item["selector"] == "prototype:gripper_distribution:same_task:nearest_positive"
+        )
+        self.assertEqual(prototype_row["min_calibration_support_rate"], 0.0)
+        self.assertEqual(prototype_row["max_unsupported_cases"], 1)
 
     def test_linear_probe_is_a_learned_verifier_baseline(self):
         selector = evaluate_linear_probe(

@@ -187,8 +187,19 @@ def _rows_by_task(path: Path | None) -> dict[str, dict[str, Any]]:
 def _value(row: dict[str, Any] | None, key: str) -> float | None:
     if not row:
         return None
+    if row.get(f"{key}_supported") is False:
+        return None
     value = row.get(key)
     return None if value is None else float(value)
+
+
+def _support_note(row: dict[str, Any] | None, key: str) -> str | None:
+    if not row or row.get(f"{key}_supported") is not False:
+        return None
+    support = row.get(f"{key}_support_rate")
+    if support is None:
+        return "unsupported"
+    return f"unsupported({float(support):.2f})"
 
 
 def _max_value(row: dict[str, Any] | None, keys: tuple[str, ...]) -> float | None:
@@ -233,6 +244,11 @@ def evaluate_paper_readiness(
         dtw_gripper = _value(selector, "dtw_gripper")
         linear_action = _value(selector, "linear_action")
         relation_coverage = _value(selector, "relation_min_coverage")
+        unsupported_selector_notes = {
+            key: note
+            for key in sorted(set(ENVELOPE_COLUMNS + BASELINE_COLUMNS + RELATION_COLUMNS))
+            if (note := _support_note(selector, key)) is not None
+        }
 
         strong_envelope = (
             best_envelope is not None
@@ -270,6 +286,7 @@ def evaluate_paper_readiness(
                 "linear_action": linear_action,
                 "relation_min_coverage": relation_coverage,
                 "relation_rescue": relation_rescue,
+                "unsupported_selector_notes": unsupported_selector_notes,
             }
         )
 
@@ -371,13 +388,14 @@ def render_markdown(result: dict[str, Any], *, title: str = "RoboTwin2 Paper Rea
     lines.extend(
         [
             "",
-            "| Task | Cases | Base | Relation | Oracle better | Non-template succ | Unknown succ | Matched neg | Diverse anti-template succ | Low-DTW neg | Best env | Strong base | Relation rescue |",
-            "| --- | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
+            "| Task | Cases | Base | Relation | Oracle better | Non-template succ | Unknown succ | Matched neg | Diverse anti-template succ | Low-DTW neg | Best env | Strong base | Relation rescue | Unsupported selectors |",
+            "| --- | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |",
         ]
     )
     for row in result["tasks"]:
+        unsupported = ", ".join(f"{key}:{value}" for key, value in row.get("unsupported_selector_notes", {}).items()) or "-"
         lines.append(
-            "| {task} | {cases} | {base} | {relation} | {oracle} | {positive} | {unknown} | {negative} | {diverse} | {low_dtw} | {env} | {baseline} | {rescue} |".format(
+            "| {task} | {cases} | {base} | {relation} | {oracle} | {positive} | {unknown} | {negative} | {diverse} | {low_dtw} | {env} | {baseline} | {rescue} | {unsupported} |".format(
                 task=row["task_name"],
                 cases=row["cases"],
                 base="pass" if row["base_gate_passed"] else "fail",
@@ -391,6 +409,7 @@ def render_markdown(result: dict[str, Any], *, title: str = "RoboTwin2 Paper Rea
                 env="-" if row["best_envelope"] is None else f"{row['best_envelope']:.1f}",
                 baseline="-" if row["strongest_baseline"] is None else f"{row['strongest_baseline']:.1f}",
                 rescue="yes" if row["relation_rescue"] else "no",
+                unsupported=unsupported,
             )
         )
     lines.extend(

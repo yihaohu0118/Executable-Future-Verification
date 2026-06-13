@@ -74,6 +74,20 @@ def _selector_coverage(row: dict[str, Any] | None) -> float | None:
     return float(row["min_feature_case_coverage"])
 
 
+def _selector_supported(row: dict[str, Any] | None) -> bool | None:
+    if row is None:
+        return None
+    if "min_calibration_support_rate" not in row:
+        return True
+    return float(row["min_calibration_support_rate"]) >= 1.0
+
+
+def _selector_support_rate(row: dict[str, Any] | None) -> float | None:
+    if row is None or "min_calibration_support_rate" not in row:
+        return None
+    return float(row["min_calibration_support_rate"])
+
+
 def collect_selector_rows(selectors_dir: Path) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for path in sorted(selectors_dir.glob("*_targeted_energy_matched_rankrand_sweep.json")):
@@ -88,6 +102,9 @@ def collect_selector_rows(selectors_dir: Path) -> list[dict[str, Any]]:
         for column, selector in SELECTOR_COLUMNS:
             selector_row = by_selector.get(selector)
             item[column] = _selector_success(selector_row)
+            supported = _selector_supported(selector_row)
+            item[f"{column}_supported"] = supported
+            item[f"{column}_support_rate"] = _selector_support_rate(selector_row)
             coverage = _selector_coverage(selector_row)
             if coverage is not None and "relation" in column:
                 relation_coverages.append(coverage)
@@ -102,6 +119,13 @@ def _fmt(value: float | int | None, cases: int | None = None) -> str:
     if cases is not None:
         return f"{value:.1f}/{cases}"
     return f"{value:.2f}"
+
+
+def _fmt_selector(row: dict[str, Any], column: str, cases: int) -> str:
+    if row.get(f"{column}_supported") is False:
+        support = row.get(f"{column}_support_rate")
+        return "unsup" if support is None else f"unsup({support:.2f})"
+    return _fmt(row.get(column), cases)
 
 
 def render_markdown(rows: list[dict[str, Any]], *, title: str = "RoboTwin2 Selector Table") -> str:
@@ -122,14 +146,14 @@ def render_markdown(rows: list[dict[str, Any]], *, title: str = "RoboTwin2 Selec
                 energy=_fmt(row.get("energy"), cases),
                 smooth=_fmt(row.get("smooth"), cases),
                 length=_fmt(row.get("length"), cases),
-                linear_action=_fmt(row.get("linear_action"), cases),
-                gripper=_fmt(row.get("gripper"), cases),
-                linear_gripper=_fmt(row.get("linear_gripper"), cases),
-                linear_phase_gripper=_fmt(row.get("linear_phase_gripper"), cases),
-                linear_phase_joint_gripper=_fmt(row.get("linear_phase_joint_gripper"), cases),
-                dtw_joint_gripper=_fmt(row.get("dtw_joint_gripper"), cases),
-                phase_relation_robot=_fmt(row.get("phase_relation_robot"), cases),
-                linear_phase_relation_robot=_fmt(row.get("linear_phase_relation_robot"), cases),
+                linear_action=_fmt_selector(row, "linear_action", cases),
+                gripper=_fmt_selector(row, "gripper", cases),
+                linear_gripper=_fmt_selector(row, "linear_gripper", cases),
+                linear_phase_gripper=_fmt_selector(row, "linear_phase_gripper", cases),
+                linear_phase_joint_gripper=_fmt_selector(row, "linear_phase_joint_gripper", cases),
+                dtw_joint_gripper=_fmt_selector(row, "dtw_joint_gripper", cases),
+                phase_relation_robot=_fmt_selector(row, "phase_relation_robot", cases),
+                linear_phase_relation_robot=_fmt_selector(row, "linear_phase_relation_robot", cases),
                 coverage=_fmt(row.get("relation_min_coverage")),
             )
         )
@@ -139,6 +163,7 @@ def render_markdown(rows: list[dict[str, Any]], *, title: str = "RoboTwin2 Selec
             "Notes:",
             "",
             "- Values are mean successes over anonymous rank/candidate-ID remap seeds.",
+            "- `unsup(x)` means a calibrated selector had insufficient held-out training support in at least one remap seed; `x` is the minimum support rate.",
             "- DTW columns are nearest-positive template baselines, not evidence that template matching has been ruled out.",
             "- Relation columns require relation coverage; `Rel cov` below 1.00 means the relation number is diagnostic only.",
             "",

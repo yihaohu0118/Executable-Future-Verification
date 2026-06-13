@@ -101,6 +101,38 @@ def select_by_score(case_rows: list[dict[str, Any]], scores: list[float]) -> dic
     )[0]
 
 
+def calibration_support_summary(
+    train_stats_by_case: dict[tuple[str, str], dict[str, int]],
+    *,
+    support_requirement: str,
+) -> dict[str, Any]:
+    cases = len(train_stats_by_case)
+    train_counts = [int(stats.get("train_rows", 0)) for stats in train_stats_by_case.values()]
+    pos_counts = [int(stats.get("positive_train_rows", 0)) for stats in train_stats_by_case.values()]
+    neg_counts = [int(stats.get("negative_train_rows", 0)) for stats in train_stats_by_case.values()]
+    supported = [bool(stats.get("supported")) for stats in train_stats_by_case.values()]
+
+    def _mean(values: list[int]) -> float:
+        return float(np.asarray(values, dtype=np.float32).mean()) if values else 0.0
+
+    return {
+        "cases": cases,
+        "support_requirement": support_requirement,
+        "supported_cases": int(sum(supported)),
+        "unsupported_cases": int(cases - sum(supported)),
+        "support_rate": float(sum(supported) / cases) if cases else 0.0,
+        "min_train_rows": min(train_counts) if train_counts else 0,
+        "mean_train_rows": _mean(train_counts),
+        "cases_without_train_rows": int(sum(count == 0 for count in train_counts)),
+        "min_positive_train_rows": min(pos_counts) if pos_counts else 0,
+        "mean_positive_train_rows": _mean(pos_counts),
+        "cases_without_positive_train_rows": int(sum(count == 0 for count in pos_counts)),
+        "min_negative_train_rows": min(neg_counts) if neg_counts else 0,
+        "mean_negative_train_rows": _mean(neg_counts),
+        "cases_without_negative_train_rows": int(sum(count == 0 for count in neg_counts)),
+    }
+
+
 def max_tie_expected_success(case_rows: list[dict[str, Any]], scores: list[float]) -> float:
     best = max(scores)
     tied = [row for row, score in zip(case_rows, scores) if np.isclose(score, best, rtol=1e-6, atol=1e-8)]
@@ -623,6 +655,7 @@ def evaluate_prototype(rows: list[dict[str, Any]], *, feature_mode: str, scope: 
     dims = state_dims(rows, all_keys)
     selected = {}
     scored_rows: list[dict[str, Any]] = []
+    train_stats_by_case: dict[tuple[str, str], dict[str, int]] = {}
     for key, test_rows in sorted(grouped.items()):
         task, _case_id = key
         if scope == "same_task":
@@ -631,6 +664,14 @@ def evaluate_prototype(rows: list[dict[str, Any]], *, feature_mode: str, scope: 
             train_rows = [row for other_key, case_rows in grouped.items() if other_key != key for row in case_rows]
         else:
             raise ValueError(f"unknown train scope: {scope}")
+        positive_train_rows = sum(1 for row in train_rows if row["oracle_success"])
+        negative_train_rows = len(train_rows) - positive_train_rows
+        train_stats_by_case[key] = {
+            "train_rows": len(train_rows),
+            "positive_train_rows": positive_train_rows,
+            "negative_train_rows": negative_train_rows,
+            "supported": int(positive_train_rows > 0),
+        }
         x_test = np.stack([feature_vector(row, feature_mode, dims=dims) for row in test_rows]).astype(np.float32)
         if train_rows:
             x_train = np.stack([feature_vector(row, feature_mode, dims=dims) for row in train_rows]).astype(np.float32)
@@ -650,6 +691,10 @@ def evaluate_prototype(rows: list[dict[str, Any]], *, feature_mode: str, scope: 
         selected_by_case=selected,
     )
     result["feature_coverage"] = feature_coverage(rows, feature_mode)
+    result["calibration_support"] = calibration_support_summary(
+        train_stats_by_case,
+        support_requirement="at least one positive held-out training candidate for the selected scope",
+    )
     result["scored_rows"] = scored_rows
     return result
 
@@ -668,6 +713,7 @@ def evaluate_trace_distance(rows: list[dict[str, Any]], *, feature_mode: str, sc
     )
     selected = {}
     scored_rows: list[dict[str, Any]] = []
+    train_stats_by_case: dict[tuple[str, str], dict[str, int]] = {}
     for key, test_rows in sorted(grouped.items()):
         task, _case_id = key
         if scope == "same_task":
@@ -676,6 +722,14 @@ def evaluate_trace_distance(rows: list[dict[str, Any]], *, feature_mode: str, sc
             train_rows = [row for other_key, case_rows in grouped.items() if other_key != key for row in case_rows]
         else:
             raise ValueError(f"unknown train scope: {scope}")
+        positive_train_rows = sum(1 for row in train_rows if row["oracle_success"])
+        negative_train_rows = len(train_rows) - positive_train_rows
+        train_stats_by_case[key] = {
+            "train_rows": len(train_rows),
+            "positive_train_rows": positive_train_rows,
+            "negative_train_rows": negative_train_rows,
+            "supported": int(positive_train_rows > 0),
+        }
         scores = trace_distance_scores(train_rows, test_rows, feature_mode=feature_mode, dims=dims)
         selected[key] = select_by_score(test_rows, scores.tolist())
         for row, score in zip(test_rows, scores):
@@ -688,6 +742,10 @@ def evaluate_trace_distance(rows: list[dict[str, Any]], *, feature_mode: str, sc
         selected_by_case=selected,
     )
     result["feature_coverage"] = feature_coverage(rows, feature_mode)
+    result["calibration_support"] = calibration_support_summary(
+        train_stats_by_case,
+        support_requirement="at least one positive held-out training candidate for the selected scope",
+    )
     result["scored_rows"] = scored_rows
     return result
 
@@ -710,6 +768,7 @@ def evaluate_linear_probe(
     dims = state_dims(rows, all_keys)
     selected = {}
     scored_rows: list[dict[str, Any]] = []
+    train_stats_by_case: dict[tuple[str, str], dict[str, int]] = {}
     for key, test_rows in sorted(grouped.items()):
         task, _case_id = key
         if scope == "same_task":
@@ -718,6 +777,14 @@ def evaluate_linear_probe(
             train_rows = [row for other_key, case_rows in grouped.items() if other_key != key for row in case_rows]
         else:
             raise ValueError(f"unknown train scope: {scope}")
+        positive_train_rows = sum(1 for row in train_rows if row["oracle_success"])
+        negative_train_rows = len(train_rows) - positive_train_rows
+        train_stats_by_case[key] = {
+            "train_rows": len(train_rows),
+            "positive_train_rows": positive_train_rows,
+            "negative_train_rows": negative_train_rows,
+            "supported": int(positive_train_rows > 0 and negative_train_rows > 0),
+        }
         x_test = np.stack([feature_vector(row, feature_mode, dims=dims) for row in test_rows]).astype(np.float32)
         if train_rows:
             x_train = np.stack([feature_vector(row, feature_mode, dims=dims) for row in train_rows]).astype(np.float32)
@@ -736,6 +803,10 @@ def evaluate_linear_probe(
         selected_by_case=selected,
     )
     result["feature_coverage"] = feature_coverage(rows, feature_mode)
+    result["calibration_support"] = calibration_support_summary(
+        train_stats_by_case,
+        support_requirement="at least one positive and one negative held-out training candidate for the selected scope",
+    )
     result["scored_rows"] = scored_rows
     return result
 
