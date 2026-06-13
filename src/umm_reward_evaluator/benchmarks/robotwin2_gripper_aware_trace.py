@@ -34,6 +34,78 @@ class CandidateSpec:
     candidate_source: str
 
 
+NONEMPTY_CANDIDATE_IDS_BY_PRESET = {
+    "default": (
+        "first_action_rank0",
+        "full_gripper_aware",
+        "first_half",
+        "drop_last",
+        "reverse",
+        "noop",
+    ),
+    "anti_template": (
+        "first_action_rank0",
+        "full_gripper_aware",
+        "first_half",
+        "drop_last",
+        "reverse",
+        "noop",
+        "repeat_middle",
+        "stride2_hold_endpoint",
+        "gripper_early_1",
+        "gripper_late_1",
+        "contact_joint_perturb",
+    ),
+    "targeted_hard": (
+        "first_action_rank0",
+        "full_gripper_aware",
+        "first_half",
+        "drop_last",
+        "reverse",
+        "noop",
+        "repeat_middle",
+        "stride2_hold_endpoint",
+        "gripper_early_1",
+        "gripper_late_1",
+        "contact_joint_perturb",
+        "repeat_precontact",
+        "repeat_contact_long",
+        "repeat_middle_drop_final",
+        "delete_contact_step",
+        "contact_joint_perturb_strong",
+        "contact_joint_offset_small",
+        "gripper_contact_pulse",
+        "gripper_contact_pulse_wide",
+    ),
+    "targeted_energy_matched": (
+        "first_action_rank0",
+        "full_gripper_aware",
+        "first_half",
+        "drop_last",
+        "reverse",
+        "noop",
+        "repeat_middle",
+        "stride2_hold_endpoint",
+        "gripper_early_1",
+        "gripper_late_1",
+        "contact_joint_perturb",
+        "repeat_precontact",
+        "repeat_contact_long",
+        "repeat_middle_drop_final",
+        "delete_contact_step",
+        "contact_joint_perturb_strong",
+        "contact_joint_offset_small",
+        "gripper_contact_pulse",
+        "gripper_contact_pulse_wide",
+        "long_gripper_contact_pulse",
+        "long_gripper_contact_pulse_wide",
+        "long_contact_joint_perturb_strong",
+        "long_gripper_late_1",
+        "long_reverse_contact",
+    ),
+}
+
+
 def candidate_id_from_row(row: dict[str, Any]) -> str:
     candidate_id = row.get("candidate_id")
     if candidate_id is None:
@@ -91,6 +163,29 @@ def split_resume_rows(
         else:
             reusable_rows.append(row)
     return reusable_rows, missing_candidates, error_candidate_ids
+
+
+def complete_existing_candidate_ids(existing_rows: list[dict[str, Any]], candidate_preset: str) -> tuple[bool, str]:
+    """Check whether a resume file is complete without constructing the simulator."""
+    expected_order = NONEMPTY_CANDIDATE_IDS_BY_PRESET.get(candidate_preset)
+    if expected_order is None:
+        return False, f"unknown candidate_preset={candidate_preset}"
+    if not existing_rows:
+        return False, "no existing rows"
+    seen: set[str] = set()
+    for row in existing_rows:
+        candidate_id = candidate_id_from_row(row)
+        if candidate_id not in expected_order:
+            return False, f"unknown candidate_id={candidate_id!r}"
+        if candidate_id in seen:
+            return False, f"duplicate candidate_id={candidate_id!r}"
+        if row_has_candidate_error(row):
+            return False, f"candidate_error={candidate_id}"
+        seen.add(candidate_id)
+    missing = [candidate_id for candidate_id in expected_order if candidate_id not in seen]
+    if missing:
+        return False, "missing=" + ",".join(missing)
+    return True, f"complete={len(existing_rows)}"
 
 
 def class_decorator(task_name: str) -> Any:
@@ -748,6 +843,12 @@ def run_one_seed(
     if skip_existing and not resume_partial and output.exists() and output.stat().st_size > 0:
         print(f"skip existing {output}", flush=True)
         return
+    if resume_partial and output.exists() and output.stat().st_size > 0:
+        existing_rows = load_jsonl_rows(output)
+        complete, reason = complete_existing_candidate_ids(existing_rows, candidate_preset)
+        if complete:
+            print(f"skip complete existing {output} before expert init: {reason}", flush=True)
+            return
 
     actions, expert_metadata = record_expert_actions(task_name, task_config, seed)
     if not expert_metadata["expert_success"]:

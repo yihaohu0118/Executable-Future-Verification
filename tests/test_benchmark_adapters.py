@@ -73,6 +73,8 @@ from umm_reward_evaluator.benchmarks.robotwin2_pressure_closure_plan import (
 )
 from umm_reward_evaluator.benchmarks.robotwin2_gripper_aware_trace import (
     CandidateSpec,
+    NONEMPTY_CANDIDATE_IDS_BY_PRESET,
+    complete_existing_candidate_ids,
     split_resume_rows,
 )
 from umm_reward_evaluator.benchmarks.robotwin2_evidence_card import build_card as build_robotwin2_evidence_card
@@ -380,6 +382,40 @@ class BenchmarkAdaptersTest(unittest.TestCase):
                 ],
                 candidates,
             )
+
+    def test_robotwin2_resume_preflight_detects_complete_targeted_energy_matched_rows(self):
+        rows = [
+            {"candidate_id": candidate_id, "success": candidate_id == "full_gripper_aware", "metadata": {}}
+            for candidate_id in NONEMPTY_CANDIDATE_IDS_BY_PRESET["targeted_energy_matched"]
+        ]
+
+        complete, reason = complete_existing_candidate_ids(rows, "targeted_energy_matched")
+
+        self.assertTrue(complete)
+        self.assertEqual(reason, "complete=24")
+
+    def test_robotwin2_resume_preflight_rejects_partial_or_error_rows(self):
+        complete_rows = [
+            {"candidate_id": candidate_id, "success": False, "metadata": {}}
+            for candidate_id in NONEMPTY_CANDIDATE_IDS_BY_PRESET["anti_template"]
+        ]
+        partial_rows = complete_rows[:-1]
+        error_rows = [
+            *complete_rows[:-1],
+            {
+                "candidate_id": complete_rows[-1]["candidate_id"],
+                "success": False,
+                "metadata": {"candidate_error": "RuntimeError('sim stopped')"},
+            },
+        ]
+
+        partial_complete, partial_reason = complete_existing_candidate_ids(partial_rows, "anti_template")
+        error_complete, error_reason = complete_existing_candidate_ids(error_rows, "anti_template")
+
+        self.assertFalse(partial_complete)
+        self.assertIn("missing=contact_joint_perturb", partial_reason)
+        self.assertFalse(error_complete)
+        self.assertIn("candidate_error=contact_joint_perturb", error_reason)
 
     def test_robotwin2_partial_raw_rescue_plan_prioritizes_mixed_partials(self):
         with TemporaryDirectory() as tmp:
