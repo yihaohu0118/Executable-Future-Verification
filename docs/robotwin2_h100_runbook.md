@@ -110,10 +110,12 @@ files cannot be written. `robotwin2_run_clean_traces.sh` now checks
 `MIN_FREE_DISK_MB` before and after GPU waiting; the default is `2048` MB. If
 the filesystem is below that threshold, it exits with code `76`, which the
 persistent wrapper treats as a real failure rather than a retryable GPU-busy
-condition. On dev2, recent `checkpoints/evogym/qwen3_8b_*` training checkpoints
+condition. The first check happens before creating `raw/` or `logs/`; if the
+run root does not exist yet, the script checks the nearest existing parent
+directory. On dev2, recent `checkpoints/evogym/qwen3_8b_*` training checkpoints
 can consume tens of GB within minutes; do not delete those without explicit
-approval. Clear only reproducible caches or `/tmp` experiment scratch when space
-is needed.
+approval. Clear only reproducible caches or `/tmp` experiment scratch when
+space is needed.
 
 Seed files are published atomically. A seed writes to a hidden temporary file
 first and replaces `raw/<task>/seed_<n>.jsonl` only after the full candidate

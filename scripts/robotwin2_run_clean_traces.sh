@@ -30,9 +30,9 @@ LOG_DIR="$RUN_ROOT/logs"
 LOG_FILE="$LOG_DIR/${TASK_NAME}_${CANDIDATE_PRESET}_seeds_${SEEDS//[^0-9A-Za-z_-]/_}.log"
 CONFLICT_FILE="$LOG_DIR/.${TASK_NAME}_${CANDIDATE_PRESET}_seeds_${SEEDS//[^0-9A-Za-z_-]/_}.gpu_conflict"
 
-if [ "$DRY_RUN" != "1" ]; then
-  mkdir -p "$RAW_DIR" "$LOG_DIR"
-fi
+ts() {
+  date -Is 2>/dev/null || date +%Y-%m-%dT%H:%M:%S%z
+}
 
 find_free_gpu() {
   if ! command -v nvidia-smi >/dev/null 2>&1; then
@@ -74,15 +74,29 @@ available_disk_mb() {
   df -Pm "$path" 2>/dev/null | awk 'NR==2 {print $4}'
 }
 
+existing_disk_path() {
+  path="$1"
+  while [ ! -e "$path" ]; do
+    parent="$(dirname "$path")"
+    if [ "$parent" = "$path" ]; then
+      echo /
+      return 0
+    fi
+    path="$parent"
+  done
+  echo "$path"
+}
+
 check_free_disk() {
   path="$1"
-  available="$(available_disk_mb "$path" || true)"
+  df_path="$(existing_disk_path "$path")"
+  available="$(available_disk_mb "$df_path" || true)"
   if [ -z "$available" ]; then
-    echo "$(date -Is) could not determine free disk space for $path" >&2
+    echo "$(ts) could not determine free disk space for $path via $df_path" >&2
     exit 76
   fi
   if [ "$available" -lt "$MIN_FREE_DISK_MB" ]; then
-    echo "$(date -Is) insufficient disk for $TASK_NAME: available_mb=$available min_required_mb=$MIN_FREE_DISK_MB path=$path" >&2
+    echo "$(ts) insufficient disk for $TASK_NAME: available_mb=$available min_required_mb=$MIN_FREE_DISK_MB path=$path df_path=$df_path" >&2
     exit 76
   fi
 }
@@ -90,14 +104,14 @@ check_free_disk() {
 if [ "$GPU_ID" = "auto" ] && [ "$DRY_RUN" != "1" ]; then
   selected_gpu="$(find_free_gpu || true)"
   if [ -z "$selected_gpu" ]; then
-    echo "$(date -Is) no free GPU found for $TASK_NAME; exiting without starting simulation" >&2
+    echo "$(ts) no free GPU found for $TASK_NAME; exiting without starting simulation" >&2
     exit 75
   fi
   if [ "$GPU_STABLE_SECONDS" -gt 0 ]; then
-    echo "$(date -Is) GPU $selected_gpu looks free; rechecking after ${GPU_STABLE_SECONDS}s"
+    echo "$(ts) GPU $selected_gpu looks free; rechecking after ${GPU_STABLE_SECONDS}s"
     sleep "$GPU_STABLE_SECONDS"
     if ! gpu_is_free "$selected_gpu"; then
-      echo "$(date -Is) GPU $selected_gpu no longer free for $TASK_NAME; exiting without starting simulation" >&2
+      echo "$(ts) GPU $selected_gpu no longer free for $TASK_NAME; exiting without starting simulation" >&2
       exit 75
     fi
   fi
@@ -142,19 +156,20 @@ if [ "$DRY_RUN" = "1" ]; then
 fi
 
 check_free_disk "$RUN_ROOT"
+mkdir -p "$RAW_DIR" "$LOG_DIR"
 
 if [ "$WAIT_FOR_GPU" = "1" ]; then
   while ! gpu_is_free "$GPU_ID"; do
     memory_used="$(nvidia-smi -i "$GPU_ID" --query-gpu=memory.used --format=csv,noheader,nounits 2>/dev/null | tr -d '[:space:]' || true)"
     busy="$(nvidia-smi -i "$GPU_ID" --query-compute-apps=pid --format=csv,noheader,nounits 2>/dev/null | tr -d '[:space:]' || true)"
-    echo "$(date -Is) GPU $GPU_ID not free; memory_used_mb=${memory_used:-unknown}; compute_pids=${busy:-none}; waiting ${GPU_WAIT_SECONDS}s"
+    echo "$(ts) GPU $GPU_ID not free; memory_used_mb=${memory_used:-unknown}; compute_pids=${busy:-none}; waiting ${GPU_WAIT_SECONDS}s"
     sleep "$GPU_WAIT_SECONDS"
   done
   if [ "$GPU_STABLE_SECONDS" -gt 0 ]; then
-    echo "$(date -Is) GPU $GPU_ID is free; rechecking after ${GPU_STABLE_SECONDS}s"
+    echo "$(ts) GPU $GPU_ID is free; rechecking after ${GPU_STABLE_SECONDS}s"
     sleep "$GPU_STABLE_SECONDS"
     if ! gpu_is_free "$GPU_ID"; then
-      echo "$(date -Is) GPU $GPU_ID no longer free for $TASK_NAME; exiting without starting simulation" >&2
+      echo "$(ts) GPU $GPU_ID no longer free for $TASK_NAME; exiting without starting simulation" >&2
       exit 75
     fi
   fi
@@ -167,7 +182,7 @@ conda activate "$CONDA_ENV"
 export PYTHONPATH="$EFV_ROOT/src:${PYTHONPATH:-}"
 
 cd "$ROBOTWIN_ROOT"
-echo "$(date -Is) start $TASK_NAME seeds=$SEEDS preset=$CANDIDATE_PRESET" | tee "$LOG_FILE"
+echo "$(ts) start $TASK_NAME seeds=$SEEDS preset=$CANDIDATE_PRESET" | tee "$LOG_FILE"
 rm -f "$CONFLICT_FILE"
 CUDA_VISIBLE_DEVICES="$GPU_ID" "${cmd[@]}" > >(tee -a "$LOG_FILE") 2>&1 &
 child_pid="$!"
@@ -178,14 +193,14 @@ if [ "$GPU_CONFLICT_MONITOR" = "1" ]; then
       foreign="$(foreign_compute_apps "$GPU_ID" "$child_pid" || true)"
       if [ -n "$foreign" ]; then
         {
-          echo "$(date -Is) foreign GPU compute app detected on GPU $GPU_ID while $TASK_NAME is running; terminating own child $child_pid"
+          echo "$(ts) foreign GPU compute app detected on GPU $GPU_ID while $TASK_NAME is running; terminating own child $child_pid"
           echo "$foreign"
         } | tee -a "$LOG_FILE"
         printf '%s\n' "$foreign" > "$CONFLICT_FILE"
         kill -TERM "$child_pid" >/dev/null 2>&1 || true
         sleep "$GPU_CONFLICT_TERM_GRACE_SECONDS"
         if kill -0 "$child_pid" >/dev/null 2>&1; then
-          echo "$(date -Is) own child $child_pid still alive after TERM; sending KILL" | tee -a "$LOG_FILE"
+          echo "$(ts) own child $child_pid still alive after TERM; sending KILL" | tee -a "$LOG_FILE"
           kill -KILL "$child_pid" >/dev/null 2>&1 || true
         fi
         exit 0
@@ -204,14 +219,14 @@ if [ -n "$monitor_pid" ]; then
   wait "$monitor_pid" >/dev/null 2>&1 || true
 fi
 if [ -f "$CONFLICT_FILE" ]; then
-  echo "$(date -Is) stopped $TASK_NAME because another compute app appeared on GPU $GPU_ID" | tee -a "$LOG_FILE"
+  echo "$(ts) stopped $TASK_NAME because another compute app appeared on GPU $GPU_ID" | tee -a "$LOG_FILE"
   exit 75
 fi
 if [ "$child_status" -ne 0 ]; then
-  echo "$(date -Is) $TASK_NAME failed with exit code $child_status" | tee -a "$LOG_FILE"
+  echo "$(ts) $TASK_NAME failed with exit code $child_status" | tee -a "$LOG_FILE"
   exit "$child_status"
 fi
-echo "$(date -Is) finish $TASK_NAME seeds=$SEEDS preset=$CANDIDATE_PRESET" | tee -a "$LOG_FILE"
+echo "$(ts) finish $TASK_NAME seeds=$SEEDS preset=$CANDIDATE_PRESET" | tee -a "$LOG_FILE"
 
 if [ "$RUN_ANALYSIS_AFTER" = "1" ]; then
   cd "$EFV_ROOT"
