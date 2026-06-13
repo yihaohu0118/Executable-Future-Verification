@@ -70,8 +70,11 @@ DRY_RUN=1 GPU_ID=0 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_ma
 ```
 
 Remove `DRY_RUN=1` to execute. The launcher waits for the selected GPU to be
-empty by default but does not kill or stop any existing process. Do not use
-`--skip-replay-planner` for main-table data. Set `RUN_ANALYSIS_AFTER=1` or run
-`scripts/robotwin2_multitask_analysis.sh` afterward, and require the generated
-relation gate to pass before using object-relation selector numbers in a paper
-table.
+empty by default but does not kill or stop any existing process. "Empty" means
+both no compute process and `memory.used <= GPU_FREE_MAX_MEMORY_MB` after a
+stability recheck. Do not treat low utilization alone as safe; Ray or another
+training job can hold tens of GB while utilization is temporarily near zero.
+Do not use `--skip-replay-planner` for main-table data. Set
+`RUN_ANALYSIS_AFTER=1` or run `scripts/robotwin2_multitask_analysis.sh`
+afterward, and require the generated relation gate to pass before using
+object-relation selector numbers in a paper table.

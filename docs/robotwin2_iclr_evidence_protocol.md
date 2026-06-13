@@ -149,3 +149,6 @@ starts only if a GPU is already idle, uses at most
 check; otherwise it exits without waiting, killing, or preempting processes.
 If training jobs are actively restarting or reclaiming GPUs, do not start the
 window even if a GPU appears briefly idle.
+With a fixed `GPU_ID`, the lower-level run script still waits for the same
+memory-and-process free condition before starting. Low GPU utilization is not
+enough; a card with tens of GB allocated is not considered free.

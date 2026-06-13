@@ -87,10 +87,20 @@ if [ "$DRY_RUN" = "1" ]; then
 fi
 
 if [ "$WAIT_FOR_GPU" = "1" ]; then
-  while [ -n "$(nvidia-smi -i "$GPU_ID" --query-compute-apps=pid --format=csv,noheader,nounits 2>/dev/null | tr -d '[:space:]')" ]; do
-    echo "$(date -Is) GPU $GPU_ID busy; waiting ${GPU_WAIT_SECONDS}s"
+  while ! gpu_is_free "$GPU_ID"; do
+    memory_used="$(nvidia-smi -i "$GPU_ID" --query-gpu=memory.used --format=csv,noheader,nounits 2>/dev/null | tr -d '[:space:]' || true)"
+    busy="$(nvidia-smi -i "$GPU_ID" --query-compute-apps=pid --format=csv,noheader,nounits 2>/dev/null | tr -d '[:space:]' || true)"
+    echo "$(date -Is) GPU $GPU_ID not free; memory_used_mb=${memory_used:-unknown}; compute_pids=${busy:-none}; waiting ${GPU_WAIT_SECONDS}s"
     sleep "$GPU_WAIT_SECONDS"
   done
+  if [ "$GPU_STABLE_SECONDS" -gt 0 ]; then
+    echo "$(date -Is) GPU $GPU_ID is free; rechecking after ${GPU_STABLE_SECONDS}s"
+    sleep "$GPU_STABLE_SECONDS"
+    if ! gpu_is_free "$GPU_ID"; then
+      echo "$(date -Is) GPU $GPU_ID no longer free for $TASK_NAME; exiting without starting simulation" >&2
+      exit 75
+    fi
+  fi
 fi
 
 source /home/yihao_hyh/miniconda3/etc/profile.d/conda.sh
