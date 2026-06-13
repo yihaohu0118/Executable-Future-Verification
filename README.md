@@ -248,6 +248,9 @@ PYTHONPATH=/path/to/Executable-Future-Verification/src python -m umm_reward_eval
 Use `--candidate-preset targeted_hard` for the newer near-neighbor
 success/failure probes. Use `--candidate-preset targeted_energy_matched` when
 testing whether length and energy shortcuts survive longer failed futures.
+For clean dev2 reruns, prefer `scripts/robotwin2_run_clean_traces.sh`; it uses
+explicit seeds, waits for the selected GPU, writes logs, and contains no process
+kill logic.
 
 Run the local test suite:
 

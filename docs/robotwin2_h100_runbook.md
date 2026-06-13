@@ -57,20 +57,21 @@ GPU0 after seed `0`.
 
 Some RoboTwin2 task configs have empty `data/<task>/<config>/seed.txt` files on
 dev2. Use explicit seed lists for clean reruns instead of relying on
-`--all-seeds`:
+`--all-seeds`. Prefer the repository launcher so the run root, logs, explicit
+seeds, GPU wait, and `--skip-existing` behavior are consistent:
 
 ```bash
-PYTHONPATH=/home/yihao_hyh/Executable-Future-Verification/src \
-CUDA_VISIBLE_DEVICES=0 \
-python -m umm_reward_evaluator.benchmarks.robotwin2_gripper_aware_trace \
-  --task-name stack_blocks_two \
-  --task-config demo_clean_k5 \
-  --seeds 0-7 \
-  --output-dir /home/yihao_hyh/efv_runs/robotwin2_stack_clean_energy_matched_YYYYMMDD/raw/stack_blocks_two \
-  --candidate-preset targeted_energy_matched \
-  --skip-existing
+cd /home/yihao_hyh/Executable-Future-Verification
+DRY_RUN=1 GPU_ID=0 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched \
+  scripts/robotwin2_run_clean_traces.sh \
+  /home/yihao_hyh/efv_runs/robotwin2_stack_clean_energy_matched_YYYYMMDD \
+  stack_blocks_two \
+  0-7
 ```
 
-Do not use `--skip-replay-planner` for main-table data. After conversion, run
-`scripts/robotwin2_multitask_analysis.sh` and require the generated relation
-gate to pass before using object-relation selector numbers in a paper table.
+Remove `DRY_RUN=1` to execute. The launcher waits for the selected GPU to be
+empty by default but does not kill or stop any existing process. Do not use
+`--skip-replay-planner` for main-table data. Set `RUN_ANALYSIS_AFTER=1` or run
+`scripts/robotwin2_multitask_analysis.sh` afterward, and require the generated
+relation gate to pass before using object-relation selector numbers in a paper
+table.
