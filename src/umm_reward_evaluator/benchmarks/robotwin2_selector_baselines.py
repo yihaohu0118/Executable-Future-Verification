@@ -28,12 +28,15 @@ PROTOTYPE_FEATURES = (
     "action_distribution",
     "state_distribution",
     "object_distribution",
+    "object_relation_distribution",
     "gripper_distribution",
     "phase_gripper_distribution",
     "phase_object_distribution",
+    "phase_object_relation_distribution",
     "phase_joint_distribution",
     "phase_joint_gripper_distribution",
     "phase_object_joint_gripper_distribution",
+    "phase_object_relation_joint_gripper_distribution",
 )
 PROTOTYPE_SCOPES = ("same_task", "all_tasks")
 PROTOTYPE_MODES = ("nearest_positive", "nearest_pos_neg", "pos_neg_centroid", "pos_centroid")
@@ -41,9 +44,11 @@ TRACE_DISTANCE_FEATURES = (
     "dtw_action",
     "dtw_joint",
     "dtw_object",
+    "dtw_object_relation",
     "dtw_gripper",
     "dtw_joint_gripper",
     "dtw_object_joint_gripper",
+    "dtw_object_relation_joint_gripper",
 )
 TRACE_DISTANCE_SCOPES = ("same_task", "all_tasks")
 
@@ -273,6 +278,79 @@ def phase_trace_distribution_features(
     return np.concatenate(parts).astype(np.float32) if parts else np.zeros((1,), dtype=np.float32)
 
 
+def object_relation_frame(snapshot: dict[str, Any], dims: dict[str, int]) -> np.ndarray:
+    pose_dim = dims.get("actor_pose_vector", 1)
+    pair_dim = dims.get("actor_pairwise_distances", 1)
+    pose = padded(snapshot.get("actor_pose_vector"), pose_dim)
+    pairwise = padded(snapshot.get("actor_pairwise_distances"), pair_dim)
+
+    actor_count = max(pose_dim // 7, 1)
+    positions = pose[: actor_count * 7].reshape(actor_count, 7)[:, :3]
+    names = snapshot.get("actor_names")
+    if isinstance(names, list) and names:
+        valid_count = min(len(names), actor_count)
+    else:
+        raw_size = int(np.asarray(snapshot.get("actor_pose_vector", [])).reshape(-1).size)
+        valid_count = min(max(raw_size // 7, 0), actor_count)
+
+    mask = np.zeros((actor_count, 1), dtype=np.float32)
+    if valid_count:
+        mask[:valid_count] = 1.0
+        center = positions[:valid_count].mean(axis=0, keepdims=True)
+    else:
+        center = np.zeros((1, 3), dtype=np.float32)
+    centered = (positions - center) * mask
+
+    if valid_count >= 2:
+        first_to_second = positions[1] - positions[0]
+        first_second_dist = np.asarray([np.linalg.norm(first_to_second)], dtype=np.float32)
+    else:
+        first_to_second = np.zeros((3,), dtype=np.float32)
+        first_second_dist = np.zeros((1,), dtype=np.float32)
+
+    valid_positions = positions[:valid_count] if valid_count else np.zeros((1, 3), dtype=np.float32)
+    span = valid_positions.max(axis=0) - valid_positions.min(axis=0)
+    min_pairwise = np.asarray([pairwise[:pair_dim].min() if pair_dim else 0.0], dtype=np.float32)
+    return np.concatenate(
+        [
+            pairwise,
+            centered.reshape(-1),
+            positions[:, 2],
+            span,
+            first_to_second,
+            np.abs(first_to_second),
+            first_second_dist,
+            min_pairwise,
+        ]
+    ).astype(np.float32)
+
+
+def object_relation_sequence(trace: list[dict[str, Any]], dims: dict[str, int]) -> np.ndarray:
+    snapshots = trace if trace else [{}]
+    frames = [object_relation_frame(snapshot if isinstance(snapshot, dict) else {}, dims) for snapshot in snapshots]
+    return np.stack(frames).astype(np.float32) if frames else np.zeros((1, 1), dtype=np.float32)
+
+
+def object_relation_distribution_features(trace: list[dict[str, Any]], dims: dict[str, int]) -> np.ndarray:
+    x = object_relation_sequence(trace, dims)
+    return np.concatenate([x.mean(axis=0), x.std(axis=0), x.min(axis=0), x.max(axis=0), x[-1] - x[0]]).astype(np.float32)
+
+
+def phase_object_relation_distribution_features(
+    trace: list[dict[str, Any]],
+    dims: dict[str, int],
+    *,
+    num_phases: int = 3,
+) -> np.ndarray:
+    x = object_relation_sequence(trace, dims)
+    parts: list[np.ndarray] = []
+    for indexes in np.array_split(np.arange(len(x)), num_phases):
+        phase = x[indexes] if len(indexes) else x[-1:]
+        parts.extend([phase.mean(axis=0), phase.std(axis=0), phase.min(axis=0), phase.max(axis=0)])
+    parts.append(x[-1] - x[0])
+    return np.concatenate(parts).astype(np.float32)
+
+
 def feature_vector(row: dict[str, Any], feature_mode: str, *, dims: dict[str, int] | None = None) -> np.ndarray:
     if feature_mode == "action_distribution":
         actions = action_array(row)
@@ -283,6 +361,8 @@ def feature_vector(row: dict[str, Any], feature_mode: str, *, dims: dict[str, in
     if feature_mode == "object_distribution":
         keys = ["actor_pose_vector", "actor_pairwise_distances"]
         return trace_distribution_features(state_trace(row), keys, dims or state_dims([row], keys))
+    if feature_mode == "object_relation_distribution":
+        return object_relation_distribution_features(state_trace(row), dims or state_dims([row], ["actor_pose_vector", "actor_pairwise_distances"]))
     if feature_mode == "gripper_distribution":
         keys = ["left_gripper", "right_gripper"]
         return trace_distribution_features(state_trace(row), keys, dims or state_dims([row], keys))
@@ -292,6 +372,8 @@ def feature_vector(row: dict[str, Any], feature_mode: str, *, dims: dict[str, in
     if feature_mode == "phase_object_distribution":
         keys = ["actor_pose_vector", "actor_pairwise_distances"]
         return phase_trace_distribution_features(state_trace(row), keys, dims or state_dims([row], keys))
+    if feature_mode == "phase_object_relation_distribution":
+        return phase_object_relation_distribution_features(state_trace(row), dims or state_dims([row], ["actor_pose_vector", "actor_pairwise_distances"]))
     if feature_mode == "phase_joint_distribution":
         keys = ["joint_action_vector"]
         return phase_trace_distribution_features(state_trace(row), keys, dims or state_dims([row], keys))
@@ -301,6 +383,11 @@ def feature_vector(row: dict[str, Any], feature_mode: str, *, dims: dict[str, in
     if feature_mode == "phase_object_joint_gripper_distribution":
         keys = ["actor_pose_vector", "actor_pairwise_distances", "joint_action_vector", "left_gripper", "right_gripper"]
         return phase_trace_distribution_features(state_trace(row), keys, dims or state_dims([row], keys))
+    if feature_mode == "phase_object_relation_joint_gripper_distribution":
+        relation = phase_object_relation_distribution_features(state_trace(row), dims or state_dims([row], ["actor_pose_vector", "actor_pairwise_distances"]))
+        keys = ["joint_action_vector", "left_gripper", "right_gripper"]
+        robot = phase_trace_distribution_features(state_trace(row), keys, dims or state_dims([row], keys))
+        return np.concatenate([relation, robot]).astype(np.float32)
     raise ValueError(f"unknown prototype feature mode: {feature_mode}")
 
 
@@ -345,12 +432,31 @@ def trace_sequence(row: dict[str, Any], feature_mode: str, *, dims: dict[str, in
         keys = ["joint_action_vector"]
     elif feature_mode == "dtw_object":
         keys = ["actor_pose_vector", "actor_pairwise_distances"]
+    elif feature_mode == "dtw_object_relation":
+        return object_relation_sequence(state_trace(row), dims or state_dims([row], ["actor_pose_vector", "actor_pairwise_distances"]))
     elif feature_mode == "dtw_gripper":
         keys = ["left_gripper", "right_gripper"]
     elif feature_mode == "dtw_joint_gripper":
         keys = ["joint_action_vector", "left_gripper", "right_gripper"]
     elif feature_mode == "dtw_object_joint_gripper":
         keys = ["actor_pose_vector", "actor_pairwise_distances", "joint_action_vector", "left_gripper", "right_gripper"]
+    elif feature_mode == "dtw_object_relation_joint_gripper":
+        relation = object_relation_sequence(state_trace(row), dims or state_dims([row], ["actor_pose_vector", "actor_pairwise_distances"]))
+        keys = ["joint_action_vector", "left_gripper", "right_gripper"]
+        local_dims = dims or state_dims([row], keys)
+        snapshots = state_trace(row) or [{}]
+        robot_frames = []
+        for snapshot in snapshots:
+            if not isinstance(snapshot, dict):
+                snapshot = {}
+            robot_frames.append(np.concatenate([padded(snapshot.get(key), local_dims[key]) for key in keys]))
+        robot = np.stack(robot_frames).astype(np.float32) if robot_frames else np.zeros((1, 1), dtype=np.float32)
+        length = max(len(relation), len(robot))
+        if len(relation) != length:
+            relation = np.repeat(relation[-1:], length, axis=0) if len(relation) == 1 else relation[:length]
+        if len(robot) != length:
+            robot = np.repeat(robot[-1:], length, axis=0) if len(robot) == 1 else robot[:length]
+        return np.concatenate([relation, robot], axis=1).astype(np.float32)
     else:
         raise ValueError(f"unknown trace-distance feature mode: {feature_mode}")
 

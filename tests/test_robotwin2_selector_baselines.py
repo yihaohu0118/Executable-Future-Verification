@@ -18,10 +18,22 @@ from umm_reward_evaluator.benchmarks.robotwin2_rank_randomization_sweep import (
 from umm_reward_evaluator.benchmarks.robotwin2_kshot_calibration_sweep import run_kshot_sweep
 
 
-def make_row(task, case, candidate, rank, success, actions, left_gripper, right_gripper=None, actor_pose=None):
+def make_row(
+    task,
+    case,
+    candidate,
+    rank,
+    success,
+    actions,
+    left_gripper,
+    right_gripper=None,
+    actor_pose=None,
+    actor_pairwise=None,
+):
     if right_gripper is None:
         right_gripper = left_gripper
     actor_pose = actor_pose or [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
+    actor_pairwise = actor_pairwise or [0.0]
     return {
         "benchmark": "robotwin2",
         "suite": "unit",
@@ -38,7 +50,7 @@ def make_row(task, case, candidate, rank, success, actions, left_gripper, right_
                     "left_gripper": [left],
                     "right_gripper": [right],
                     "actor_pose_vector": actor_pose,
-                    "actor_pairwise_distances": [0.0],
+                    "actor_pairwise_distances": actor_pairwise,
                 }
                 for action, left, right in zip(actions, left_gripper, right_gripper, strict=True)
             ],
@@ -129,6 +141,81 @@ class RoboTwin2SelectorBaselinesTest(unittest.TestCase):
             prototype_mode="nearest_positive",
         )
         self.assertEqual(prototype["overall"]["selector_success"], 2)
+
+    def test_object_relation_feature_separates_same_gripper_outcomes(self):
+        rows = [
+            make_row(
+                "stack",
+                "seed=0",
+                "rank0",
+                0,
+                False,
+                [[1.0], [1.0]],
+                [1.0, 1.0],
+                actor_pose=[0.0, 0.0, 0.0, 1, 0, 0, 0, 2.0, 0.0, 0.0, 1, 0, 0, 0],
+                actor_pairwise=[2.0],
+            ),
+            make_row(
+                "stack",
+                "seed=0",
+                "success",
+                1,
+                True,
+                [[1.0], [1.0]],
+                [1.0, 1.0],
+                actor_pose=[0.0, 0.0, 0.0, 1, 0, 0, 0, 0.2, 0.0, 0.0, 1, 0, 0, 0],
+                actor_pairwise=[0.2],
+            ),
+            make_row(
+                "stack",
+                "seed=1",
+                "rank0",
+                0,
+                False,
+                [[1.0], [1.0]],
+                [1.0, 1.0],
+                actor_pose=[0.0, 0.0, 0.0, 1, 0, 0, 0, 2.1, 0.0, 0.0, 1, 0, 0, 0],
+                actor_pairwise=[2.1],
+            ),
+            make_row(
+                "stack",
+                "seed=1",
+                "success",
+                1,
+                True,
+                [[1.0], [1.0]],
+                [1.0, 1.0],
+                actor_pose=[0.0, 0.0, 0.0, 1, 0, 0, 0, 0.3, 0.0, 0.0, 1, 0, 0, 0],
+                actor_pairwise=[0.3],
+            ),
+        ]
+        gripper = evaluate_prototype(
+            rows,
+            feature_mode="gripper_distribution",
+            scope="same_task",
+            prototype_mode="nearest_positive",
+        )
+        relation = evaluate_prototype(
+            rows,
+            feature_mode="object_relation_distribution",
+            scope="same_task",
+            prototype_mode="nearest_positive",
+        )
+        phase_relation = evaluate_prototype(
+            rows,
+            feature_mode="phase_object_relation_distribution",
+            scope="same_task",
+            prototype_mode="nearest_positive",
+        )
+        relation_dtw = evaluate_trace_distance(
+            rows,
+            feature_mode="dtw_object_relation",
+            scope="same_task",
+        )
+        self.assertEqual(gripper["overall"]["selector_success"], 0)
+        self.assertEqual(relation["overall"]["selector_success"], 2)
+        self.assertEqual(phase_relation["overall"]["selector_success"], 2)
+        self.assertEqual(relation_dtw["overall"]["selector_success"], 2)
 
     def test_compact_scene_state_records_named_actor_poses(self):
         class Pose:

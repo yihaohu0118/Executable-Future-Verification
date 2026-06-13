@@ -145,14 +145,37 @@ if:
 1. Re-run clean RoboTwin2 analysis with `--drop-cases-with-candidate-error`.
 2. Treat existing incomplete or OOM-contaminated stack seeds as diagnostics
    only.
-3. When GPU capacity is free, generate clean `stack_blocks_two` K=5 or K=8
+3. Use the new object-relation selector baselines to test whether
+   `stack_blocks_two` failures are due to missing contact/object-relation
+   signal rather than a bad gripper distance metric.
+4. When GPU capacity is free, generate clean `stack_blocks_two` K=5 or K=8
    targeted-energy-matched data with object-relation traces enabled.
-4. Add selectors that explicitly test the `stack_blocks_two` failure mode:
+5. Add selectors that explicitly test the `stack_blocks_two` failure mode:
    gripper-only versus joint+gripper versus object-pair/contact-relation
-   features.
-5. Keep `open_laptop` as a permissiveness counterexample unless a harder
+   features. Initial support is implemented through
+   `object_relation_distribution`, `phase_object_relation_distribution`,
+   `phase_object_relation_joint_gripper_distribution`, `dtw_object_relation`,
+   and `dtw_object_relation_joint_gripper`.
+6. Keep `open_laptop` as a permissiveness counterexample unless a harder
    candidate pool makes random and smoothness baselines weak.
-6. Do not stop user training jobs to obtain these results.
+7. Do not stop user training jobs to obtain these results.
+
+## New Relation Baseline Added
+
+The selector code now derives object/contact-relation frames from existing
+`actor_pose_vector` and `actor_pairwise_distances` fields. It does not require a
+new trace schema. The derived frame includes pairwise object distances,
+centered object positions, vertical coordinates, object span, the first-to-
+second object displacement, and minimum pairwise distance. Distribution,
+phase-distribution, and DTW variants are available.
+
+The unit test intentionally constructs a case where action and gripper traces
+are identical for success and failure candidates. Gripper-only nearest-positive
+selection fails, while object-relation selection recovers both successes. This
+is the minimal diagnostic needed before spending more GPU time on
+`stack_blocks_two`: if the real clean K=5/K=8 stack data behaves like this toy
+case, the paper gets a stronger counterintuitive claim that gripper execution
+envelopes are powerful but insufficient for multi-stage spatial manipulation.
 
 ## Paper Story After This Update
 
@@ -169,4 +192,3 @@ The stronger story is:
 > evaluation framework plus the evidence that compact execution envelopes,
 > calibrated with few target examples, recover futures that default generation
 > rankings miss.
-

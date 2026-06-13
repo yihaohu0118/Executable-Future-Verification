@@ -146,6 +146,22 @@ PYTHONPATH=src python -m umm_reward_evaluator.benchmarks.robotwin2_selector_base
   --output-dir /path/to/selector_outputs
 ```
 
+The selector suite includes action, gripper, joint, object-pose, and
+object-relation features. The relation features are intended for the
+`stack_blocks_two` failure mode where gripper-only and DTW-gripper selectors
+can fail even though oracle headroom exists:
+
+```bash
+PYTHONPATH=src python -m umm_reward_evaluator.benchmarks.robotwin2_selector_baselines \
+  --manifest /path/to/robotwin2_manifest.jsonl \
+  --output-dir /path/to/relation_selector_outputs \
+  --prototype-feature object_relation_distribution \
+  --prototype-feature phase_object_relation_distribution \
+  --prototype-feature phase_object_relation_joint_gripper_distribution \
+  --trace-distance-feature dtw_object_relation \
+  --trace-distance-feature dtw_object_relation_joint_gripper
+```
+
 Run the multi-seed anonymous rank/candidate-ID sweep:
 
 ```bash
