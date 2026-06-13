@@ -41,6 +41,8 @@ run has anti-template pressure. The latest reanalysis shows one promising
 positive signal, `stack_blocks_two`, where a phase-gripper verifier beats
 DTW/template and smoothness shortcuts. It also shows one permissive
 counterexample, `open_laptop`, where smoothness/gripper/DTW all reach oracle.
+The existing `stamp_seal` artifacts add headroom but not mechanism evidence
+because DTW-gripper also reaches oracle.
 This makes the next milestone a mechanism-preserving expansion under pressure,
 not just a larger rerun.
 
