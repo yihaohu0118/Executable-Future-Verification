@@ -104,6 +104,31 @@ def read_seed_list(task_name: str, task_config: str) -> list[int]:
     return seeds
 
 
+def parse_seed_list(text: str) -> list[int]:
+    seeds: list[int] = []
+    seen: set[int] = set()
+    for chunk in text.split(","):
+        item = chunk.strip()
+        if not item:
+            continue
+        if "-" in item:
+            start_text, end_text = item.split("-", 1)
+            start = int(start_text.strip())
+            end = int(end_text.strip())
+            if end < start:
+                raise ValueError(f"invalid descending seed range: {item}")
+            values = range(start, end + 1)
+        else:
+            values = [int(item)]
+        for seed in values:
+            if seed not in seen:
+                seeds.append(seed)
+                seen.add(seed)
+    if not seeds:
+        raise ValueError("empty seed list")
+    return seeds
+
+
 def build_args(task_name: str, task_config: str, *, eval_mode: bool, need_plan: bool) -> dict[str, Any]:
     from envs import CONFIGS_PATH
 
@@ -678,6 +703,7 @@ def main() -> None:
     parser.add_argument("--instruction")
     parser.add_argument("--output", type=Path)
     parser.add_argument("--all-seeds", action="store_true")
+    parser.add_argument("--seeds", help="Comma-separated explicit seeds or ranges, e.g. 0,3,5-7.")
     parser.add_argument("--max-seeds", type=int)
     parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--skip-existing", action="store_true")
@@ -695,10 +721,10 @@ def main() -> None:
 
     instruction = args.instruction or args.task_name.replace("_", " ")
 
-    if args.all_seeds:
+    if args.all_seeds or args.seeds:
         if args.output_dir is None:
-            raise SystemExit("--all-seeds requires --output-dir")
-        seeds = read_seed_list(args.task_name, args.task_config)
+            raise SystemExit("--all-seeds/--seeds requires --output-dir")
+        seeds = parse_seed_list(args.seeds) if args.seeds else read_seed_list(args.task_name, args.task_config)
         if args.max_seeds is not None:
             seeds = seeds[: args.max_seeds]
         for seed in seeds:

@@ -237,7 +237,7 @@ RoboTwin checkout:
 PYTHONPATH=/path/to/Executable-Future-Verification/src python -m umm_reward_evaluator.benchmarks.robotwin2_gripper_aware_trace \
   --task-name stack_blocks_two \
   --task-config demo_clean_smoke \
-  --all-seeds \
+  --seeds 0-4 \
   --max-seeds 5 \
   --output-dir /tmp/robotwin2_antitemplate/stack_blocks_two \
   --candidate-preset anti_template

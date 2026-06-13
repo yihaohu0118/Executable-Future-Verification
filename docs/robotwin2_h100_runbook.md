@@ -54,3 +54,23 @@ use the default official planner path despite the runtime cost.
 For `stamp_seal`, seeds `1, 2, 5, 7, 8` failed expert rollout in the official
 K=5 run. Seed `9` was the successful replacement, and seed `6` completed on
 GPU0 after seed `0`.
+
+Some RoboTwin2 task configs have empty `data/<task>/<config>/seed.txt` files on
+dev2. Use explicit seed lists for clean reruns instead of relying on
+`--all-seeds`:
+
+```bash
+PYTHONPATH=/home/yihao_hyh/Executable-Future-Verification/src \
+CUDA_VISIBLE_DEVICES=0 \
+python -m umm_reward_evaluator.benchmarks.robotwin2_gripper_aware_trace \
+  --task-name stack_blocks_two \
+  --task-config demo_clean_k5 \
+  --seeds 0-7 \
+  --output-dir /home/yihao_hyh/efv_runs/robotwin2_stack_clean_energy_matched_YYYYMMDD/raw/stack_blocks_two \
+  --candidate-preset targeted_energy_matched \
+  --skip-existing
+```
+
+Do not use `--skip-replay-planner` for main-table data. After conversion, run
+`scripts/robotwin2_multitask_analysis.sh` and require the generated relation
+gate to pass before using object-relation selector numbers in a paper table.

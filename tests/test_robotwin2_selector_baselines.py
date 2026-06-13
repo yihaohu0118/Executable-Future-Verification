@@ -9,7 +9,11 @@ from umm_reward_evaluator.benchmarks.robotwin2_selector_baselines import (
     feature_coverage,
 )
 from umm_reward_evaluator.benchmarks.robotwin2_antitemplate_diagnostics import diagnose_manifest
-from umm_reward_evaluator.benchmarks.robotwin2_gripper_aware_trace import build_candidates, compact_scene_state
+from umm_reward_evaluator.benchmarks.robotwin2_gripper_aware_trace import (
+    build_candidates,
+    compact_scene_state,
+    parse_seed_list,
+)
 from umm_reward_evaluator.benchmarks.robotwin2_selector_failure_analysis import run_analysis
 from umm_reward_evaluator.benchmarks.robotwin2_rank_randomization_sweep import (
     parse_prototype_config,
@@ -262,6 +266,13 @@ class RoboTwin2SelectorBaselinesTest(unittest.TestCase):
         state = compact_scene_state(Env())
         self.assertEqual(state["actor_names"], ["block1"])
         self.assertEqual(len(state["actor_pose_vector"]), 7)
+
+    def test_parse_seed_list_accepts_ranges_and_deduplicates(self):
+        self.assertEqual(parse_seed_list("0, 2-4, 3, 7"), [0, 2, 3, 4, 7])
+        with self.assertRaises(ValueError):
+            parse_seed_list("4-2")
+        with self.assertRaises(ValueError):
+            parse_seed_list(" , ")
 
     def test_phase_gripper_feature_is_fixed_width_across_trace_lengths(self):
         rows = list(self.rows)
