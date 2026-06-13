@@ -39,6 +39,12 @@ python -m umm_reward_evaluator.benchmarks.iclr_status_report \
 This is the best artifact to send to collaborators because it combines the
 stack gate, claim guard, benchmark rows, and evidence-card status.
 
+For a Chinese decision brief, use:
+
+```text
+docs/iclr_boss_brief_zh_20260613.md
+```
+
 After a benchmark-level gate passes, generate a registry-entry proposal instead
 of editing `docs/iclr_evidence_stack_registry.json` by hand:
 
