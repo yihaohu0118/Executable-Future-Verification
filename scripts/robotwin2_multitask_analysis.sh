@@ -14,6 +14,7 @@ NUM_SWEEP_SEEDS="${NUM_SWEEP_SEEDS:-10}"
 DEFAULT_SUITE="${DEFAULT_SUITE:-demo_clean_k5}"
 MIN_MAIN_TABLE_CASES="${MIN_MAIN_TABLE_CASES:-1}"
 MIN_ORACLE_BETTER_CASES="${MIN_ORACLE_BETTER_CASES:-1}"
+PYTHON_BIN="${PYTHON_BIN:-python}"
 
 mkdir -p "$RUN_ROOT/manifests" "$RUN_ROOT/selectors"
 readiness_json="$RUN_ROOT/selectors/robotwin2_readiness_report.json"
@@ -42,7 +43,7 @@ for task in "${TASKS[@]}"; do
   failures_json="$RUN_ROOT/selectors/${task}_targeted_energy_matched_failure_analysis.json"
   failures_md="$RUN_ROOT/selectors/${task}_targeted_energy_matched_failure_analysis.md"
 
-  python -m umm_reward_evaluator.benchmarks.robotwin2_trace_to_manifest \
+  "$PYTHON_BIN" -m umm_reward_evaluator.benchmarks.robotwin2_trace_to_manifest \
     --input-dir "$input_dir" \
     --output-manifest "$manifest" \
     --output-summary "$summary" \
@@ -50,7 +51,7 @@ for task in "${TASKS[@]}"; do
     --require-candidates-per-case "$REQUIRE_CANDIDATES_PER_CASE" \
     --drop-cases-with-candidate-error
 
-  cases="$(python - "$summary" <<'PY'
+  cases="$("$PYTHON_BIN" - "$summary" <<'PY'
 import json
 import sys
 with open(sys.argv[1], "r", encoding="utf-8") as f:
@@ -62,7 +63,7 @@ PY
     continue
   fi
 
-  if python -m umm_reward_evaluator.benchmarks.robotwin2_main_table_gate \
+  if "$PYTHON_BIN" -m umm_reward_evaluator.benchmarks.robotwin2_main_table_gate \
     --manifest "$manifest" \
     --output "$base_gate_json" \
     --required-candidates-per-case "$REQUIRE_CANDIDATES_PER_CASE" \
@@ -73,7 +74,7 @@ PY
     echo "base main-table gate failed for $task: $base_gate_json"
   fi
 
-  if python -m umm_reward_evaluator.benchmarks.robotwin2_main_table_gate \
+  if "$PYTHON_BIN" -m umm_reward_evaluator.benchmarks.robotwin2_main_table_gate \
     --manifest "$manifest" \
     --output "$relation_gate_json" \
     --required-candidates-per-case "$REQUIRE_CANDIDATES_PER_CASE" \
@@ -86,25 +87,25 @@ PY
     echo "relation main-table gate failed for $task: $relation_gate_json"
   fi
 
-  python -m umm_reward_evaluator.benchmarks.robotwin2_trace_field_audit \
+  "$PYTHON_BIN" -m umm_reward_evaluator.benchmarks.robotwin2_trace_field_audit \
     --manifest "$manifest" \
     --output-json "$trace_audit_json" \
     --output-md "$trace_audit_md"
 
-  python -m umm_reward_evaluator.benchmarks.robotwin2_antitemplate_diagnostics \
+  "$PYTHON_BIN" -m umm_reward_evaluator.benchmarks.robotwin2_antitemplate_diagnostics \
     --manifest "$manifest" \
     --output-json "$diagnostics_json" \
     --output-md "$diagnostics_md" \
     --feature-mode dtw_joint_gripper
 
-  python -m umm_reward_evaluator.benchmarks.robotwin2_rank_randomization_sweep \
+  "$PYTHON_BIN" -m umm_reward_evaluator.benchmarks.robotwin2_rank_randomization_sweep \
     --manifest "$manifest" \
     --output "$sweep_json" \
     --num-seeds "$NUM_SWEEP_SEEDS" \
     --mode failure_rank0_shuffle_rest \
     --remap-candidate-ids
 
-  python -m umm_reward_evaluator.benchmarks.robotwin2_selector_failure_analysis \
+  "$PYTHON_BIN" -m umm_reward_evaluator.benchmarks.robotwin2_selector_failure_analysis \
     --manifest "$manifest" \
     --output-json "$failures_json" \
     --output-md "$failures_md" \
@@ -113,17 +114,17 @@ PY
     --remap-candidate-ids
 done
 
-python -m umm_reward_evaluator.benchmarks.robotwin2_readiness_report \
+"$PYTHON_BIN" -m umm_reward_evaluator.benchmarks.robotwin2_readiness_report \
   --selectors-dir "$RUN_ROOT/selectors" \
   --output-json "$readiness_json" \
   --output-md "$readiness_md"
 
-python -m umm_reward_evaluator.benchmarks.robotwin2_selector_table \
+"$PYTHON_BIN" -m umm_reward_evaluator.benchmarks.robotwin2_selector_table \
   --selectors-dir "$RUN_ROOT/selectors" \
   --output-json "$selector_table_json" \
   --output-md "$selector_table_md"
 
-if python -m umm_reward_evaluator.benchmarks.robotwin2_paper_readiness_gate \
+if "$PYTHON_BIN" -m umm_reward_evaluator.benchmarks.robotwin2_paper_readiness_gate \
   --run-root "$RUN_ROOT" \
   --output-json "$paper_gate_json" \
   --output-md "$paper_gate_md"; then
