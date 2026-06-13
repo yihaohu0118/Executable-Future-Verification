@@ -12,6 +12,7 @@ from umm_reward_evaluator.benchmarks.robotwin2_antitemplate_diagnostics import d
 from umm_reward_evaluator.benchmarks.robotwin2_gripper_aware_trace import (
     build_candidates,
     compact_scene_state,
+    discover_scene_actors,
     parse_seed_list,
 )
 from umm_reward_evaluator.benchmarks.robotwin2_selector_failure_analysis import run_analysis
@@ -266,6 +267,31 @@ class RoboTwin2SelectorBaselinesTest(unittest.TestCase):
         state = compact_scene_state(Env())
         self.assertEqual(state["actor_names"], ["block1"])
         self.assertEqual(len(state["actor_pose_vector"]), 7)
+
+    def test_compact_scene_state_discovers_nested_movable_actors(self):
+        class Pose:
+            p = [1.0, 2.0, 3.0]
+            q = [1.0, 0.0, 0.0, 0.0]
+
+        class Actor:
+            def get_pose(self):
+                return Pose()
+
+        class Env:
+            def __init__(self):
+                self.objects = {"block2": Actor(), "table": Actor()}
+                self.extra = [Actor()]
+                self.wall = Actor()
+                self.robot = Actor()
+
+        actors = discover_scene_actors(Env())
+        names = [name for name, _pose in actors]
+        self.assertEqual(names, ["extra[0]", "objects.block2"])
+        self.assertNotIn("objects.table", names)
+        self.assertNotIn("wall", names)
+        state = compact_scene_state(Env())
+        self.assertEqual(state["actor_names"], names)
+        self.assertEqual(len(state["actor_pairwise_distances"]), 1)
 
     def test_parse_seed_list_accepts_ranges_and_deduplicates(self):
         self.assertEqual(parse_seed_list("0, 2-4, 3, 7"), [0, 2, 3, 4, 7])

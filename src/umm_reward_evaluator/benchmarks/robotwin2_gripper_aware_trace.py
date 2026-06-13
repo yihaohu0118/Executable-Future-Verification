@@ -189,19 +189,56 @@ def _pose_vector(actor: Any) -> list[float] | None:
     return np.concatenate([p, q]).astype(float).tolist()
 
 
-def compact_scene_state(env: Any, *, max_actors: int = 16) -> dict[str, Any]:
+STATIC_ACTOR_NAMES = {"robot", "scene", "viewer", "table", "wall", "ground"}
+
+
+def _is_static_actor_name(name: str) -> bool:
+    tail = name.rsplit(".", 1)[-1].rsplit("[", 1)[0]
+    return tail in STATIC_ACTOR_NAMES
+
+
+def _iter_named_children(name: str, value: Any) -> list[tuple[str, Any]]:
+    if isinstance(value, dict):
+        return [(f"{name}.{key}", item) for key, item in sorted(value.items(), key=lambda pair: str(pair[0]))]
+    if isinstance(value, (list, tuple)):
+        return [(f"{name}[{index}]", item) for index, item in enumerate(value)]
+    if hasattr(value, "__dict__") and not isinstance(value, (str, bytes)):
+        return [(f"{name}.{key}", item) for key, item in sorted(vars(value).items()) if not str(key).startswith("_")]
+    return []
+
+
+def discover_scene_actors(env: Any, *, max_actors: int = 16, max_depth: int = 2) -> list[tuple[str, list[float]]]:
     actor_items: list[tuple[str, list[float]]] = []
-    excluded_names = {"robot", "scene", "viewer", "table", "wall", "ground"}
-    for name, value in sorted(vars(env).items()):
-        if name.startswith("_") or name in excluded_names:
-            continue
-        if not hasattr(value, "get_pose"):
-            continue
-        pose = _pose_vector(value)
-        if pose is not None:
-            actor_items.append((name, pose))
+    seen_objects: set[int] = set()
+
+    def visit(name: str, value: Any, depth: int) -> None:
         if len(actor_items) >= max_actors:
-            break
+            return
+        if not name or name.startswith("_") or _is_static_actor_name(name):
+            return
+        object_id = id(value)
+        if object_id in seen_objects:
+            return
+        seen_objects.add(object_id)
+
+        if hasattr(value, "get_pose"):
+            pose = _pose_vector(value)
+            if pose is not None:
+                actor_items.append((name, pose))
+            return
+
+        if depth >= max_depth:
+            return
+        for child_name, child_value in _iter_named_children(name, value):
+            visit(child_name, child_value, depth + 1)
+
+    for name, value in sorted(vars(env).items()):
+        visit(str(name), value, 0)
+    return actor_items
+
+
+def compact_scene_state(env: Any, *, max_actors: int = 16) -> dict[str, Any]:
+    actor_items = discover_scene_actors(env, max_actors=max_actors)
 
     if not actor_items:
         return {}
