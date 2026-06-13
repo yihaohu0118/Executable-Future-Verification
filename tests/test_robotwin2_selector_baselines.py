@@ -32,6 +32,10 @@ from umm_reward_evaluator.benchmarks.robotwin2_rank_randomization_sweep import (
     parse_trace_distance_config,
     run_sweep,
 )
+from umm_reward_evaluator.benchmarks.robotwin2_no_exact_expert_counterfactual import (
+    render_markdown as render_no_exact_expert_markdown,
+    run_counterfactual as run_no_exact_expert_counterfactual,
+)
 from umm_reward_evaluator.benchmarks.robotwin2_kshot_calibration_sweep import run_kshot_sweep
 
 
@@ -176,6 +180,31 @@ class RoboTwin2SelectorBaselinesTest(unittest.TestCase):
 
         self.assertEqual(scores.shape, (2,))
         self.assertTrue(np.isfinite(scores).all())
+
+    def test_no_exact_expert_counterfactual_reports_template_risk(self):
+        rows = [
+            make_row("handover", "seed=0", "rank0", 0, False, [[0.0], [0.0]], [0.0, 0.0]),
+            make_row("handover", "seed=0", "full_gripper_aware", 1, True, [[1.0], [1.0]], [1.0, 1.0]),
+            make_row("handover", "seed=0", "repeat_precontact", 2, True, [[1.0], [1.0]], [1.0, 1.0]),
+            make_row("handover", "seed=0", "bad_contact", 3, False, [[2.0], [2.0]], [0.0, 1.0]),
+            make_row("handover", "seed=1", "rank0", 0, False, [[0.0], [0.0]], [0.0, 0.0]),
+            make_row("handover", "seed=1", "full_gripper_aware", 1, True, [[1.0], [1.0]], [1.0, 1.0]),
+            make_row("handover", "seed=1", "repeat_precontact", 2, True, [[1.0], [1.0]], [1.0, 1.0]),
+            make_row("handover", "seed=1", "bad_contact", 3, False, [[2.0], [2.0]], [0.0, 1.0]),
+        ]
+
+        report = run_no_exact_expert_counterfactual(
+            rows,
+            exclude_candidate_ids={"full_gripper_aware"},
+            num_seeds=2,
+        )
+
+        self.assertEqual(report["filtered_rows"], 6)
+        self.assertTrue(report["diagnosis"]["exact_expert_removed_recoverable"])
+        self.assertTrue(report["diagnosis"]["contact_envelope_recovers_without_exact_expert"])
+        self.assertTrue(report["diagnosis"]["dtw_template_still_recovers_without_exact_expert"])
+        markdown = render_no_exact_expert_markdown(report)
+        self.assertIn("rules out exact expert lookup", markdown)
 
     def test_nearest_pos_neg_uses_negative_neighbors(self):
         rows = [
