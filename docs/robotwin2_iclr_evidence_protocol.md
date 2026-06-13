@@ -130,16 +130,15 @@ Downgrade to a diagnostic/workshop paper if:
 
 ## Suggested Next Command, When Ready To Run
 
-Use the safe launcher and explicit seeds:
+Use the primary-window launcher first. It defaults to dry-run mode and prints
+the six-task command matrix without executing simulations:
 
 ```bash
 cd /home/yihao_hyh/Executable-Future-Verification
-DRY_RUN=1 GPU_ID=0 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched \
-  scripts/robotwin2_run_clean_traces.sh \
-  /home/yihao_hyh/efv_runs/robotwin2_iclr_window_YYYYMMDD \
-  stack_blocks_two \
-  0-7
+GPU_ID=0 SEEDS=0-7 scripts/robotwin2_iclr_window_launcher.sh \
+  /home/yihao_hyh/efv_runs/robotwin2_iclr_window_YYYYMMDD
 ```
 
-Remove `DRY_RUN=1` only when the GPU is free. The launcher waits for the
-selected GPU and does not kill existing processes.
+Set `EXECUTE=1` only when the GPU is free. The launcher calls the safe
+per-task runner, waits for the selected GPU, and does not kill existing
+processes.
