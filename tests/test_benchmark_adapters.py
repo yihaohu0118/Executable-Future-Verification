@@ -7,6 +7,10 @@ from umm_reward_evaluator.benchmarks.common import annotate_oracle_best, summari
 from umm_reward_evaluator.benchmarks.randomize_planner_rank import randomize_manifest_rows
 from umm_reward_evaluator.benchmarks.robotwin2_main_table_gate import evaluate_gate
 from umm_reward_evaluator.benchmarks.robotwin2_readiness_report import collect_reports, render_markdown
+from umm_reward_evaluator.benchmarks.robotwin2_selector_table import (
+    collect_selector_rows,
+    render_markdown as render_selector_table_markdown,
+)
 from umm_reward_evaluator.benchmarks.robotwin2_trace_to_manifest import (
     convert_records as convert_robotwin2,
     filter_records_by_case_size,
@@ -247,6 +251,38 @@ class BenchmarkAdaptersTest(unittest.TestCase):
             self.assertFalse(rows[0]["relation_gate_passed"])
             self.assertEqual(rows[0]["relation_min_case_coverage"], 0.0)
             self.assertIn("| stack_blocks_two | 2 | 0/2 | 2/2 | 2/2 | pass | fail | 0.00 |", markdown)
+
+    def test_robotwin2_selector_table_extracts_key_sweep_rows(self):
+        with TemporaryDirectory() as tmp:
+            selectors_dir = Path(tmp)
+            sweep = {
+                "seed_results": [{"selectors": [{"selector": "rank0", "cases": 2}]}],
+                "aggregate": {
+                    "selectors": [
+                        {"selector": "rank0", "mean_success": 0.0},
+                        {"selector": "random_expected", "mean_success": 0.9},
+                        {"selector": "heuristic:energy_sum_max", "mean_success": 0.0},
+                        {"selector": "prototype:gripper_distribution:same_task:nearest_positive", "mean_success": 1.0},
+                        {
+                            "selector": "prototype:object_relation_distribution:same_task:nearest_positive",
+                            "mean_success": 2.0,
+                            "min_feature_case_coverage": 1.0,
+                        },
+                    ]
+                },
+            }
+            (selectors_dir / "stack_blocks_two_targeted_energy_matched_rankrand_sweep.json").write_text(
+                json.dumps(sweep),
+                encoding="utf-8",
+            )
+
+            rows = collect_selector_rows(selectors_dir)
+            markdown = render_selector_table_markdown(rows)
+            self.assertEqual(rows[0]["task_name"], "stack_blocks_two")
+            self.assertEqual(rows[0]["cases"], 2)
+            self.assertEqual(rows[0]["relation"], 2.0)
+            self.assertEqual(rows[0]["relation_min_coverage"], 1.0)
+            self.assertIn("| stack_blocks_two | 2 | 0.0/2 | 0.9/2 | 0.0/2", markdown)
 
     def test_world_model_diagnostic_label_and_score_conversion(self):
         rows = convert_diagnostic(

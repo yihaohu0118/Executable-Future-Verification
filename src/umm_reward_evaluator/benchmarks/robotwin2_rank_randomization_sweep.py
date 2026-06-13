@@ -31,21 +31,26 @@ from umm_reward_evaluator.benchmarks.robotwin2_selector_baselines import (
 DEFAULT_HEURISTICS = ("smoothness_max", "energy_sum_max", "length_max")
 DEFAULT_PROTOTYPES = (
     ("action_distribution", "same_task", "nearest_positive"),
+    ("object_relation_distribution", "same_task", "nearest_positive"),
     ("gripper_distribution", "same_task", "nearest_positive"),
     ("gripper_distribution", "all_tasks", "nearest_positive"),
     ("gripper_distribution", "same_task", "nearest_pos_neg"),
     ("phase_gripper_distribution", "same_task", "nearest_positive"),
     ("phase_gripper_distribution", "all_tasks", "nearest_positive"),
     ("phase_gripper_distribution", "same_task", "nearest_pos_neg"),
+    ("phase_object_relation_distribution", "same_task", "nearest_positive"),
     ("phase_joint_distribution", "all_tasks", "nearest_positive"),
     ("phase_joint_gripper_distribution", "all_tasks", "nearest_positive"),
     ("phase_joint_gripper_distribution", "same_task", "nearest_pos_neg"),
+    ("phase_object_relation_joint_gripper_distribution", "same_task", "nearest_pos_neg"),
 )
 DEFAULT_TRACE_DISTANCES = (
     ("dtw_action", "same_task"),
+    ("dtw_object_relation", "same_task"),
     ("dtw_gripper", "same_task"),
     ("dtw_joint", "all_tasks"),
     ("dtw_joint_gripper", "all_tasks"),
+    ("dtw_object_relation_joint_gripper", "same_task"),
 )
 
 
@@ -83,13 +88,16 @@ def selector_value(result: dict[str, Any]) -> float:
 
 
 def compact_result(result: dict[str, Any]) -> dict[str, Any]:
-    return {
+    payload = {
         "selector": result["selector"],
         "success": selector_value(result),
         "cases": int(result["overall"]["cases"]),
         "success_rate": selector_value(result) / float(result["overall"]["cases"]),
         "by_task_success": {task: selector_value({"selector": result["selector"], "overall": summary}) for task, summary in result["by_task"].items()},
     }
+    if "feature_coverage" in result:
+        payload["feature_coverage"] = result["feature_coverage"]
+    return payload
 
 
 def evaluate_selectors(
@@ -130,23 +138,31 @@ def aggregate_seed_results(seed_results: list[dict[str, Any]]) -> dict[str, Any]
         successes = np.asarray([float(result["success"]) for result in results], dtype=np.float32)
         rates = np.asarray([float(result["success_rate"]) for result in results], dtype=np.float32)
         by_task_values: dict[str, list[float]] = defaultdict(list)
+        coverage_values = []
         for result in results:
             for task, value in result["by_task_success"].items():
                 by_task_values[task].append(float(value))
+            if "feature_coverage" in result:
+                coverage_values.append(float(result["feature_coverage"].get("case_coverage_rate", 0.0)))
+        item = {
+            "selector": selector,
+            "seeds": len(results),
+            "mean_success": float(successes.mean()),
+            "std_success": float(successes.std(ddof=0)),
+            "min_success": float(successes.min()),
+            "max_success": float(successes.max()),
+            "mean_success_rate": float(rates.mean()),
+            "by_task_mean_success": {
+                task: float(np.asarray(values, dtype=np.float32).mean())
+                for task, values in sorted(by_task_values.items())
+            },
+        }
+        if coverage_values:
+            coverage = np.asarray(coverage_values, dtype=np.float32)
+            item["min_feature_case_coverage"] = float(coverage.min())
+            item["mean_feature_case_coverage"] = float(coverage.mean())
         aggregate.append(
-            {
-                "selector": selector,
-                "seeds": len(results),
-                "mean_success": float(successes.mean()),
-                "std_success": float(successes.std(ddof=0)),
-                "min_success": float(successes.min()),
-                "max_success": float(successes.max()),
-                "mean_success_rate": float(rates.mean()),
-                "by_task_mean_success": {
-                    task: float(np.asarray(values, dtype=np.float32).mean())
-                    for task, values in sorted(by_task_values.items())
-                },
-            }
+            item
         )
     return {"selectors": aggregate}
 

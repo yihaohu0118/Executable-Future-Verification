@@ -18,6 +18,8 @@ MIN_ORACLE_BETTER_CASES="${MIN_ORACLE_BETTER_CASES:-1}"
 mkdir -p "$RUN_ROOT/manifests" "$RUN_ROOT/selectors"
 readiness_json="$RUN_ROOT/selectors/robotwin2_readiness_report.json"
 readiness_md="$RUN_ROOT/selectors/robotwin2_readiness_report.md"
+selector_table_json="$RUN_ROOT/selectors/robotwin2_selector_table.json"
+selector_table_md="$RUN_ROOT/selectors/robotwin2_selector_table.md"
 
 for task in "${TASKS[@]}"; do
   input_dir="$RUN_ROOT/raw/$task"
@@ -113,3 +115,8 @@ python -m umm_reward_evaluator.benchmarks.robotwin2_readiness_report \
   --selectors-dir "$RUN_ROOT/selectors" \
   --output-json "$readiness_json" \
   --output-md "$readiness_md"
+
+python -m umm_reward_evaluator.benchmarks.robotwin2_selector_table \
+  --selectors-dir "$RUN_ROOT/selectors" \
+  --output-json "$selector_table_json" \
+  --output-md "$selector_table_md"
