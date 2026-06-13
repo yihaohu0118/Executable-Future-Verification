@@ -26,6 +26,19 @@ The claim report is the safer artifact to read before writing paper text: it
 translates gate status into allowed claims, prohibited claims, and the next
 missing evidence.
 
+Generate the current one-page status report with:
+
+```bash
+python -m umm_reward_evaluator.benchmarks.iclr_status_report \
+  --evidence-json docs/iclr_evidence_stack_registry.json \
+  --require-evidence-cards \
+  --output-json docs/iclr_status_report_current.json \
+  --output-md docs/iclr_status_report_current.md
+```
+
+This is the best artifact to send to collaborators because it combines the
+stack gate, claim guard, benchmark rows, and evidence-card status.
+
 After a benchmark-level gate passes, generate a registry-entry proposal instead
 of editing `docs/iclr_evidence_stack_registry.json` by hand:
 
