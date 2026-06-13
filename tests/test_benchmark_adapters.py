@@ -55,6 +55,10 @@ from umm_reward_evaluator.benchmarks.robotwin2_raw_integrity_report import (
     render_markdown as render_raw_integrity_markdown,
 )
 from umm_reward_evaluator.benchmarks.robotwin2_partial_raw_rescue_plan import build_rescue_plan
+from umm_reward_evaluator.benchmarks.robotwin2_gripper_aware_trace import (
+    CandidateSpec,
+    split_resume_rows,
+)
 from umm_reward_evaluator.benchmarks.robotwin2_evidence_card import build_card as build_robotwin2_evidence_card
 from umm_reward_evaluator.benchmarks.world_model_diagnostic_evidence_card import (
     build_card as build_world_model_diagnostic_evidence_card,
@@ -265,6 +269,44 @@ class BenchmarkAdaptersTest(unittest.TestCase):
             markdown = render_raw_integrity_markdown(report)
             self.assertIn("seed_1.jsonl", markdown)
             self.assertIn("ready for manifest: `false`", markdown)
+
+    def test_robotwin2_resume_partial_reuses_complete_rows_and_reruns_errors(self):
+        candidates = [
+            CandidateSpec("rank0", 0, [[0.0]], "rank0"),
+            CandidateSpec("full", 1, [[1.0]], "full_expert_trace"),
+            CandidateSpec("timing_negative", 2, [[2.0]], "matched_gripper_timing_negative_probe"),
+        ]
+        existing_rows = [
+            {"candidate_id": "rank0", "success": False, "metadata": {"candidate_source": "rank0"}},
+            {"candidate_id": "full", "success": True, "metadata": {"candidate_source": "full_expert_trace"}},
+            {
+                "candidate_id": "timing_negative",
+                "success": False,
+                "metadata": {
+                    "candidate_source": "matched_gripper_timing_negative_probe",
+                    "candidate_error": "RuntimeError('sim stopped')",
+                },
+            },
+        ]
+
+        reusable_rows, missing_candidates, error_candidate_ids = split_resume_rows(existing_rows, candidates)
+
+        self.assertEqual([row["candidate_id"] for row in reusable_rows], ["rank0", "full"])
+        self.assertEqual([candidate.candidate_id for candidate in missing_candidates], ["timing_negative"])
+        self.assertEqual(error_candidate_ids, ["timing_negative"])
+
+    def test_robotwin2_resume_partial_rejects_ambiguous_rows(self):
+        candidates = [CandidateSpec("rank0", 0, [[0.0]], "rank0")]
+        with self.assertRaisesRegex(ValueError, "unknown candidate_id"):
+            split_resume_rows([{"candidate_id": "unexpected", "metadata": {}}], candidates)
+        with self.assertRaisesRegex(ValueError, "duplicate candidate_id"):
+            split_resume_rows(
+                [
+                    {"candidate_id": "rank0", "metadata": {}},
+                    {"candidate_id": "rank0", "metadata": {}},
+                ],
+                candidates,
+            )
 
     def test_robotwin2_partial_raw_rescue_plan_prioritizes_mixed_partials(self):
         with TemporaryDirectory() as tmp:

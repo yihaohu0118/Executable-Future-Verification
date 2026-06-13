@@ -34,6 +34,65 @@ class CandidateSpec:
     candidate_source: str
 
 
+def candidate_id_from_row(row: dict[str, Any]) -> str:
+    candidate_id = row.get("candidate_id")
+    if candidate_id is None:
+        return ""
+    return str(candidate_id)
+
+
+def row_has_candidate_error(row: dict[str, Any]) -> bool:
+    metadata = row.get("metadata")
+    return isinstance(metadata, dict) and "candidate_error" in metadata
+
+
+def load_jsonl_rows(path: Path) -> list[dict[str, Any]]:
+    if not path.exists() or path.stat().st_size == 0:
+        return []
+    rows: list[dict[str, Any]] = []
+    with path.open("r", encoding="utf-8") as f:
+        for line_no, line in enumerate(f, start=1):
+            text = line.strip()
+            if not text:
+                continue
+            row = json.loads(text)
+            if not isinstance(row, dict):
+                raise ValueError(f"{path}:{line_no} is not a JSON object")
+            rows.append(row)
+    return rows
+
+
+def split_resume_rows(
+    existing_rows: list[dict[str, Any]],
+    candidates: list[CandidateSpec],
+) -> tuple[list[dict[str, Any]], list[CandidateSpec], list[str]]:
+    """Return reusable rows in candidate order and candidates that still need replay."""
+    candidate_ids = [candidate.candidate_id for candidate in candidates]
+    expected_ids = set(candidate_ids)
+    reusable_by_id: dict[str, dict[str, Any]] = {}
+    error_candidate_ids: list[str] = []
+    for row in existing_rows:
+        candidate_id = candidate_id_from_row(row)
+        if candidate_id not in expected_ids:
+            raise ValueError(f"cannot resume partial file with unknown candidate_id={candidate_id!r}")
+        if row_has_candidate_error(row):
+            error_candidate_ids.append(candidate_id)
+            continue
+        if candidate_id in reusable_by_id:
+            raise ValueError(f"cannot resume partial file with duplicate candidate_id={candidate_id!r}")
+        reusable_by_id[candidate_id] = row
+
+    reusable_rows: list[dict[str, Any]] = []
+    missing_candidates: list[CandidateSpec] = []
+    for candidate in candidates:
+        row = reusable_by_id.get(candidate.candidate_id)
+        if row is None:
+            missing_candidates.append(candidate)
+        else:
+            reusable_rows.append(row)
+    return reusable_rows, missing_candidates, error_candidate_ids
+
+
 def class_decorator(task_name: str) -> Any:
     envs_module = importlib.import_module(f"envs.{task_name}")
     try:
@@ -684,8 +743,9 @@ def run_one_seed(
     skip_existing: bool,
     candidate_preset: str,
     skip_replay_planner: bool,
+    resume_partial: bool = False,
 ) -> None:
-    if skip_existing and output.exists() and output.stat().st_size > 0:
+    if skip_existing and not resume_partial and output.exists() and output.stat().st_size > 0:
         print(f"skip existing {output}", flush=True)
         return
 
@@ -694,11 +754,32 @@ def run_one_seed(
         raise SystemExit(f"expert rollout did not succeed for {task_name} seed {seed}")
 
     candidates = build_candidates(actions, candidate_preset)
+    reusable_rows: list[dict[str, Any]] = []
+    if resume_partial:
+        existing_rows = load_jsonl_rows(output)
+        reusable_rows, candidates, error_candidate_ids = split_resume_rows(existing_rows, candidates)
+        if existing_rows:
+            print(
+                "resume partial "
+                f"{output}: reusable={len(reusable_rows)} missing={len(candidates)} "
+                f"candidate_errors_to_rerun={len(error_candidate_ids)}",
+                flush=True,
+            )
+            if error_candidate_ids:
+                print(
+                    "rerun errored candidates: " + ",".join(sorted(set(error_candidate_ids))),
+                    flush=True,
+                )
+        if not candidates:
+            print(f"skip complete existing {output}", flush=True)
+            return
     output.parent.mkdir(parents=True, exist_ok=True)
     tmp_output = output.with_name(f".{output.name}.tmp.{os.getpid()}")
     if tmp_output.exists():
         tmp_output.unlink()
     with tmp_output.open("w", encoding="utf-8") as f:
+        for row in reusable_rows:
+            f.write(json.dumps(row, sort_keys=True) + "\n")
         for candidate in candidates:
             print(f"running seed={seed} {candidate.candidate_id} len={len(candidate.actions)}", flush=True)
             try:
@@ -749,6 +830,15 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--skip-existing", action="store_true")
     parser.add_argument(
+        "--resume-partial",
+        action="store_true",
+        help=(
+            "If a seed JSONL already exists, reuse complete candidate rows and "
+            "run only missing or candidate_error rows. Unknown or duplicate "
+            "candidate IDs fail fast instead of being silently dropped."
+        ),
+    )
+    parser.add_argument(
         "--skip-replay-planner",
         action="store_true",
         help="Experimental speed path: skip official planner construction during fixed qpos replay.",
@@ -783,6 +873,7 @@ def main() -> None:
                     instruction=instruction,
                     output=args.output_dir / f"seed_{seed}.jsonl",
                     skip_existing=args.skip_existing,
+                    resume_partial=args.resume_partial,
                     candidate_preset=args.candidate_preset,
                     skip_replay_planner=args.skip_replay_planner,
                 )
@@ -811,6 +902,7 @@ def main() -> None:
         instruction=instruction,
         output=args.output,
         skip_existing=args.skip_existing,
+        resume_partial=args.resume_partial,
         candidate_preset=args.candidate_preset,
         skip_replay_planner=args.skip_replay_planner,
     )

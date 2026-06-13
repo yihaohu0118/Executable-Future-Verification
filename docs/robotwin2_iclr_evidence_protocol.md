@@ -238,6 +238,32 @@ candidates and no `candidate_error` rows. Do not count partial rows in paper
 tables. If `object_state_rows` is zero, the next run can test phase-gripper
 mechanisms but still cannot support relation/contact verifier claims.
 
+For partial files that contain valid candidate IDs, use resume mode instead of
+rerunning the whole seed:
+
+```bash
+cd /home/yihao_hyh/Executable-Future-Verification
+RESUME_PARTIAL=1 EXECUTE=1 GPU_ID=auto TASKS="handover_block" SEEDS=0 \
+  scripts/robotwin2_bounded_window_launcher.sh \
+  /home/yihao_hyh/efv_runs/robotwin2_iclr_clean_YYYYMMDD
+
+RESUME_PARTIAL=1 EXECUTE=1 GPU_ID=auto TASKS="place_object_basket press_stapler" SEEDS=1 \
+  scripts/robotwin2_bounded_window_launcher.sh \
+  /home/yihao_hyh/efv_runs/robotwin2_iclr_clean_YYYYMMDD
+```
+
+`RESUME_PARTIAL=1` reuses complete existing candidate rows, reruns missing
+candidate IDs, and reruns rows marked with `metadata.candidate_error`. It fails
+fast on unknown or duplicate candidate IDs so a corrupted partial file cannot
+silently enter the paper table. The current high-value partial rescue targets
+are:
+
+| Task | Seed | Existing candidates | Missing candidates | Why it matters |
+| --- | ---: | ---: | ---: | --- |
+| `handover_block` | 0 | 9 | 15 | Mixed success/failure and object-state rows. |
+| `place_object_basket` | 1 | 8 | 16 | Spatial pick/place evidence beyond stack/button tasks. |
+| `press_stapler` | 1 | 8 | 16 | Hard-contact evidence beyond `stamp_seal`. |
+
 For a completed run root, use the finalize script instead of calling analysis
 pieces by hand:
 
