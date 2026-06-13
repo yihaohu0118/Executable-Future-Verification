@@ -580,9 +580,13 @@ def feature_vector(row: dict[str, Any], feature_mode: str, *, dims: dict[str, in
 
 
 def normalize_train_test(x_train: np.ndarray, x_test: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    x_train = np.nan_to_num(x_train.astype(np.float64), nan=0.0, posinf=0.0, neginf=0.0)
+    x_test = np.nan_to_num(x_test.astype(np.float64), nan=0.0, posinf=0.0, neginf=0.0)
     mean = x_train.mean(axis=0, keepdims=True)
     std = x_train.std(axis=0, keepdims=True) + 1e-6
-    return (x_train - mean) / std, (x_test - mean) / std
+    train_normalized = np.nan_to_num((x_train - mean) / std, nan=0.0, posinf=0.0, neginf=0.0)
+    test_normalized = np.nan_to_num((x_test - mean) / std, nan=0.0, posinf=0.0, neginf=0.0)
+    return train_normalized.astype(np.float32), test_normalized.astype(np.float32)
 
 
 def linear_probe_scores(
@@ -601,10 +605,19 @@ def linear_probe_scores(
     train_aug = np.concatenate([x_train, np.ones((x_train.shape[0], 1), dtype=np.float32)], axis=1)
     test_aug = np.concatenate([x_test, np.ones((x_test.shape[0], 1), dtype=np.float32)], axis=1)
     y = np.where(y_train > 0.5, 1.0, -1.0).astype(np.float32)
-    reg = np.eye(train_aug.shape[1], dtype=np.float32) * float(l2)
+    reg = np.eye(train_aug.shape[1], dtype=np.float64) * float(l2)
     reg[-1, -1] = 0.0
-    weights = np.linalg.pinv(train_aug.T @ train_aug + reg) @ train_aug.T @ y
-    return (test_aug @ weights).astype(np.float32)
+    lhs = train_aug.T.astype(np.float64) @ train_aug.astype(np.float64) + reg
+    rhs = train_aug.T.astype(np.float64) @ y.astype(np.float64)
+    try:
+        weights = np.linalg.solve(lhs, rhs)
+    except np.linalg.LinAlgError:
+        try:
+            weights = np.linalg.pinv(lhs) @ rhs
+        except np.linalg.LinAlgError:
+            return np.zeros((x_test.shape[0],), dtype=np.float32)
+    scores = test_aug.astype(np.float64) @ weights
+    return np.nan_to_num(scores, nan=0.0, posinf=0.0, neginf=0.0).astype(np.float32)
 
 
 def prototype_scores(x_train: np.ndarray, y_train: np.ndarray, x_test: np.ndarray, mode: str) -> np.ndarray:

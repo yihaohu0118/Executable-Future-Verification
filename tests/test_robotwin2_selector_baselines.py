@@ -3,6 +3,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
 
+import numpy as np
+
 from umm_reward_evaluator.benchmarks import robotwin2_gripper_aware_trace as trace
 from umm_reward_evaluator.benchmarks.robotwin2_selector_baselines import (
     evaluate_linear_probe,
@@ -12,6 +14,7 @@ from umm_reward_evaluator.benchmarks.robotwin2_selector_baselines import (
     evaluate_random_expected,
     evaluate_rank0,
     feature_coverage,
+    linear_probe_scores,
 )
 from umm_reward_evaluator.benchmarks.robotwin2_antitemplate_diagnostics import diagnose_manifest
 from umm_reward_evaluator.benchmarks.robotwin2_gripper_aware_trace import (
@@ -162,6 +165,17 @@ class RoboTwin2SelectorBaselinesTest(unittest.TestCase):
         self.assertEqual(selector["overall"]["selector_success"], 4)
         self.assertEqual(selector["feature_coverage"]["case_coverage_rate"], 1.0)
         self.assertEqual(len(selector["scored_rows"]), len(self.rows))
+
+    def test_linear_probe_scores_are_finite_for_nonfinite_features(self):
+        scores = linear_probe_scores(
+            x_train=np.asarray([[0.0, float("nan")], [float("inf"), 1.0], [1.0, float("-inf")]], dtype=np.float32),
+            y_train=np.asarray([0.0, 1.0, 1.0], dtype=np.float32),
+            x_test=np.asarray([[float("nan"), 0.0], [2.0, float("inf")]], dtype=np.float32),
+            l2=1.0,
+        )
+
+        self.assertEqual(scores.shape, (2,))
+        self.assertTrue(np.isfinite(scores).all())
 
     def test_nearest_pos_neg_uses_negative_neighbors(self):
         rows = [
