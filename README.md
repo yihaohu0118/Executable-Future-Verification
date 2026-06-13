@@ -183,6 +183,7 @@ automatically for each task:
 
 - `selectors/<task>_targeted_energy_matched_main_table_gate.json`
 - `selectors/<task>_targeted_energy_matched_relation_gate.json`
+- `selectors/robotwin2_readiness_report.{json,md}`
 
 Run the multi-seed anonymous rank/candidate-ID sweep:
 

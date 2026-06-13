@@ -1,8 +1,12 @@
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
+import json
 
 from umm_reward_evaluator.benchmarks.common import annotate_oracle_best, summarize_headroom
 from umm_reward_evaluator.benchmarks.randomize_planner_rank import randomize_manifest_rows
 from umm_reward_evaluator.benchmarks.robotwin2_main_table_gate import evaluate_gate
+from umm_reward_evaluator.benchmarks.robotwin2_readiness_report import collect_reports, render_markdown
 from umm_reward_evaluator.benchmarks.robotwin2_trace_to_manifest import (
     convert_records as convert_robotwin2,
     filter_records_by_case_size,
@@ -211,6 +215,38 @@ class BenchmarkAdaptersTest(unittest.TestCase):
         checks = {check["name"]: check for check in failed_coverage["checks"]}
         self.assertFalse(checks["feature_coverage:object_relation_distribution"]["passed"])
         self.assertEqual(checks["feature_coverage:object_relation_distribution"]["detail"]["case_coverage_rate"], 0.0)
+
+    def test_robotwin2_readiness_report_summarizes_gate_outputs(self):
+        with TemporaryDirectory() as tmp:
+            selectors_dir = Path(tmp)
+            base = {
+                "passed": True,
+                "summary": {"cases": 2, "rank0_success": 0, "oracle_success": 2, "oracle_better": 2},
+                "checks": [{"name": "candidate_error_free", "passed": True, "detail": {}}],
+                "feature_coverages": [],
+            }
+            relation = {
+                "passed": False,
+                "summary": {"cases": 2, "rank0_success": 0, "oracle_success": 2, "oracle_better": 2},
+                "checks": [],
+                "feature_coverages": [{"feature_mode": "object_relation_distribution", "case_coverage_rate": 0.0}],
+            }
+            (selectors_dir / "stack_blocks_two_targeted_energy_matched_main_table_gate.json").write_text(
+                json.dumps(base),
+                encoding="utf-8",
+            )
+            (selectors_dir / "stack_blocks_two_targeted_energy_matched_relation_gate.json").write_text(
+                json.dumps(relation),
+                encoding="utf-8",
+            )
+
+            rows = collect_reports(selectors_dir)
+            markdown = render_markdown(rows)
+            self.assertEqual(rows[0]["task_name"], "stack_blocks_two")
+            self.assertTrue(rows[0]["base_gate_passed"])
+            self.assertFalse(rows[0]["relation_gate_passed"])
+            self.assertEqual(rows[0]["relation_min_case_coverage"], 0.0)
+            self.assertIn("| stack_blocks_two | 2 | 0/2 | 2/2 | 2/2 | pass | fail | 0.00 |", markdown)
 
     def test_world_model_diagnostic_label_and_score_conversion(self):
         rows = convert_diagnostic(

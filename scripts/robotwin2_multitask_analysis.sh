@@ -16,6 +16,8 @@ MIN_MAIN_TABLE_CASES="${MIN_MAIN_TABLE_CASES:-1}"
 MIN_ORACLE_BETTER_CASES="${MIN_ORACLE_BETTER_CASES:-1}"
 
 mkdir -p "$RUN_ROOT/manifests" "$RUN_ROOT/selectors"
+readiness_json="$RUN_ROOT/selectors/robotwin2_readiness_report.json"
+readiness_md="$RUN_ROOT/selectors/robotwin2_readiness_report.md"
 
 for task in "${TASKS[@]}"; do
   input_dir="$RUN_ROOT/raw/$task"
@@ -106,3 +108,8 @@ PY
     --mode failure_rank0_shuffle_rest \
     --remap-candidate-ids
 done
+
+python -m umm_reward_evaluator.benchmarks.robotwin2_readiness_report \
+  --selectors-dir "$RUN_ROOT/selectors" \
+  --output-json "$readiness_json" \
+  --output-md "$readiness_md"
