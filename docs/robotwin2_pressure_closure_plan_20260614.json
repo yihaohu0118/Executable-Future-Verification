@@ -1,0 +1,193 @@
+{
+  "auto_gpu_ids": "2 3 4 5 6 7",
+  "commands": [
+    {
+      "candidate_preset": "targeted_energy_matched",
+      "command": "EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=handover_block SEEDS=0 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=1 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_iclr_clean_20260613_0905",
+      "diagnostic_only": false,
+      "keep_rule": "keep if relation gate passes after completing all 24 candidates",
+      "phase": "resume_relation_partial",
+      "role": "complete high-value partial with mixed success/failure and object-state rows",
+      "run_root": "/home/yihao_hyh/efv_runs/robotwin2_iclr_clean_20260613_0905",
+      "seeds": "0",
+      "task_name": "handover_block"
+    },
+    {
+      "candidate_preset": "targeted_energy_matched",
+      "command": "EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=place_object_basket SEEDS=1 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=1 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_iclr_clean_20260613_0905",
+      "diagnostic_only": false,
+      "keep_rule": "keep if relation gate passes and simple heuristics do not solve it",
+      "phase": "resume_relation_partial",
+      "role": "complete high-value partial with mixed success/failure and object-state rows",
+      "run_root": "/home/yihao_hyh/efv_runs/robotwin2_iclr_clean_20260613_0905",
+      "seeds": "1",
+      "task_name": "place_object_basket"
+    },
+    {
+      "candidate_preset": "targeted_energy_matched",
+      "command": "EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=press_stapler SEEDS=1 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=1 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_iclr_clean_20260613_0905",
+      "diagnostic_only": true,
+      "keep_rule": "diagnostic only; use to show where EFV is not needed",
+      "phase": "resume_relation_partial",
+      "role": "complete permissive partial as a negative control",
+      "run_root": "/home/yihao_hyh/efv_runs/robotwin2_iclr_clean_20260613_0905",
+      "seeds": "1",
+      "task_name": "press_stapler"
+    },
+    {
+      "candidate_preset": "targeted_energy_matched",
+      "command": "EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=stack_blocks_two SEEDS=2-7 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=0 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614",
+      "diagnostic_only": false,
+      "keep_rule": "keep only if EFV-family selector continues to beat DTW/template baselines",
+      "phase": "fresh_pressure",
+      "planned_cases": 6,
+      "role": "known clean mechanism target; extend beyond the 2 complete seeds",
+      "seeds": "2-7",
+      "task_name": "stack_blocks_two"
+    },
+    {
+      "candidate_preset": "targeted_energy_matched",
+      "command": "EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=stack_bowls_two SEEDS=0-5 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=0 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614",
+      "diagnostic_only": false,
+      "keep_rule": "keep if rank0 fails, oracle succeeds, and DTW/template is not near oracle",
+      "phase": "fresh_pressure",
+      "planned_cases": 6,
+      "role": "new multistage contact task for a second DTW-breaking result",
+      "seeds": "0-5",
+      "task_name": "stack_bowls_two"
+    },
+    {
+      "candidate_preset": "targeted_energy_matched",
+      "command": "EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=handover_block SEEDS=2-5 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=0 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614",
+      "diagnostic_only": false,
+      "keep_rule": "keep if relation/contact traces rescue cases beyond gripper-only",
+      "phase": "fresh_pressure",
+      "planned_cases": 4,
+      "role": "relation-ready bimanual transfer candidate",
+      "seeds": "2-5",
+      "task_name": "handover_block"
+    },
+    {
+      "candidate_preset": "targeted_energy_matched",
+      "command": "EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=place_object_basket SEEDS=2-5 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=0 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614",
+      "diagnostic_only": false,
+      "keep_rule": "keep if relation/contact traces beat smoothness and DTW baselines",
+      "phase": "fresh_pressure",
+      "planned_cases": 4,
+      "role": "spatial constraint candidate with object-state coverage",
+      "seeds": "2-5",
+      "task_name": "place_object_basket"
+    },
+    {
+      "candidate_preset": "targeted_energy_matched",
+      "command": "EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=press_stapler SEEDS=2-4 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=0 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614",
+      "diagnostic_only": true,
+      "keep_rule": "diagnostic only; do not count if energy/smoothness solves it",
+      "phase": "fresh_pressure",
+      "planned_cases": 3,
+      "role": "permissive negative-control task",
+      "seeds": "2-4",
+      "task_name": "press_stapler"
+    }
+  ],
+  "decision": "This plan is designed to close the expert-template objection, not to maximize raw success. Promote RoboTwin2 only if the generated gates show at least two DTW-breaking pressured tasks.",
+  "execute": false,
+  "fresh_finalize_command": "PYTHONPATH=src PYTHON_BIN=python3 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_finalize_run.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614 stack_blocks_two stack_bowls_two handover_block place_object_basket press_stapler",
+  "fresh_run_root": "/home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614",
+  "fresh_targets": [
+    {
+      "candidate_preset": "targeted_energy_matched",
+      "diagnostic_only": false,
+      "keep_rule": "keep only if EFV-family selector continues to beat DTW/template baselines",
+      "planned_cases": 6,
+      "role": "known clean mechanism target; extend beyond the 2 complete seeds",
+      "seed_start": 2,
+      "task_name": "stack_blocks_two"
+    },
+    {
+      "candidate_preset": "targeted_energy_matched",
+      "diagnostic_only": false,
+      "keep_rule": "keep if rank0 fails, oracle succeeds, and DTW/template is not near oracle",
+      "planned_cases": 6,
+      "role": "new multistage contact task for a second DTW-breaking result",
+      "seed_start": 0,
+      "task_name": "stack_bowls_two"
+    },
+    {
+      "candidate_preset": "targeted_energy_matched",
+      "diagnostic_only": false,
+      "keep_rule": "keep if relation/contact traces rescue cases beyond gripper-only",
+      "planned_cases": 4,
+      "role": "relation-ready bimanual transfer candidate",
+      "seed_start": 2,
+      "task_name": "handover_block"
+    },
+    {
+      "candidate_preset": "targeted_energy_matched",
+      "diagnostic_only": false,
+      "keep_rule": "keep if relation/contact traces beat smoothness and DTW baselines",
+      "planned_cases": 4,
+      "role": "spatial constraint candidate with object-state coverage",
+      "seed_start": 2,
+      "task_name": "place_object_basket"
+    },
+    {
+      "candidate_preset": "targeted_energy_matched",
+      "diagnostic_only": true,
+      "keep_rule": "diagnostic only; do not count if energy/smoothness solves it",
+      "planned_cases": 3,
+      "role": "permissive negative-control task",
+      "seed_start": 2,
+      "task_name": "press_stapler"
+    }
+  ],
+  "gpu_id": "auto",
+  "kill_rules": [
+    "downgrade RoboTwin2 to diagnostic if DTW/template stays within one success of EFV on all new pressured tasks",
+    "do not count tasks with fewer than two complete cases in the main table",
+    "do not count relation selectors unless the relation gate reports nonzero coverage for every claimed case",
+    "do not use GPU0/1 unless the owner explicitly releases active training jobs"
+  ],
+  "num_sweep_seeds": 10,
+  "readiness_requirements": [
+    "at least four base-ready RoboTwin2 tasks with rank0 below oracle",
+    "at least two pressured tasks where EFV-family selectors beat the best DTW/template baseline",
+    "at least three strong-envelope tasks after candidate-ID/rank remap and simple heuristic controls",
+    "at least one relation/contact rescue task with object-relation trace coverage",
+    "no headline task where energy, smoothness, length, or DTW reaches oracle"
+  ],
+  "required_candidates_per_case": 24,
+  "resume_finalize_commands": [
+    "PYTHONPATH=src PYTHON_BIN=python3 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_finalize_run.sh /home/yihao_hyh/efv_runs/robotwin2_iclr_clean_20260613_0905 handover_block place_object_basket press_stapler"
+  ],
+  "resume_targets": [
+    {
+      "candidate_preset": "targeted_energy_matched",
+      "diagnostic_only": false,
+      "keep_rule": "keep if relation gate passes after completing all 24 candidates",
+      "role": "complete high-value partial with mixed success/failure and object-state rows",
+      "run_root": "/home/yihao_hyh/efv_runs/robotwin2_iclr_clean_20260613_0905",
+      "seeds": "0",
+      "task_name": "handover_block"
+    },
+    {
+      "candidate_preset": "targeted_energy_matched",
+      "diagnostic_only": false,
+      "keep_rule": "keep if relation gate passes and simple heuristics do not solve it",
+      "role": "complete high-value partial with mixed success/failure and object-state rows",
+      "run_root": "/home/yihao_hyh/efv_runs/robotwin2_iclr_clean_20260613_0905",
+      "seeds": "1",
+      "task_name": "place_object_basket"
+    },
+    {
+      "candidate_preset": "targeted_energy_matched",
+      "diagnostic_only": true,
+      "keep_rule": "diagnostic only; use to show where EFV is not needed",
+      "role": "complete permissive partial as a negative control",
+      "run_root": "/home/yihao_hyh/efv_runs/robotwin2_iclr_clean_20260613_0905",
+      "seeds": "1",
+      "task_name": "press_stapler"
+    }
+  ],
+  "task_config": "demo_clean_k5"
+}

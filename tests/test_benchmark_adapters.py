@@ -66,6 +66,11 @@ from umm_reward_evaluator.benchmarks.robotwin2_evidence_window_plan import (
     render_markdown as render_evidence_window_markdown,
     render_shell_script as render_evidence_window_shell_script,
 )
+from umm_reward_evaluator.benchmarks.robotwin2_pressure_closure_plan import (
+    build_pressure_closure_plan,
+    render_markdown as render_pressure_closure_markdown,
+    render_shell_script as render_pressure_closure_shell_script,
+)
 from umm_reward_evaluator.benchmarks.robotwin2_gripper_aware_trace import (
     CandidateSpec,
     split_resume_rows,
@@ -525,6 +530,50 @@ class BenchmarkAdaptersTest(unittest.TestCase):
         markdown = render_evidence_window_markdown(plan)
         self.assertIn("- gpu ids: `2, 3, 4`", markdown)
         self.assertIn("| `place_object_basket` | `3` |", markdown)
+
+    def test_robotwin2_pressure_closure_plan_targets_template_objection(self):
+        plan = build_pressure_closure_plan(fresh_run_root="/runs/robotwin2_pressure")
+
+        self.assertFalse(plan["execute"])
+        self.assertEqual(plan["auto_gpu_ids"], "2 3 4 5 6 7")
+        self.assertNotIn("0 1", plan["auto_gpu_ids"])
+        self.assertIn("DTW-breaking pressured tasks", plan["decision"])
+        commands_by_task = {command["task_name"]: command for command in plan["commands"]}
+        self.assertIn("stack_blocks_two", commands_by_task)
+        self.assertIn("stack_bowls_two", commands_by_task)
+        self.assertIn("AUTO_GPU_IDS='2 3 4 5 6 7'", commands_by_task["stack_blocks_two"]["command"])
+        self.assertIn("RESUME_PARTIAL=0", commands_by_task["stack_blocks_two"]["command"])
+        self.assertIn("SEEDS=2-7", commands_by_task["stack_blocks_two"]["command"])
+        self.assertTrue(commands_by_task["press_stapler"]["diagnostic_only"])
+        self.assertIn("scripts/robotwin2_finalize_run.sh /runs/robotwin2_pressure", plan["fresh_finalize_command"])
+
+        resume_commands = [command for command in plan["commands"] if command["phase"] == "resume_relation_partial"]
+        self.assertEqual({command["task_name"] for command in resume_commands}, {"handover_block", "place_object_basket", "press_stapler"})
+        self.assertTrue(all("RESUME_PARTIAL=1" in command["command"] for command in resume_commands))
+        markdown = render_pressure_closure_markdown(plan)
+        self.assertIn("RoboTwin2 Pressure Closure Plan", markdown)
+        self.assertIn("expert-template objection", markdown)
+        shell_script = render_pressure_closure_shell_script(plan)
+        self.assertIn("set -euo pipefail", shell_script)
+        self.assertIn("Mode: EXECUTE=0", shell_script)
+        self.assertIn("dry-run finalize fresh pressure run", shell_script)
+
+    def test_robotwin2_pressure_closure_plan_can_skip_resume_partials(self):
+        plan = build_pressure_closure_plan(
+            fresh_run_root="/runs/robotwin2_pressure",
+            include_resume_partials=False,
+            execute=True,
+            auto_gpu_ids="3,4",
+        )
+
+        self.assertEqual(plan["auto_gpu_ids"], "3,4")
+        self.assertTrue(plan["execute"])
+        self.assertFalse(plan["resume_targets"])
+        self.assertTrue(all(command["phase"] == "fresh_pressure" for command in plan["commands"]))
+        shell_script = render_pressure_closure_shell_script(plan)
+        self.assertIn("Mode: EXECUTE=1", shell_script)
+        self.assertIn("AUTO_GPU_IDS=3,4", shell_script)
+        self.assertIn("finalize fresh pressure run", shell_script)
 
     def test_robotwin2_main_table_gate_checks_errors_and_feature_coverage(self):
         rows = convert_robotwin2(
