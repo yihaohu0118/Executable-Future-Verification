@@ -90,18 +90,24 @@ occupy the GPUs. The next safe action is either:
 - use CPU-only/documentation work to improve gates, summaries, and benchmark
   selection logic.
 
-For future reruns, use:
+For the next rerun, prefer the bounded sequential launcher:
 
 ```bash
 cd /home/yihao_hyh/Executable-Future-Verification
-EXECUTE=1 GPU_ID=auto SEEDS=0-7 scripts/robotwin2_iclr_window_launcher.sh \
-  /home/yihao_hyh/efv_runs/robotwin2_iclr_window_YYYYMMDD
+EXECUTE=1 RUN_ANALYSIS_AFTER=1 GPU_ID=auto SEEDS=0-7 \
+  scripts/robotwin2_bounded_window_launcher.sh \
+  /home/yihao_hyh/efv_runs/robotwin2_bounded_window_YYYYMMDD
 ```
 
-With `GPU_ID=auto`, the launcher starts only if a GPU is already free; if all
-GPUs are occupied, it exits without waiting, killing, or preempting processes.
-Do not run with an explicit GPU while the current Ray training jobs occupy the
-same GPUs.
+The bounded launcher defaults to four tasks:
+`stack_blocks_two stamp_seal place_object_basket stack_bowls_two`. It runs one
+task at a time, uses the same GPU guard/conflict monitor as the lower-level
+trace script, and performs multitask analysis only after the trace jobs finish.
+
+With `GPU_ID=auto`, a task starts only if a GPU is already free; if all GPUs are
+occupied, it exits without waiting, killing, or preempting processes. Do not
+run with an explicit GPU while the current Ray training jobs occupy the same
+GPUs.
 
 Check whether it is safe to start with:
 

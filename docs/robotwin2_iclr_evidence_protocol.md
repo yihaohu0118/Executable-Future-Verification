@@ -134,13 +134,13 @@ Downgrade to a diagnostic/workshop paper if:
 
 ## Suggested Next Command, When Ready To Run
 
-Use the primary-window launcher first. It defaults to dry-run mode and prints
-the six-task command matrix without executing simulations:
+Use the bounded-window launcher first. It defaults to dry-run mode and prints
+the four-task command matrix without executing simulations:
 
 ```bash
 cd /home/yihao_hyh/Executable-Future-Verification
-GPU_ID=auto SEEDS=0-7 scripts/robotwin2_iclr_window_launcher.sh \
-  /home/yihao_hyh/efv_runs/robotwin2_iclr_window_YYYYMMDD
+GPU_ID=auto SEEDS=0-7 scripts/robotwin2_bounded_window_launcher.sh \
+  /home/yihao_hyh/efv_runs/robotwin2_bounded_window_YYYYMMDD
 ```
 
 Set `EXECUTE=1` only when the GPU is free. With `GPU_ID=auto`, the launcher
@@ -163,3 +163,7 @@ temporary file and is moved into `raw/<task>/seed_<n>.jsonl` only after all
 candidates for that seed are complete. This keeps interrupted windows from
 producing partial JSONL files that later fail the manifest gate with
 `candidate_count_mismatch`.
+
+Use the full six-task `robotwin2_iclr_window_launcher.sh` only after the
+bounded window confirms complete candidate pools and at least three base-ready
+tasks.

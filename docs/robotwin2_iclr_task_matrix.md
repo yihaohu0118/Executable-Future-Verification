@@ -21,9 +21,24 @@ to cover distinct failure modes.
 | 5 | `stack_bowls_two` | Relation variant | bowls align in xy and target heights with open grippers | Tests whether the stack relation result transfers beyond blocks. |
 | 6 | `press_stapler` | Local contact timing | gripper contact near stapler contact point | Helps separate contact-timing tasks from spatial-relation tasks. |
 
-Run all six before deciding whether RoboTwin2 is strong enough. The paper-level
-gate requires at least four base-ready tasks and at least one relation-rescue
-task.
+Because the latest dev2 window was interrupted by Ray training reclaiming GPUs,
+the next rerun should be the bounded sequential four-task window, not the full
+six-task window:
+
+```bash
+cd /home/yihao_hyh/Executable-Future-Verification
+EXECUTE=1 RUN_ANALYSIS_AFTER=1 GPU_ID=auto SEEDS=0-7 \
+  scripts/robotwin2_bounded_window_launcher.sh \
+  /home/yihao_hyh/efv_runs/robotwin2_bounded_window_YYYYMMDD
+```
+
+The bounded default is `stack_blocks_two stamp_seal place_object_basket
+stack_bowls_two`. This keeps one relation task, one contact positive control,
+one object-containment relation task, and one relation transfer task while
+minimizing GPU contention. If this four-task window produces complete candidate
+pools and at least three base-ready tasks, expand to the six-task primary
+window. The paper-level gate still requires at least four base-ready tasks and
+at least one relation-rescue task before RoboTwin2 can be used as main evidence.
 
 ## Diagnostic-Only Tasks
 
