@@ -84,6 +84,10 @@ first and replaces `raw/<task>/seed_<n>.jsonl` only after the full candidate
 pool finishes. Interrupted runs therefore should not create official partial
 JSONL files in `raw/`; hidden temp files can be inspected for debugging but
 must not be converted into manifests for paper tables.
+Before manifest conversion, run `robotwin2_raw_integrity_report.py` on
+`RUN_ROOT/raw`. The bounded launcher runs this automatically when
+`RUN_ANALYSIS_AFTER=1`; a failed audit means the raw directory is not paper-table
+ready.
 Do not use `--skip-replay-planner` for main-table data. Set
 `RUN_ANALYSIS_AFTER=1` or run `scripts/robotwin2_multitask_analysis.sh`
 afterward, and require the generated relation gate to pass before using

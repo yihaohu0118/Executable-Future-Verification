@@ -42,6 +42,10 @@ from umm_reward_evaluator.benchmarks.robotwin2_selector_table import (
     collect_selector_rows,
     render_markdown as render_selector_table_markdown,
 )
+from umm_reward_evaluator.benchmarks.robotwin2_raw_integrity_report import (
+    audit_raw_root,
+    render_markdown as render_raw_integrity_markdown,
+)
 from umm_reward_evaluator.benchmarks.robotwin2_trace_field_audit import audit_rows
 from umm_reward_evaluator.benchmarks.robotwin2_trace_to_manifest import (
     convert_records as convert_robotwin2,
@@ -217,6 +221,31 @@ class BenchmarkAdaptersTest(unittest.TestCase):
         self.assertEqual(dropped[0]["drop_reasons"], ["candidate_error"])
         self.assertEqual(dropped[0]["candidate_error_count"], 1)
         self.assertEqual(dropped[0]["candidate_error_candidate_ids"], ["policy:ckpt:1"])
+
+    def test_robotwin2_raw_integrity_report_flags_partial_and_temp_files(self):
+        with TemporaryDirectory() as tmp:
+            raw = Path(tmp) / "raw"
+            task_dir = raw / "stack_blocks_two"
+            task_dir.mkdir(parents=True)
+            complete_rows = [
+                {"task_name": "stack_blocks_two", "seed": 0, "candidate_id": "a", "success": False},
+                {"task_name": "stack_blocks_two", "seed": 0, "candidate_id": "b", "success": True},
+            ]
+            partial_rows = [{"task_name": "stack_blocks_two", "seed": 1, "candidate_id": "a", "success": False}]
+            (task_dir / "seed_0.jsonl").write_text("\n".join(json.dumps(row) for row in complete_rows) + "\n")
+            (task_dir / "seed_1.jsonl").write_text("\n".join(json.dumps(row) for row in partial_rows) + "\n")
+            (task_dir / "seed_2.jsonl").write_text("")
+            (task_dir / ".seed_3.jsonl.tmp.123").write_text(json.dumps(partial_rows[0]) + "\n")
+
+            report = audit_raw_root(raw, required_candidates_per_case=2)
+            self.assertFalse(report["ready_for_manifest"])
+            self.assertEqual(report["task_summary"]["stack_blocks_two"]["complete"], 1)
+            self.assertEqual(report["task_summary"]["stack_blocks_two"]["partial"], 1)
+            self.assertEqual(report["task_summary"]["stack_blocks_two"]["empty"], 1)
+            self.assertEqual(report["num_temp_files"], 1)
+            markdown = render_raw_integrity_markdown(report)
+            self.assertIn("seed_1.jsonl", markdown)
+            self.assertIn("ready for manifest: `false`", markdown)
 
     def test_robotwin2_main_table_gate_checks_errors_and_feature_coverage(self):
         rows = convert_robotwin2(

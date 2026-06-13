@@ -51,9 +51,19 @@ done
 
 if [ "$EXECUTE" = "1" ] && [ "$RUN_ANALYSIS_AFTER" = "1" ]; then
   echo
+  echo "=== raw integrity audit ==="
+  PYTHON_BIN_CMD="${PYTHON_BIN:-python3}"
+  PYTHONPATH=src \
+  "$PYTHON_BIN_CMD" -m umm_reward_evaluator.benchmarks.robotwin2_raw_integrity_report \
+    --raw-root "$RUN_ROOT/raw" \
+    --required-candidates-per-case "$REQUIRE_CANDIDATES_PER_CASE" \
+    --output-json "$RUN_ROOT/selectors/robotwin2_raw_integrity_report.json" \
+    --output-md "$RUN_ROOT/selectors/robotwin2_raw_integrity_report.md"
+
+  echo
   echo "=== multitask analysis ==="
   PYTHONPATH=src \
-  PYTHON_BIN="${PYTHON_BIN:-python3}" \
+  PYTHON_BIN="$PYTHON_BIN_CMD" \
   REQUIRE_CANDIDATES_PER_CASE="$REQUIRE_CANDIDATES_PER_CASE" \
   NUM_SWEEP_SEEDS="$NUM_SWEEP_SEEDS" \
     scripts/robotwin2_multitask_analysis.sh "$RUN_ROOT" $TASKS

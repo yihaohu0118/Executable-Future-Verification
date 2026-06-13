@@ -164,6 +164,20 @@ candidates for that seed are complete. This keeps interrupted windows from
 producing partial JSONL files that later fail the manifest gate with
 `candidate_count_mismatch`.
 
+Before converting raw traces, audit the raw directory:
+
+```bash
+python -m umm_reward_evaluator.benchmarks.robotwin2_raw_integrity_report \
+  --raw-root RUN_ROOT/raw \
+  --required-candidates-per-case 24 \
+  --output-json RUN_ROOT/selectors/robotwin2_raw_integrity_report.json \
+  --output-md RUN_ROOT/selectors/robotwin2_raw_integrity_report.md
+```
+
+The bounded launcher runs this audit automatically before multitask analysis
+when `RUN_ANALYSIS_AFTER=1`. If the audit fails, do not convert the raw traces
+into a paper-table manifest.
+
 Use the full six-task `robotwin2_iclr_window_launcher.sh` only after the
 bounded window confirms complete candidate pools and at least three base-ready
 tasks.
