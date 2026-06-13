@@ -99,6 +99,11 @@ solved by expert-trajectory similarity. It is useful as a mechanism diagnostic,
 but it is not yet strong enough as a main-table claim that the verifier has
 learned executability beyond template matching.
 
+Operationally, the next RoboTwin2 window should run on GPU2-7 only. As of
+2026-06-14, dev2 has GPU2-7 idle but the root filesystem is full, so the blocker
+is disk space rather than GPU availability. See
+`docs/dev2_recovery_status_20260614.md` before restarting persistent waiters.
+
 ## Repository Layout
 
 - `docs/proposal.md`: active paper proposal and current evidence.
@@ -110,6 +115,8 @@ learned executability beyond template matching.
   adapter, K=5 results, selector controls.
 - `docs/robotwin2_antitemplate_k5_results.md`: latest anti-template RoboTwin2
   K=5 results and interpretation.
+- `docs/dev2_recovery_status_20260614.md`: current dev2 disk/GPU status and
+  safe RoboTwin2 recovery sequence.
 - `docs/reviewer_risk_antitemplate_plan.md`: reviewer-risk assessment and the
   next anti-template experiments required for a stronger paper claim.
 - `docs/future_verification_manifest_protocol.md`: shared candidate JSONL
@@ -119,6 +126,8 @@ learned executability beyond template matching.
 - `docs/umm_reward_evaluator_proposal.md`: archived legacy UMM/NanoWM proposal.
 - `src/umm_reward_evaluator/benchmarks/`: current benchmark adapters,
   validators, selector baselines, and controls.
+- `scripts/dev2_efv_preflight_audit.sh`: read-only dev2 disk/GPU/result audit
+  before launching RoboTwin2 windows.
 - `tests/`: lightweight tests for manifest conversion, controls, and selector
   baselines.
 
