@@ -67,7 +67,10 @@ progress, but it is not ready as the second main ICLR benchmark.
 
 ## Next Safe Action
 
-When GPUs are free, run the six-task primary window:
+Update: the six-task primary window was launched after dev2 GPUs became free.
+See `docs/robotwin2_iclr_window_run_20260613_0802.md`.
+
+For future reruns, use:
 
 ```bash
 cd /home/yihao_hyh/Executable-Future-Verification
