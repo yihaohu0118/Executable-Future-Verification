@@ -18,6 +18,7 @@
         "action_only",
         "candidate_id_or_rank_remap"
       ],
+      "evidence_card": "docs/evidence_cards/robocasa365_hard_negative_n16.json",
       "evidence": "RoboCasa365 regenerated random-position n16 hard-negative table: EEF+gripper distribution-only 63.6/64, object-only 31.0/64, action-only 28.4/64, rank0 0/64, oracle 64/64."
     },
     {

@@ -1,0 +1,40 @@
+{
+  "benchmark": "RoboCasa365",
+  "year": 2026,
+  "layer": "executable_primary",
+  "status": "passed",
+  "cases": 64,
+  "tasks": 4,
+  "rank0_success": 0,
+  "oracle_success": 64,
+  "method_name": "EEF+gripper distribution execution-envelope selector",
+  "method_success": 63.6,
+  "best_non_oracle_baseline_name": "object-only trace selector",
+  "best_non_oracle_baseline_success": 31.0,
+  "secondary_baselines": {
+    "action_only_endpoint_free": 28.4,
+    "object_only": 31.0,
+    "proprio_only": 63.0,
+    "robot_only": 64.0,
+    "same_task_nearest_positive_eef_gripper": 59.0,
+    "source_only_no_task_id_transfer": 25.6,
+    "four_shot_shared_onehot": 59.2,
+    "eight_shot_shared_onehot": 62.2
+  },
+  "shortcut_controls": [
+    "rank0",
+    "random",
+    "energy_or_magnitude",
+    "action_only",
+    "candidate_id_or_rank_remap"
+  ],
+  "mechanism_claim": "Under energy-matched hard negatives, compact robot execution-envelope traces recover successful futures that rank0, action-only, and object-only controls miss.",
+  "counterintuitive_observation": "Object-only traces are much weaker than robot/EEF/gripper traces, and adding action statistics to state traces does not improve the selector.",
+  "claim_boundary": "Supports few-shot task/contact-conditioned executable-future verification on RoboCasa365; does not support zero-shot cross-task general executability or real-robot deployment.",
+  "evidence_docs": [
+    "docs/robocasa365_demo_candidate_probe.md",
+    "docs/robocasa365_temporal_shuffle_diagnostic.md",
+    "docs/benchmark_expansion_roadmap.md"
+  ],
+  "registry_evidence": "RoboCasa365 regenerated random-position n16 hard-negative table: EEF+gripper distribution-only 63.6/64, object-only 31.0/64, action-only 28.4/64, rank0 0/64, oracle 64/64."
+}

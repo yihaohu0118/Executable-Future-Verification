@@ -4,6 +4,10 @@ from tempfile import TemporaryDirectory
 import json
 
 from umm_reward_evaluator.benchmarks.common import annotate_oracle_best, summarize_headroom
+from umm_reward_evaluator.benchmarks.evidence_card_validator import (
+    validate_card,
+    render_markdown as render_evidence_card_markdown,
+)
 from umm_reward_evaluator.benchmarks.iclr_evidence_stack_gate import (
     evaluate_evidence_stack,
     render_markdown as render_iclr_stack_markdown,
@@ -92,6 +96,41 @@ class BenchmarkAdaptersTest(unittest.TestCase):
         self.assertEqual(summary["cases"], 2)
         self.assertEqual(summary["rank0_success"], 1)
         self.assertEqual(summary["oracle_success"], 2)
+
+    def test_evidence_card_validator_requires_controls_and_claim_boundary(self):
+        card = {
+            "benchmark": "RoboCasa365",
+            "year": 2026,
+            "layer": "executable_primary",
+            "status": "passed",
+            "cases": 64,
+            "tasks": 4,
+            "rank0_success": 0,
+            "oracle_success": 64,
+            "method_success": 63.6,
+            "best_non_oracle_baseline_success": 31.0,
+            "shortcut_controls": [
+                "rank0",
+                "random",
+                "energy_or_magnitude",
+                "action_only",
+                "candidate_id_or_rank_remap",
+            ],
+            "mechanism_claim": "EEF/gripper envelopes recover executable futures.",
+            "counterintuitive_observation": "Object-only is much weaker than robot-only.",
+            "claim_boundary": "Few-shot task/contact-conditioned only.",
+            "evidence_docs": ["docs/robocasa365_demo_candidate_probe.md"],
+            "registry_evidence": "rank0 0/64, oracle 64/64, method 63.6/64.",
+        }
+        result = validate_card(card)
+        self.assertTrue(result["passed"])
+        self.assertIn("RoboCasa365", render_evidence_card_markdown(result))
+
+        missing = dict(card)
+        missing["shortcut_controls"] = ["rank0"]
+        failed = validate_card(missing)
+        self.assertFalse(failed["passed"])
+        self.assertTrue(any("missing shortcut controls" in error for error in failed["errors"]))
 
     def test_robotwin2_trace_conversion(self):
         rows = convert_robotwin2(

@@ -1,0 +1,13 @@
+{
+  "errors": [],
+  "passed": true,
+  "summary": {
+    "benchmark": "RoboCasa365",
+    "best_non_oracle_baseline_success": 31.0,
+    "cases": 64,
+    "method_success": 63.6,
+    "status": "passed",
+    "tasks": 4
+  },
+  "warnings": []
+}
