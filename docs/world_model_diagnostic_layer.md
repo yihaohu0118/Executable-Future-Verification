@@ -39,6 +39,20 @@ The dataset card says the full dataset is coming soon. The 40-sample subset can
 be used to validate our adapter and prompt-level evaluation pipeline, but it
 should not be counted as a passed paper-level diagnostic benchmark.
 
+Convert the prompt metadata into generation/evaluation requests with:
+
+```bash
+python -m umm_reward_evaluator.benchmarks.robotrustbench_requests \
+  --metadata /path/to/RoboTrustBench_Dataset/metadata.jsonl \
+  --image-root /path/to/RoboTrustBench_Dataset \
+  --output-requests RUN_ROOT/robotrustbench_generation_requests.jsonl \
+  --output-summary RUN_ROOT/robotrustbench_generation_requests.summary.json
+```
+
+This request file is not a result table. It is the input for generating
+candidate futures and collecting human/MLLM reliability judgments. Only those
+judgment rows should be converted into the shared diagnostic manifest.
+
 ## Required Diagnostic Manifest
 
 Use `world_model_diagnostic_to_manifest.py` only after generated videos or

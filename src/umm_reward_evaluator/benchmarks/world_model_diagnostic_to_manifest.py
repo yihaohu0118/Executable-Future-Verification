@@ -146,6 +146,8 @@ def convert_records(
             "action_text",
             "action_condition",
             "scenario",
+            "category",
+            "subcategory",
             "failure_category",
             "criterion",
             "dimension",
@@ -156,9 +158,17 @@ def convert_records(
             "verdict",
             "initial_image_path",
             "reference_video_path",
+            "file_name",
+            "json_file",
+            "image_source",
+            "sample_id",
         ):
             if key in record and key not in metadata:
                 metadata[key] = record[key]
+        if "scenario" not in metadata and "category" in metadata:
+            metadata["scenario"] = metadata["category"]
+        if "failure_category" not in metadata and "subcategory" in metadata:
+            metadata["failure_category"] = metadata["subcategory"]
 
         rows.append(
             {
@@ -172,7 +182,7 @@ def convert_records(
                 "rollout_video_layout": str(record.get("rollout_video_layout", "single_video")),
                 "actions": _as_actions(record),
                 "oracle_success": _success(record, score_key=score_key, threshold=threshold),
-                "instruction": record.get("instruction", record.get("prompt")),
+                "instruction": record.get("instruction", record.get("prompt", record.get("language_instruction"))),
                 "planner_score": record.get("planner_score", record.get("model_score")),
                 "oracle_return": record.get("oracle_return", record.get("score")),
                 "oracle_progress": record.get("oracle_progress"),
