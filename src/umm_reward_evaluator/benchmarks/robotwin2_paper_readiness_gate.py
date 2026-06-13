@@ -21,8 +21,11 @@ HARD_POSITIVE_MARKERS = ("hard_positive", "positive_probe", "time_warp", "suffix
 MATCHED_NEGATIVE_MARKERS = ("matched_", "energy_matched", "negative_probe")
 ENVELOPE_COLUMNS = (
     "gripper",
+    "contact_envelope",
+    "contact_envelope_contrast",
     "phase_gripper",
     "linear_gripper",
+    "linear_contact_envelope",
     "linear_phase_gripper",
     "linear_phase_joint_gripper",
     "relation",
@@ -39,6 +42,7 @@ BASELINE_COLUMNS = (
     "linear_action",
     "dtw_action",
     "dtw_gripper",
+    "dtw_contact_envelope",
     "dtw_joint",
     "dtw_joint_gripper",
     "dtw_relation",

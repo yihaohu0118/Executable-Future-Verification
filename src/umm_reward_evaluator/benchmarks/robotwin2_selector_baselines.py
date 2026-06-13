@@ -30,6 +30,7 @@ PROTOTYPE_FEATURES = (
     "object_distribution",
     "object_relation_distribution",
     "gripper_distribution",
+    "contact_envelope",
     "phase_gripper_distribution",
     "phase_object_distribution",
     "phase_object_relation_distribution",
@@ -46,6 +47,7 @@ TRACE_DISTANCE_FEATURES = (
     "dtw_object",
     "dtw_object_relation",
     "dtw_gripper",
+    "dtw_contact_envelope",
     "dtw_joint_gripper",
     "dtw_object_joint_gripper",
     "dtw_object_relation_joint_gripper",
@@ -261,6 +263,8 @@ def feature_required_trace_keys(feature_mode: str) -> list[str]:
         return ["actor_pose_vector", "actor_pairwise_distances"]
     if feature_mode in {"gripper_distribution", "phase_gripper_distribution", "dtw_gripper"}:
         return ["left_gripper", "right_gripper"]
+    if feature_mode in {"contact_envelope", "dtw_contact_envelope"}:
+        return ["joint_action_vector", "left_gripper", "right_gripper"]
     if feature_mode in {"phase_joint_distribution"}:
         return ["joint_action_vector"]
     if feature_mode in {"phase_joint_gripper_distribution", "dtw_joint_gripper"}:
@@ -371,6 +375,95 @@ def phase_trace_distribution_features(
     return np.concatenate(parts).astype(np.float32) if parts else np.zeros((1,), dtype=np.float32)
 
 
+def gripper_scalar_sequence(trace: list[dict[str, Any]]) -> np.ndarray:
+    snapshots = trace if trace else [{}]
+    values = []
+    for snapshot in snapshots:
+        if not isinstance(snapshot, dict):
+            snapshot = {}
+        left = padded(snapshot.get("left_gripper"), 1)[0]
+        right = padded(snapshot.get("right_gripper"), 1)[0]
+        values.append(float((left + right) * 0.5))
+    return np.asarray(values, dtype=np.float32)
+
+
+def _contact_mask(gripper: np.ndarray) -> np.ndarray:
+    if gripper.size == 0:
+        return np.asarray([False])
+    gmin = float(gripper.min())
+    gmax = float(gripper.max())
+    threshold = 0.5 if gmax - gmin < 1e-6 else gmin + 0.5 * (gmax - gmin)
+    return gripper >= threshold
+
+
+def _window_stats(values: np.ndarray, mask: np.ndarray) -> np.ndarray:
+    if values.ndim == 1:
+        values = values[:, None]
+    if not mask.any():
+        return np.concatenate([values.mean(axis=0), values.std(axis=0), np.zeros((values.shape[1],), dtype=np.float32)])
+    selected = values[mask]
+    return np.concatenate([selected.mean(axis=0), selected.std(axis=0), selected[-1] - selected[0]]).astype(np.float32)
+
+
+def contact_envelope_sequence(trace: list[dict[str, Any]], dims: dict[str, int]) -> np.ndarray:
+    snapshots = trace if trace else [{}]
+    joint_dim = dims.get("joint_action_vector", 1)
+    gripper = gripper_scalar_sequence(snapshots)
+    joints = np.stack(
+        [
+            padded(snapshot.get("joint_action_vector"), joint_dim) if isinstance(snapshot, dict) else np.zeros(joint_dim, dtype=np.float32)
+            for snapshot in snapshots
+        ]
+    )
+    joint_norm = np.linalg.norm(joints, axis=1)
+    if len(gripper) > 1:
+        gripper_delta = np.concatenate([[0.0], np.diff(gripper)]).astype(np.float32)
+        joint_delta = np.concatenate([[0.0], np.linalg.norm(np.diff(joints, axis=0), axis=1)]).astype(np.float32)
+    else:
+        gripper_delta = np.zeros((len(gripper),), dtype=np.float32)
+        joint_delta = np.zeros((len(gripper),), dtype=np.float32)
+    time = np.linspace(0.0, 1.0, num=len(gripper), dtype=np.float32)
+    contact = _contact_mask(gripper).astype(np.float32)
+    return np.stack([time, gripper, gripper_delta, np.abs(gripper_delta), joint_norm, joint_delta, contact], axis=1).astype(np.float32)
+
+
+def contact_envelope_features(trace: list[dict[str, Any]], dims: dict[str, int]) -> np.ndarray:
+    seq = contact_envelope_sequence(trace, dims)
+    gripper = seq[:, 1]
+    contact = seq[:, -1] > 0.5
+    switches = np.abs(np.diff(contact.astype(np.float32))).sum() if len(contact) > 1 else 0.0
+    if contact.any():
+        indexes = np.flatnonzero(contact)
+        first = float(indexes[0] / max(len(contact) - 1, 1))
+        last = float(indexes[-1] / max(len(contact) - 1, 1))
+        span = float(last - first)
+    else:
+        first = last = span = 0.0
+    prefix = np.arange(len(contact)) < (np.flatnonzero(contact)[0] if contact.any() else len(contact))
+    suffix = np.arange(len(contact)) > (np.flatnonzero(contact)[-1] if contact.any() else -1)
+    global_stats = np.concatenate([seq.mean(axis=0), seq.std(axis=0), seq.min(axis=0), seq.max(axis=0), seq[-1] - seq[0]])
+    phase_stats = np.concatenate(
+        [
+            _window_stats(seq, prefix),
+            _window_stats(seq, contact),
+            _window_stats(seq, suffix),
+        ]
+    )
+    scalar_stats = np.asarray(
+        [
+            len(seq),
+            contact.mean(),
+            switches / max(len(contact) - 1, 1),
+            first,
+            last,
+            span,
+            float(gripper.max() - gripper.min()),
+        ],
+        dtype=np.float32,
+    )
+    return np.concatenate([global_stats, phase_stats, scalar_stats]).astype(np.float32)
+
+
 def object_relation_frame(snapshot: dict[str, Any], dims: dict[str, int]) -> np.ndarray:
     pose_dim = dims.get("actor_pose_vector", 1)
     pair_dim = dims.get("actor_pairwise_distances", 1)
@@ -459,6 +552,8 @@ def feature_vector(row: dict[str, Any], feature_mode: str, *, dims: dict[str, in
     if feature_mode == "gripper_distribution":
         keys = ["left_gripper", "right_gripper"]
         return trace_distribution_features(state_trace(row), keys, dims or state_dims([row], keys))
+    if feature_mode == "contact_envelope":
+        return contact_envelope_features(state_trace(row), dims or state_dims([row], ["joint_action_vector", "left_gripper", "right_gripper"]))
     if feature_mode == "phase_gripper_distribution":
         keys = ["left_gripper", "right_gripper"]
         return phase_trace_distribution_features(state_trace(row), keys, dims or state_dims([row], keys))
@@ -551,6 +646,8 @@ def trace_sequence(row: dict[str, Any], feature_mode: str, *, dims: dict[str, in
         return object_relation_sequence(state_trace(row), dims or state_dims([row], ["actor_pose_vector", "actor_pairwise_distances"]))
     elif feature_mode == "dtw_gripper":
         keys = ["left_gripper", "right_gripper"]
+    elif feature_mode == "dtw_contact_envelope":
+        return contact_envelope_sequence(state_trace(row), dims or state_dims([row], ["joint_action_vector", "left_gripper", "right_gripper"]))
     elif feature_mode == "dtw_joint_gripper":
         keys = ["joint_action_vector", "left_gripper", "right_gripper"]
     elif feature_mode == "dtw_object_joint_gripper":

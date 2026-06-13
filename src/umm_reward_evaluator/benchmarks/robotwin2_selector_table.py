@@ -17,12 +17,16 @@ SELECTOR_COLUMNS = (
     ("action", "prototype:action_distribution:same_task:nearest_positive"),
     ("linear_action", "linear_probe:action_distribution:same_task:ridge_l2_1"),
     ("gripper", "prototype:gripper_distribution:same_task:nearest_positive"),
+    ("contact_envelope", "prototype:contact_envelope:same_task:nearest_positive"),
+    ("contact_envelope_contrast", "prototype:contact_envelope:same_task:nearest_pos_neg"),
     ("phase_gripper", "prototype:phase_gripper_distribution:same_task:nearest_positive"),
     ("linear_gripper", "linear_probe:gripper_distribution:same_task:ridge_l2_1"),
+    ("linear_contact_envelope", "linear_probe:contact_envelope:same_task:ridge_l2_1"),
     ("linear_phase_gripper", "linear_probe:phase_gripper_distribution:same_task:ridge_l2_1"),
     ("linear_phase_joint_gripper", "linear_probe:phase_joint_gripper_distribution:all_tasks:ridge_l2_1"),
     ("dtw_action", "trace_distance:dtw_action:same_task:nearest_positive"),
     ("dtw_gripper", "trace_distance:dtw_gripper:same_task:nearest_positive"),
+    ("dtw_contact_envelope", "trace_distance:dtw_contact_envelope:same_task:nearest_positive"),
     ("dtw_joint", "trace_distance:dtw_joint:all_tasks:nearest_positive"),
     ("dtw_joint_gripper", "trace_distance:dtw_joint_gripper:all_tasks:nearest_positive"),
     ("relation", "prototype:object_relation_distribution:same_task:nearest_positive"),
@@ -132,13 +136,13 @@ def render_markdown(rows: list[dict[str, Any]], *, title: str = "RoboTwin2 Selec
     lines = [
         f"# {title}",
         "",
-        "| Task | Cases | Rank0 | Random | Energy | Smooth | Length | Lin action | Gripper | Lin grip | Lin phase grip | Lin phase J+G | DTW J+G | Relation+robot | Lin rel+robot | Rel cov |",
-        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+        "| Task | Cases | Rank0 | Random | Energy | Smooth | Length | Lin action | Gripper | Contact env | Contact contrast | Lin contact | Lin phase grip | Lin phase J+G | DTW contact | DTW J+G | Relation+robot | Lin rel+robot | Rel cov |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
     for row in rows:
         cases = int(row.get("cases", 0))
         lines.append(
-            "| {task} | {cases} | {rank0} | {random} | {energy} | {smooth} | {length} | {linear_action} | {gripper} | {linear_gripper} | {linear_phase_gripper} | {linear_phase_joint_gripper} | {dtw_joint_gripper} | {phase_relation_robot} | {linear_phase_relation_robot} | {coverage} |".format(
+            "| {task} | {cases} | {rank0} | {random} | {energy} | {smooth} | {length} | {linear_action} | {gripper} | {contact_envelope} | {contact_envelope_contrast} | {linear_contact_envelope} | {linear_phase_gripper} | {linear_phase_joint_gripper} | {dtw_contact_envelope} | {dtw_joint_gripper} | {phase_relation_robot} | {linear_phase_relation_robot} | {coverage} |".format(
                 task=row["task_name"],
                 cases=cases,
                 rank0=_fmt(row.get("rank0"), cases),
@@ -148,9 +152,12 @@ def render_markdown(rows: list[dict[str, Any]], *, title: str = "RoboTwin2 Selec
                 length=_fmt(row.get("length"), cases),
                 linear_action=_fmt_selector(row, "linear_action", cases),
                 gripper=_fmt_selector(row, "gripper", cases),
-                linear_gripper=_fmt_selector(row, "linear_gripper", cases),
+                contact_envelope=_fmt_selector(row, "contact_envelope", cases),
+                contact_envelope_contrast=_fmt_selector(row, "contact_envelope_contrast", cases),
+                linear_contact_envelope=_fmt_selector(row, "linear_contact_envelope", cases),
                 linear_phase_gripper=_fmt_selector(row, "linear_phase_gripper", cases),
                 linear_phase_joint_gripper=_fmt_selector(row, "linear_phase_joint_gripper", cases),
+                dtw_contact_envelope=_fmt_selector(row, "dtw_contact_envelope", cases),
                 dtw_joint_gripper=_fmt_selector(row, "dtw_joint_gripper", cases),
                 phase_relation_robot=_fmt_selector(row, "phase_relation_robot", cases),
                 linear_phase_relation_robot=_fmt_selector(row, "linear_phase_relation_robot", cases),

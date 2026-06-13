@@ -439,6 +439,36 @@ class RoboTwin2SelectorBaselinesTest(unittest.TestCase):
         )
         self.assertEqual(prototype["overall"]["selector_success"], 4)
 
+    def test_contact_envelope_separates_same_global_gripper_statistics(self):
+        rows = [
+            make_row("handover", "seed=0", "rank0_bad_phase", 0, False, [[1.0], [1.0], [1.0], [1.0]], [1.0, 0.0, 1.0, 0.0]),
+            make_row("handover", "seed=0", "success_contact_phase", 1, True, [[1.0], [1.0], [1.0], [1.0]], [0.0, 1.0, 1.0, 0.0]),
+            make_row("handover", "seed=1", "rank0_bad_phase", 0, False, [[1.0], [1.0], [1.0], [1.0]], [1.0, 0.0, 1.0, 0.0]),
+            make_row("handover", "seed=1", "success_contact_phase", 1, True, [[1.0], [1.0], [1.0], [1.0]], [0.0, 1.0, 1.0, 0.0]),
+        ]
+        gripper = evaluate_prototype(
+            rows,
+            feature_mode="gripper_distribution",
+            scope="same_task",
+            prototype_mode="nearest_positive",
+        )
+        contact = evaluate_prototype(
+            rows,
+            feature_mode="contact_envelope",
+            scope="same_task",
+            prototype_mode="nearest_positive",
+        )
+        contact_dtw = evaluate_trace_distance(
+            rows,
+            feature_mode="dtw_contact_envelope",
+            scope="same_task",
+        )
+
+        self.assertEqual(gripper["overall"]["selector_success"], 0)
+        self.assertEqual(contact["overall"]["selector_success"], 2)
+        self.assertEqual(contact_dtw["overall"]["selector_success"], 2)
+        self.assertEqual(contact["feature_coverage"]["case_coverage_rate"], 1.0)
+
     def test_dtw_trace_distance_is_a_strong_expert_similarity_control(self):
         selector = evaluate_trace_distance(
             self.rows,
@@ -557,19 +587,19 @@ class RoboTwin2SelectorBaselinesTest(unittest.TestCase):
             remap_candidate_ids=True,
             heuristics=("smoothness_max",),
             prototypes=(parse_prototype_config("gripper_distribution:same_task:nearest_pos_neg"),),
-            trace_distances=(parse_trace_distance_config("dtw_gripper:same_task"),),
-            linear_probes=(parse_linear_probe_config("gripper_distribution:same_task"),),
+            trace_distances=(parse_trace_distance_config("dtw_contact_envelope:same_task"),),
+            linear_probes=(parse_linear_probe_config("contact_envelope:same_task"),),
         )
         selectors = {row["selector"] for row in summary["aggregate"]["selectors"]}
         self.assertIn("heuristic:smoothness_max", selectors)
         self.assertIn("prototype:gripper_distribution:same_task:nearest_pos_neg", selectors)
-        self.assertIn("trace_distance:dtw_gripper:same_task:nearest_positive", selectors)
-        self.assertIn("linear_probe:gripper_distribution:same_task:ridge_l2_1", selectors)
+        self.assertIn("trace_distance:dtw_contact_envelope:same_task:nearest_positive", selectors)
+        self.assertIn("linear_probe:contact_envelope:same_task:ridge_l2_1", selectors)
         self.assertNotIn("heuristic:energy_sum_max", selectors)
         self.assertEqual(summary["heuristics"], ["smoothness_max"])
         self.assertEqual(summary["prototypes"], ["gripper_distribution:same_task:nearest_pos_neg"])
-        self.assertEqual(summary["trace_distances"], ["dtw_gripper:same_task"])
-        self.assertEqual(summary["linear_probes"], ["gripper_distribution:same_task"])
+        self.assertEqual(summary["trace_distances"], ["dtw_contact_envelope:same_task"])
+        self.assertEqual(summary["linear_probes"], ["contact_envelope:same_task"])
 
     def test_kshot_sweep_reports_source_plus_target_calibration(self):
         summary = run_kshot_sweep(
