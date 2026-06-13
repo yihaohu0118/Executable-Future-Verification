@@ -2,10 +2,16 @@
 
 Date: 2026-06-13
 
-Audited run root on dev2:
+Audited source run root on dev2:
 
 ```text
 /home/yihao_hyh/efv_runs/robotwin2_targeted_energy_matched_multitask_official_20260612
+```
+
+Latest CPU-only reanalysis run root on dev2:
+
+```text
+/home/yihao_hyh/efv_runs/robotwin2_official_reanalysis_latest_20260613
 ```
 
 This is a CPU-only audit of already-generated artifacts. No new simulation,
@@ -23,8 +29,12 @@ The run has two base-ready tasks with oracle headroom:
 | `stack_blocks_two` | 2 | 0/2 | 2/2 | 2 | 2 | 2 | 2 |
 
 This is enough to show anti-template pressure exists in the current candidate
-pool. It is not enough to support the ICLR claim because the selector does not
-beat strong shortcut baselines.
+pool. The latest selector reanalysis also reveals a useful mechanism signal:
+`stack_blocks_two` is solved by a learned phase-gripper verifier even though
+DTW-action, DTW-gripper, DTW-joint+gripper, smoothness, energy, action-only,
+and gripper prototype selectors fail. The result is still not paper-ready
+because there are only two base-ready tasks, no relation coverage, and
+`open_laptop` is fully explained by smoothness/gripper/DTW shortcuts.
 
 ## Paper-Readiness Gate
 
@@ -38,7 +48,7 @@ beat strong shortcut baselines.
 | Matched negative tasks | fail | 2/3 |
 | DTW-diverse success tasks | pass | 2/2 |
 | Low-DTW negative tasks | pass | 2/2 |
-| Strong envelope tasks | fail | 0/3 |
+| Strong envelope tasks | fail | 1/3: `stack_blocks_two` |
 | Relation rescue tasks | fail | 0/1 |
 
 ## Anti-Template Pressure Gate
@@ -48,7 +58,7 @@ The newly generated pressure report also fails:
 | Check | Status | Detail |
 | --- | --- | --- |
 | Anti-template pressure tasks | pass | `open_laptop`, `stack_blocks_two` |
-| Method beats template tasks | fail | 0/2 |
+| Method beats template tasks | fail | 1/2: `stack_blocks_two` |
 | No template-oracle risk | fail | `open_laptop` |
 
 Per-task risk:
@@ -56,25 +66,30 @@ Per-task risk:
 | Task | Best EFV-family method | Best DTW template | Best simple baseline | Risk |
 | --- | ---: | ---: | ---: | --- |
 | `open_laptop` | gripper 2.0/2 | DTW-gripper 2.0/2 | smoothness 2.0/2 | DTW/template and smoothness explain the result |
-| `stack_blocks_two` | gripper 0.0/2 | DTW-gripper 0.0/2 | random 0.9/2 | current envelope features fail under pressure |
+| `stack_blocks_two` | linear phase-gripper 2.0/2 | best DTW 0.0/2 | random 0.9/2 | no current pressure-gate risk |
 
 ## Interpretation
 
-This is a valuable negative result. The candidate pool already contains the
+This is a mixed but useful result. The candidate pool already contains the
 right diagnostic pressure: successful non-template futures and failed low-DTW
-futures. The failure is not merely "we need more probes"; the current selector
-family is not strong enough on RoboTwin2.
+futures. On `stack_blocks_two`, the result is now a genuine positive mechanism
+signal: phase-aware gripper statistics beat DTW/template and simple action
+shortcuts. On `open_laptop`, the benchmark remains too permissive because
+smoothness, gripper prototype, and DTW-gripper all reach oracle.
 
-The right next experiment is therefore not a bigger version of the same table.
-It should test a more contact/relation-aware verifier against the same pressure:
+The right next experiment is therefore not a bigger version of the old
+gripper-only table. It should test whether the phase-gripper mechanism survives
+more tasks and whether relation/contact traces can rescue tasks where gripper
+alone is ambiguous:
 
 - add relation coverage to the RoboTwin2 traces;
 - explicitly score gripper timing relative to object/contact events;
 - compare against DTW-joint/gripper/relation and smoothness as first-class
   baselines;
 - keep `open_laptop` as a permissiveness counterexample, not a headline win;
-- make `stack_blocks_two` the main mechanism target because it currently breaks
-  gripper-only and DTW-gripper shortcuts.
+- make `stack_blocks_two` the main mechanism target because it breaks
+  action-only, smoothness, and DTW shortcuts while rewarding phase-gripper
+  timing.
 
 ## Current Decision
 
@@ -82,8 +97,11 @@ Do not count RoboTwin2 as the second benchmark yet.
 
 The strongest current statement is:
 
-> RoboTwin2 confirms that anti-template pressure can be constructed, but the
-> present EFV selector does not yet beat DTW/template or smoothness shortcuts.
+> RoboTwin2 confirms that anti-template pressure can be constructed. On
+> `stack_blocks_two`, a phase-aware gripper verifier recovers executable
+> futures where DTW/template and smoothness shortcuts fail. On `open_laptop`,
+> the same result is not meaningful because simple shortcuts already solve the
+> task.
 
 The next paper-relevant milestone is at least four base-ready RoboTwin2 tasks,
 with at least two pressured tasks where an EFV-family verifier beats the best

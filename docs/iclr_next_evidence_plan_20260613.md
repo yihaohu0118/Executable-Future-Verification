@@ -37,9 +37,12 @@ same candidate construction will not resolve this risk.
 
 Current RoboTwin2 artifacts already expose the sharper version of this risk.
 See `docs/robotwin2_current_evidence_audit_20260613.md`: the official two-task
-run has anti-template pressure, but the EFV-family selector does not yet beat
-DTW/template or smoothness shortcuts. This makes the next milestone a selector
-mechanism improvement under pressure, not just a larger rerun.
+run has anti-template pressure. The latest reanalysis shows one promising
+positive signal, `stack_blocks_two`, where a phase-gripper verifier beats
+DTW/template and smoothness shortcuts. It also shows one permissive
+counterexample, `open_laptop`, where smoothness/gripper/DTW all reach oracle.
+This makes the next milestone a mechanism-preserving expansion under pressure,
+not just a larger rerun.
 
 ## Required Evidence Before A Strong Submission
 

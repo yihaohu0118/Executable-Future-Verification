@@ -108,13 +108,13 @@ def render_markdown(rows: list[dict[str, Any]], *, title: str = "RoboTwin2 Selec
     lines = [
         f"# {title}",
         "",
-        "| Task | Cases | Rank0 | Random | Energy | Smooth | Length | Lin action | Gripper | Lin grip | DTW J+G | Relation+robot | Lin rel+robot | Rel cov |",
-        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+        "| Task | Cases | Rank0 | Random | Energy | Smooth | Length | Lin action | Gripper | Lin grip | Lin phase grip | Lin phase J+G | DTW J+G | Relation+robot | Lin rel+robot | Rel cov |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
     for row in rows:
         cases = int(row.get("cases", 0))
         lines.append(
-            "| {task} | {cases} | {rank0} | {random} | {energy} | {smooth} | {length} | {linear_action} | {gripper} | {linear_gripper} | {dtw_joint_gripper} | {phase_relation_robot} | {linear_phase_relation_robot} | {coverage} |".format(
+            "| {task} | {cases} | {rank0} | {random} | {energy} | {smooth} | {length} | {linear_action} | {gripper} | {linear_gripper} | {linear_phase_gripper} | {linear_phase_joint_gripper} | {dtw_joint_gripper} | {phase_relation_robot} | {linear_phase_relation_robot} | {coverage} |".format(
                 task=row["task_name"],
                 cases=cases,
                 rank0=_fmt(row.get("rank0"), cases),
@@ -125,6 +125,8 @@ def render_markdown(rows: list[dict[str, Any]], *, title: str = "RoboTwin2 Selec
                 linear_action=_fmt(row.get("linear_action"), cases),
                 gripper=_fmt(row.get("gripper"), cases),
                 linear_gripper=_fmt(row.get("linear_gripper"), cases),
+                linear_phase_gripper=_fmt(row.get("linear_phase_gripper"), cases),
+                linear_phase_joint_gripper=_fmt(row.get("linear_phase_joint_gripper"), cases),
                 dtw_joint_gripper=_fmt(row.get("dtw_joint_gripper"), cases),
                 phase_relation_robot=_fmt(row.get("phase_relation_robot"), cases),
                 linear_phase_relation_robot=_fmt(row.get("linear_phase_relation_robot"), cases),
