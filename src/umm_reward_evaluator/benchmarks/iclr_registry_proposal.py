@@ -104,6 +104,7 @@ def propose_diagnostic_entry(
     diagnostic_gate: dict[str, Any],
     selector_table: dict[str, Any],
     verifier_selector: str,
+    readiness_gate: dict[str, Any] | None = None,
     extra_controls: list[str] | None = None,
     evidence: str | None = None,
 ) -> dict[str, Any]:
@@ -128,7 +129,15 @@ def propose_diagnostic_entry(
     controls = list(dict.fromkeys(DEFAULT_DIAGNOSTIC_CONTROLS + list(extra_controls or [])))
     selector_beats_proxy = verifier_success > _as_float(proxy.get("selector_success"))
     has_required_controls = REQUIRED_DIAGNOSTIC_STACK_CONTROLS.issubset(set(controls))
-    status = "passed" if diagnostic_gate.get("passed") and selector_beats_proxy and has_required_controls else "pending"
+    readiness_passed = bool(readiness_gate.get("passed")) if readiness_gate is not None else None
+    status = (
+        "passed"
+        if diagnostic_gate.get("passed")
+        and selector_beats_proxy
+        and has_required_controls
+        and (readiness_passed is not False)
+        else "pending"
+    )
 
     return {
         "benchmark": benchmark,
@@ -146,7 +155,7 @@ def propose_diagnostic_entry(
         or (
             "Generated from world-model diagnostic gate and selector-table outputs. "
             f"Diagnostic gate passed={bool(diagnostic_gate.get('passed'))}; verifier beats proxy={selector_beats_proxy}; "
-            f"required controls present={has_required_controls}."
+            f"required controls present={has_required_controls}; diagnostic readiness passed={readiness_passed}."
         ),
     }
 
@@ -202,6 +211,7 @@ def main() -> None:
     diagnostic.add_argument("--layer", required=True, choices=["world_model_diagnostic", "trust_diagnostic", "robustness_diagnostic"])
     diagnostic.add_argument("--diagnostic-gate-json", type=Path, required=True)
     diagnostic.add_argument("--selector-table-json", type=Path, required=True)
+    diagnostic.add_argument("--diagnostic-readiness-json", type=Path)
     diagnostic.add_argument("--verifier-selector", required=True)
     diagnostic.add_argument("--shortcut-control", action="append", default=[])
     diagnostic.add_argument("--evidence")
@@ -223,6 +233,7 @@ def main() -> None:
             layer=args.layer,
             diagnostic_gate=_load_json(args.diagnostic_gate_json),
             selector_table=_load_json(args.selector_table_json),
+            readiness_gate=_load_json(args.diagnostic_readiness_json) if args.diagnostic_readiness_json else None,
             verifier_selector=args.verifier_selector,
             extra_controls=list(args.shortcut_control),
             evidence=args.evidence,

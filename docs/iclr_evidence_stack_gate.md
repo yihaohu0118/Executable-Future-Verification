@@ -79,6 +79,7 @@ python -m umm_reward_evaluator.benchmarks.iclr_registry_proposal diagnostic \
   --layer world_model_diagnostic \
   --diagnostic-gate-json RUN_ROOT/selectors/world_model_diagnostic_gate.json \
   --selector-table-json RUN_ROOT/selectors/world_model_diagnostic_selector_table.json \
+  --diagnostic-readiness-json RUN_ROOT/selectors/world_model_diagnostic_readiness_gate.json \
   --verifier-selector verifier_score:metadata.efv_score \
   --shortcut-control energy_or_magnitude \
   --shortcut-control action_only \
@@ -87,8 +88,8 @@ python -m umm_reward_evaluator.benchmarks.iclr_registry_proposal diagnostic \
 ```
 
 The proposal tool remains conservative: failed gates, missing diagnostic
-controls, or verifier scores that do not beat the visual/model-score proxy
-produce `status: pending`.
+controls, failed diagnostic readiness, or verifier scores that do not beat the
+visual/model-score proxy produce `status: pending`.
 
 The default gate requires:
 

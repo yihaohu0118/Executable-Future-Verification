@@ -122,6 +122,22 @@ The table reports rank0, random-expected, planner/model-score proxy,
 the planner/model proxy before the diagnostic benchmark should be counted in
 the ICLR evidence stack.
 
+Then bind the manifest gate and selector table with the paper-level diagnostic
+readiness gate:
+
+```bash
+python -m umm_reward_evaluator.benchmarks.world_model_diagnostic_readiness_gate \
+  --diagnostic-gate-json RUN_ROOT/selectors/world_model_diagnostic_gate.json \
+  --selector-table-json RUN_ROOT/selectors/world_model_diagnostic_selector_table.json \
+  --verifier-selector verifier_score:metadata.efv_score \
+  --output-json RUN_ROOT/selectors/world_model_diagnostic_readiness_gate.json \
+  --output-md RUN_ROOT/selectors/world_model_diagnostic_readiness_gate.md
+```
+
+Only if this readiness gate passes should the registry proposal be generated
+with `--diagnostic-readiness-json`. A passed manifest gate alone is not enough
+for the diagnostic layer to count as the third benchmark.
+
 ## How This Fits The EFV Story
 
 RoboCasa365 and RoboTwin2 test executable action candidates in simulation.

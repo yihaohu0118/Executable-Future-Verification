@@ -68,6 +68,10 @@ from umm_reward_evaluator.benchmarks.world_model_diagnostic_selector_table impor
     evaluate_selectors as evaluate_diagnostic_selectors,
     render_markdown as render_diagnostic_selector_markdown,
 )
+from umm_reward_evaluator.benchmarks.world_model_diagnostic_readiness_gate import (
+    evaluate_readiness as evaluate_diagnostic_readiness,
+    render_markdown as render_diagnostic_readiness_markdown,
+)
 from umm_reward_evaluator.benchmarks.world_model_diagnostic_closure_plan import (
     build_closure_plan,
     render_markdown as render_diagnostic_closure_markdown,
@@ -1196,6 +1200,18 @@ class BenchmarkAdaptersTest(unittest.TestCase):
         markdown = render_registry_proposal_markdown(passed)
         self.assertIn("MiraBench", markdown)
 
+        readiness_failed = propose_diagnostic_entry(
+            benchmark="MiraBench",
+            year=2026,
+            layer="world_model_diagnostic",
+            diagnostic_gate=diagnostic_gate,
+            selector_table=selector_table,
+            verifier_selector="verifier_score:metadata.efv_score",
+            readiness_gate={"passed": False},
+            extra_controls=["energy_or_magnitude", "action_only", "candidate_id_or_rank_remap"],
+        )
+        self.assertEqual(readiness_failed["status"], "pending")
+
     def test_world_model_diagnostic_closure_plan_prioritizes_public_paths(self):
         entries = [
             {
@@ -1501,6 +1517,38 @@ class BenchmarkAdaptersTest(unittest.TestCase):
         markdown = render_diagnostic_selector_markdown(result)
         self.assertIn("`metadata.efv_score`", markdown)
         self.assertIn("planner_or_model_score", markdown)
+
+    def test_world_model_diagnostic_readiness_requires_verifier_to_beat_proxy(self):
+        diagnostic_gate = {"passed": True, "summary": {"cases": 2, "tasks": ["pick_mug"], "oracle_success": 2}}
+        selector_table = {
+            "summary": {"cases": 2, "tasks": ["pick_mug"]},
+            "selectors": [
+                {"selector": "rank0", "cases": 2, "covered_cases": 2, "selector_success": 0.0},
+                {"selector": "random_expected", "cases": 2, "covered_cases": 2, "selector_success": 1.0},
+                {"selector": "planner_or_model_score", "cases": 2, "covered_cases": 2, "selector_success": 0.0},
+                {"selector": "verifier_score:metadata.efv_score", "cases": 2, "covered_cases": 2, "selector_success": 2.0},
+                {"selector": "oracle", "cases": 2, "covered_cases": 2, "selector_success": 2.0},
+            ],
+        }
+        ready = evaluate_diagnostic_readiness(
+            diagnostic_gate=diagnostic_gate,
+            selector_table=selector_table,
+            verifier_selector="verifier_score:metadata.efv_score",
+            min_verifier_proxy_margin=1.0,
+        )
+        self.assertTrue(ready["passed"])
+        self.assertIn("`verifier_beats_proxy` | pass", render_diagnostic_readiness_markdown(ready))
+
+        selector_table["selectors"][3]["selector_success"] = 0.5
+        failed = evaluate_diagnostic_readiness(
+            diagnostic_gate=diagnostic_gate,
+            selector_table=selector_table,
+            verifier_selector="verifier_score:metadata.efv_score",
+            min_verifier_proxy_margin=1.0,
+        )
+        self.assertFalse(failed["passed"])
+        checks = {check["name"]: check["passed"] for check in failed["checks"]}
+        self.assertFalse(checks["verifier_beats_proxy"])
 
     def test_rank_randomization_groups_by_task_and_case(self):
         rows = []
