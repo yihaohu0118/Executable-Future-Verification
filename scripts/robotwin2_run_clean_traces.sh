@@ -102,20 +102,32 @@ check_free_disk() {
 }
 
 if [ "$GPU_ID" = "auto" ] && [ "$DRY_RUN" != "1" ]; then
-  selected_gpu="$(find_free_gpu || true)"
-  if [ -z "$selected_gpu" ]; then
-    echo "$(ts) no free GPU found for $TASK_NAME; exiting without starting simulation" >&2
-    exit 75
-  fi
-  if [ "$GPU_STABLE_SECONDS" -gt 0 ]; then
-    echo "$(ts) GPU $selected_gpu looks free; rechecking after ${GPU_STABLE_SECONDS}s"
-    sleep "$GPU_STABLE_SECONDS"
-    if ! gpu_is_free "$selected_gpu"; then
-      echo "$(ts) GPU $selected_gpu no longer free for $TASK_NAME; exiting without starting simulation" >&2
+  while true; do
+    selected_gpu="$(find_free_gpu || true)"
+    if [ -z "$selected_gpu" ]; then
+      if [ "$WAIT_FOR_GPU" = "1" ]; then
+        echo "$(ts) no free GPU in AUTO_GPU_IDS=[$AUTO_GPU_IDS] for $TASK_NAME; waiting ${GPU_WAIT_SECONDS}s"
+        sleep "$GPU_WAIT_SECONDS"
+        continue
+      fi
+      echo "$(ts) no free GPU found for $TASK_NAME; exiting without starting simulation" >&2
       exit 75
     fi
-  fi
-  GPU_ID="$selected_gpu"
+    if [ "$GPU_STABLE_SECONDS" -gt 0 ]; then
+      echo "$(ts) GPU $selected_gpu looks free; rechecking after ${GPU_STABLE_SECONDS}s"
+      sleep "$GPU_STABLE_SECONDS"
+      if ! gpu_is_free "$selected_gpu"; then
+        if [ "$WAIT_FOR_GPU" = "1" ]; then
+          echo "$(ts) GPU $selected_gpu no longer free for $TASK_NAME; retrying auto GPU selection"
+          continue
+        fi
+        echo "$(ts) GPU $selected_gpu no longer free for $TASK_NAME; exiting without starting simulation" >&2
+        exit 75
+      fi
+    fi
+    GPU_ID="$selected_gpu"
+    break
+  done
 fi
 
 cmd=(
