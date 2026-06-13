@@ -84,6 +84,55 @@ that failed or stalled on seed 0:
 | `place_object_basket` | 6 | `1-7` | seed 0 expert initialization failed |
 | `press_stapler` | 7 | `1-7` | seed 0 expert initialization failed |
 
+## Resource Conflict Handling
+
+At `2026-06-13T09:26Z`, GPUs 0-3 acquired large
+`ray::WorkerDict.actor_rollout_update_actor` processes, each using about 72-76
+GB. These processes were treated as user training/rollout work and were not
+modified.
+
+To avoid interfering with the user's training jobs, only the EFV/RoboTwin2
+processes sharing those GPUs were terminated:
+
+| Stopped PID | Task | GPU | Reason |
+| ---: | --- | ---: | --- |
+| `2435959` | `stack_blocks_two` | 0 | shared GPU with user ray worker |
+| `2436036` | `stamp_seal` | 1 | shared GPU with user ray worker |
+| `2476425` | `open_microwave` | 2 | shared GPU with user ray worker |
+| `2456348` | `open_laptop` | 3 | shared GPU with user ray worker |
+
+The following EFV tasks continued because their GPUs had no user ray worker:
+
+| Continuing task | GPU |
+| --- | ---: |
+| `handover_block` | 5 |
+| `stack_bowls_two` | 4 |
+| `place_object_basket` | 6 |
+| `press_stapler` | 7 |
+
+Partial traces from stopped tasks may still be useful for debugging, but they
+should not be treated as complete ICLR evidence unless rerun later on free GPUs.
+
+The interrupted partial JSONL files were moved, not deleted, to keep the final
+`raw/` directory from mixing complete and interrupted candidate pools:
+
+```text
+interrupted_raw/stack_blocks_two_seed_0.jsonl.interrupted_092847
+interrupted_raw/stamp_seal_seed_0.jsonl.interrupted_092847
+interrupted_raw/open_laptop_seed_0.jsonl.interrupted_092847
+interrupted_raw/open_microwave_seed_1.jsonl.interrupted_092847
+```
+
+When GPUs 0-3 became free again, the interrupted tasks were restarted with the
+same guard and bad-seed continuation enabled:
+
+| Restart task | GPU | Seeds |
+| --- | ---: | --- |
+| `stack_blocks_two` | 0 | `0-7` |
+| `stamp_seal` | 1 | `0-7` |
+| `open_microwave` | 2 | `0-7` |
+| `open_laptop` | 3 | `0-7` |
+
 ## Launch Command
 
 The run was started as a background driver. Each task is launched through
