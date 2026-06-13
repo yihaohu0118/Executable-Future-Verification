@@ -213,7 +213,12 @@ def main() -> None:
             "prototype:phase_gripper_distribution:same_task:nearest_pos_neg",
             "prototype:gripper_distribution:same_task:nearest_positive",
             "prototype:gripper_distribution:same_task:nearest_pos_neg",
+            "prototype:object_relation_distribution:same_task:nearest_positive",
+            "prototype:phase_object_relation_distribution:same_task:nearest_positive",
+            "prototype:phase_object_relation_joint_gripper_distribution:same_task:nearest_pos_neg",
             "trace_distance:dtw_gripper:same_task:nearest_positive",
+            "trace_distance:dtw_object_relation:same_task:nearest_positive",
+            "trace_distance:dtw_object_relation_joint_gripper:same_task:nearest_positive",
             "trace_distance:dtw_joint_gripper:all_tasks:nearest_positive",
         ]
         args.output_md.write_text(markdown_report(summary, selectors=focus), encoding="utf-8")

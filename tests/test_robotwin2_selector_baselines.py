@@ -376,6 +376,8 @@ class RoboTwin2SelectorBaselinesTest(unittest.TestCase):
             remap_candidate_ids=True,
         )
         self.assertIn("heuristic:smoothness_max", summary["by_selector"])
+        self.assertIn("prototype:object_relation_distribution:same_task:nearest_positive", summary["by_selector"])
+        self.assertIn("trace_distance:dtw_object_relation:same_task:nearest_positive", summary["by_selector"])
         self.assertGreater(summary["num_rows"], 0)
         sources = summary["by_selector"]["heuristic:smoothness_max"]["source_counts"]
         self.assertTrue(set(sources).issubset({"success_probe", "failure_probe"}))
