@@ -35,6 +35,12 @@ The next experiments must therefore test non-template successes and
 near-template failures before expanding the benchmark list. More samples of the
 same candidate construction will not resolve this risk.
 
+Current RoboTwin2 artifacts already expose the sharper version of this risk.
+See `docs/robotwin2_current_evidence_audit_20260613.md`: the official two-task
+run has anti-template pressure, but the EFV-family selector does not yet beat
+DTW/template or smoothness shortcuts. This makes the next milestone a selector
+mechanism improvement under pressure, not just a larger rerun.
+
 ## Required Evidence Before A Strong Submission
 
 ### 1. RoboTwin2 Second Benchmark
