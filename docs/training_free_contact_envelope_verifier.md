@@ -106,6 +106,19 @@ stronger claim that EFV beats expert-template matching. The RoboTwin2 paper
 readiness gate therefore still fails until more tasks show selector margins
 under anti-template pressure.
 
+A stricter no-exact-expert counterfactual removes `full_gripper_aware` from the
+same two cases and recomputes oracle labels. The pool remains recoverable:
+`rank0` is still `0/2`, oracle is still `2/2`, random is `0.35/2`, and energy,
+length, smoothness, and action-only baselines remain `0/2`. Contact-envelope
+selectors remain `2/2` by selecting non-template successes such as
+`repeat_precontact` and `repeat_middle`.
+
+This counterfactual rules out the weakest explanation that the result only
+comes from selecting the exact expert trace. It still does not rule out the
+stronger template-distance explanation, because DTW action/contact baselines
+also remain `2/2` by selecting non-template successful variants such as
+`contact_joint_perturb` and `repeat_contact_long`.
+
 ## Key Reviewer Risks
 
 Expert-template matching:
