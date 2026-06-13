@@ -94,14 +94,14 @@ def heuristic_score(row: dict[str, Any], heuristic: str) -> float:
 
 def select_by_score(case_rows: list[dict[str, Any]], scores: list[float]) -> dict[str, Any]:
     return max(
-        zip(case_rows, scores, strict=True),
+        zip(case_rows, scores),
         key=lambda item: (item[1], -int(item[0].get("candidate_rank_by_planner", 999999))),
     )[0]
 
 
 def max_tie_expected_success(case_rows: list[dict[str, Any]], scores: list[float]) -> float:
     best = max(scores)
-    tied = [row for row, score in zip(case_rows, scores, strict=True) if np.isclose(score, best, rtol=1e-6, atol=1e-8)]
+    tied = [row for row, score in zip(case_rows, scores) if np.isclose(score, best, rtol=1e-6, atol=1e-8)]
     return float(np.mean([1.0 if row["oracle_success"] else 0.0 for row in tied])) if tied else 0.0
 
 
@@ -613,7 +613,7 @@ def evaluate_prototype(rows: list[dict[str, Any]], *, feature_mode: str, scope: 
         y_train = np.asarray([1.0 if row["oracle_success"] else 0.0 for row in train_rows], dtype=np.float32)
         scores = prototype_scores(x_train, y_train, x_test, prototype_mode)
         selected[key] = select_by_score(test_rows, scores.tolist())
-        for row, score in zip(test_rows, scores, strict=True):
+        for row, score in zip(test_rows, scores):
             payload = dict(row)
             payload["robotwin2_prototype_score"] = float(score)
             scored_rows.append(payload)
@@ -651,7 +651,7 @@ def evaluate_trace_distance(rows: list[dict[str, Any]], *, feature_mode: str, sc
             raise ValueError(f"unknown train scope: {scope}")
         scores = trace_distance_scores(train_rows, test_rows, feature_mode=feature_mode, dims=dims)
         selected[key] = select_by_score(test_rows, scores.tolist())
-        for row, score in zip(test_rows, scores, strict=True):
+        for row, score in zip(test_rows, scores):
             payload = dict(row)
             payload["robotwin2_trace_distance_score"] = float(score)
             scored_rows.append(payload)

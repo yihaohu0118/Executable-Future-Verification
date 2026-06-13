@@ -56,7 +56,7 @@ def case_dtw_to_full(
     sequences, _ = normalize_sequences(sequences, [])
     full_sequences = [sequences[index] for index in full_indexes]
     distances: dict[str, float | None] = {}
-    for row, sequence in zip(case_rows, sequences, strict=True):
+    for row, sequence in zip(case_rows, sequences):
         distances[str(row["candidate_id"])] = min(dtw_distance(sequence, full_sequence) for full_sequence in full_sequences)
     return distances
 
