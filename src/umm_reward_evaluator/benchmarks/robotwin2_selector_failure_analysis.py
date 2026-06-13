@@ -12,6 +12,7 @@ from umm_reward_evaluator.benchmarks.common import load_jsonl
 from umm_reward_evaluator.benchmarks.randomize_planner_rank import randomize_manifest_rows
 from umm_reward_evaluator.benchmarks.robotwin2_rank_randomization_sweep import (
     DEFAULT_HEURISTICS,
+    DEFAULT_LINEAR_PROBES,
     DEFAULT_PROTOTYPES,
     DEFAULT_TRACE_DISTANCES,
     evaluate_selectors,
@@ -36,7 +37,7 @@ def row_lookup(rows: list[dict[str, Any]]) -> dict[tuple[str, str, str], dict[st
 
 
 def compact_selector_name(selector: str) -> str:
-    return selector.replace("prototype:", "proto:").replace("trace_distance:", "dtw:")
+    return selector.replace("prototype:", "proto:").replace("trace_distance:", "dtw:").replace("linear_probe:", "linear:")
 
 
 def analyze_seed(rows: list[dict[str, Any]], *, seed: int, mode: str, remap_candidate_ids: bool) -> list[dict[str, Any]]:
@@ -47,6 +48,8 @@ def analyze_seed(rows: list[dict[str, Any]], *, seed: int, mode: str, remap_cand
         heuristics=DEFAULT_HEURISTICS,
         prototypes=DEFAULT_PROTOTYPES,
         trace_distances=DEFAULT_TRACE_DISTANCES,
+        linear_probes=DEFAULT_LINEAR_PROBES,
+        linear_probe_l2=1.0,
     )
     analysis_rows = []
     for result in selector_results:
@@ -216,6 +219,9 @@ def main() -> None:
             "prototype:object_relation_distribution:same_task:nearest_positive",
             "prototype:phase_object_relation_distribution:same_task:nearest_positive",
             "prototype:phase_object_relation_joint_gripper_distribution:same_task:nearest_pos_neg",
+            "linear_probe:action_distribution:same_task:ridge_l2_1",
+            "linear_probe:phase_gripper_distribution:same_task:ridge_l2_1",
+            "linear_probe:phase_object_relation_joint_gripper_distribution:same_task:ridge_l2_1",
             "trace_distance:dtw_gripper:same_task:nearest_positive",
             "trace_distance:dtw_object_relation:same_task:nearest_positive",
             "trace_distance:dtw_object_relation_joint_gripper:same_task:nearest_positive",

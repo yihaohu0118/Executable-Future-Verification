@@ -51,6 +51,8 @@ TRACE_DISTANCE_FEATURES = (
     "dtw_object_relation_joint_gripper",
 )
 TRACE_DISTANCE_SCOPES = ("same_task", "all_tasks")
+LINEAR_PROBE_FEATURES = PROTOTYPE_FEATURES
+LINEAR_PROBE_SCOPES = ("same_task", "all_tasks")
 
 
 def case_key(row: dict[str, Any]) -> tuple[str, str]:
@@ -456,6 +458,28 @@ def normalize_train_test(x_train: np.ndarray, x_test: np.ndarray) -> tuple[np.nd
     return (x_train - mean) / std, (x_test - mean) / std
 
 
+def linear_probe_scores(
+    x_train: np.ndarray,
+    y_train: np.ndarray,
+    x_test: np.ndarray,
+    *,
+    l2: float = 1.0,
+) -> np.ndarray:
+    """Small closed-form ridge classifier used as a learned verifier baseline."""
+    if x_train.size == 0 or x_test.size == 0:
+        return np.zeros((x_test.shape[0],), dtype=np.float32)
+    if len(np.unique(y_train > 0.5)) < 2:
+        return np.zeros((x_test.shape[0],), dtype=np.float32)
+    x_train, x_test = normalize_train_test(x_train, x_test)
+    train_aug = np.concatenate([x_train, np.ones((x_train.shape[0], 1), dtype=np.float32)], axis=1)
+    test_aug = np.concatenate([x_test, np.ones((x_test.shape[0], 1), dtype=np.float32)], axis=1)
+    y = np.where(y_train > 0.5, 1.0, -1.0).astype(np.float32)
+    reg = np.eye(train_aug.shape[1], dtype=np.float32) * float(l2)
+    reg[-1, -1] = 0.0
+    weights = np.linalg.pinv(train_aug.T @ train_aug + reg) @ train_aug.T @ y
+    return (test_aug @ weights).astype(np.float32)
+
+
 def prototype_scores(x_train: np.ndarray, y_train: np.ndarray, x_test: np.ndarray, mode: str) -> np.ndarray:
     pos = x_train[y_train > 0.5]
     neg = x_train[y_train <= 0.5]
@@ -665,6 +689,54 @@ def evaluate_trace_distance(rows: list[dict[str, Any]], *, feature_mode: str, sc
     return result
 
 
+def evaluate_linear_probe(
+    rows: list[dict[str, Any]],
+    *,
+    feature_mode: str,
+    scope: str,
+    l2: float = 1.0,
+) -> dict[str, Any]:
+    grouped = group_cases(rows)
+    all_keys = [
+        "joint_action_vector",
+        "left_gripper",
+        "right_gripper",
+        "actor_pose_vector",
+        "actor_pairwise_distances",
+    ]
+    dims = state_dims(rows, all_keys)
+    selected = {}
+    scored_rows: list[dict[str, Any]] = []
+    for key, test_rows in sorted(grouped.items()):
+        task, _case_id = key
+        if scope == "same_task":
+            train_rows = [row for other_key, case_rows in grouped.items() if other_key != key and other_key[0] == task for row in case_rows]
+        elif scope == "all_tasks":
+            train_rows = [row for other_key, case_rows in grouped.items() if other_key != key for row in case_rows]
+        else:
+            raise ValueError(f"unknown train scope: {scope}")
+        x_test = np.stack([feature_vector(row, feature_mode, dims=dims) for row in test_rows]).astype(np.float32)
+        if train_rows:
+            x_train = np.stack([feature_vector(row, feature_mode, dims=dims) for row in train_rows]).astype(np.float32)
+            y_train = np.asarray([1.0 if row["oracle_success"] else 0.0 for row in train_rows], dtype=np.float32)
+            scores = linear_probe_scores(x_train, y_train, x_test, l2=l2)
+        else:
+            scores = np.zeros((len(test_rows),), dtype=np.float32)
+        selected[key] = select_by_score(test_rows, scores.tolist())
+        for row, score in zip(test_rows, scores):
+            payload = dict(row)
+            payload["robotwin2_linear_probe_score"] = float(score)
+            scored_rows.append(payload)
+    result = summarize_selections(
+        rows,
+        selector_name=f"linear_probe:{feature_mode}:{scope}:ridge_l2_{float(l2):g}",
+        selected_by_case=selected,
+    )
+    result["feature_coverage"] = feature_coverage(rows, feature_mode)
+    result["scored_rows"] = scored_rows
+    return result
+
+
 def strip_large(result: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in result.items() if key not in {"selections", "scored_rows"}}
 
@@ -678,6 +750,9 @@ def main() -> None:
     parser.add_argument("--prototype-mode", default="nearest_positive", choices=list(PROTOTYPE_MODES))
     parser.add_argument("--trace-distance-feature", action="append", choices=list(TRACE_DISTANCE_FEATURES))
     parser.add_argument("--trace-distance-scope", action="append", choices=list(TRACE_DISTANCE_SCOPES))
+    parser.add_argument("--linear-probe-feature", action="append", choices=list(LINEAR_PROBE_FEATURES))
+    parser.add_argument("--linear-probe-scope", action="append", choices=list(LINEAR_PROBE_SCOPES))
+    parser.add_argument("--linear-probe-l2", type=float, default=1.0)
     args = parser.parse_args()
 
     rows = load_jsonl(args.manifest)
@@ -698,6 +773,11 @@ def main() -> None:
     for feature_mode in distance_features:
         for scope in distance_scopes:
             results.append(evaluate_trace_distance(rows, feature_mode=feature_mode, scope=scope))
+    linear_features = args.linear_probe_feature or []
+    linear_scopes = args.linear_probe_scope or ["same_task"]
+    for feature_mode in linear_features:
+        for scope in linear_scopes:
+            results.append(evaluate_linear_probe(rows, feature_mode=feature_mode, scope=scope, l2=args.linear_probe_l2))
 
     summary = {"manifest": str(args.manifest), "selectors": [strip_large(result) for result in results]}
     (args.output_dir / "summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")

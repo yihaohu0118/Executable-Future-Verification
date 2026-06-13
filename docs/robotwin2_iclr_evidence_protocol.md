@@ -109,6 +109,8 @@ Each clean task run should include:
   contact direction or object relation;
 - energy-matched negatives so action magnitude cannot explain the result;
 - candidate/rank randomization and candidate-ID remap analysis.
+- learned ridge-probe baselines over action-only and execution-envelope
+  features.
 
 The current `targeted_energy_matched` preset already emits the source labels
 needed by the paper-level gate:
@@ -123,6 +125,12 @@ as a limitation or diagnostic, not as proof that the verifier generalizes.
 Successful candidates with unknown source labels are also not counted as
 non-template evidence until they are explicitly labeled or confirmed by the DTW
 anti-template diagnostic.
+
+The default rank-randomization sweep includes a small pure-numpy learned
+verifier baseline: `linear_probe:*:ridge_l2_1`. Action-only linear probes are
+treated as strong baselines. Gripper/relation linear probes are reported as
+envelope-family verifiers, but they still must beat DTW nearest-positive
+template baselines to support the anti-template claim.
 
 ## Decision Rule
 

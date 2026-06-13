@@ -24,7 +24,10 @@ from umm_reward_evaluator.benchmarks.robotwin2_selector_baselines import (
     evaluate_prototype,
     evaluate_random_expected,
     evaluate_rank0,
+    evaluate_linear_probe,
     evaluate_trace_distance,
+    LINEAR_PROBE_FEATURES,
+    LINEAR_PROBE_SCOPES,
 )
 
 
@@ -51,6 +54,13 @@ DEFAULT_TRACE_DISTANCES = (
     ("dtw_joint", "all_tasks"),
     ("dtw_joint_gripper", "all_tasks"),
     ("dtw_object_relation_joint_gripper", "same_task"),
+)
+DEFAULT_LINEAR_PROBES = (
+    ("action_distribution", "same_task"),
+    ("gripper_distribution", "same_task"),
+    ("phase_gripper_distribution", "same_task"),
+    ("phase_joint_gripper_distribution", "all_tasks"),
+    ("phase_object_relation_joint_gripper_distribution", "same_task"),
 )
 
 
@@ -80,6 +90,18 @@ def parse_trace_distance_config(value: str) -> tuple[str, str]:
     return feature_mode, scope
 
 
+def parse_linear_probe_config(value: str) -> tuple[str, str]:
+    parts = value.split(":")
+    if len(parts) != 2:
+        raise argparse.ArgumentTypeError("linear-probe config must be feature:scope")
+    feature_mode, scope = parts
+    if feature_mode not in LINEAR_PROBE_FEATURES:
+        raise argparse.ArgumentTypeError(f"unknown linear-probe feature: {feature_mode}")
+    if scope not in LINEAR_PROBE_SCOPES:
+        raise argparse.ArgumentTypeError(f"unknown linear-probe scope: {scope}")
+    return feature_mode, scope
+
+
 def selector_value(result: dict[str, Any]) -> float:
     overall = result["overall"]
     if result["selector"] == "random_expected":
@@ -106,6 +128,8 @@ def evaluate_selectors(
     heuristics: tuple[str, ...],
     prototypes: tuple[tuple[str, str, str], ...],
     trace_distances: tuple[tuple[str, str], ...],
+    linear_probes: tuple[tuple[str, str], ...],
+    linear_probe_l2: float,
 ) -> list[dict[str, Any]]:
     results = [
         evaluate_rank0(rows),
@@ -124,6 +148,8 @@ def evaluate_selectors(
         )
     for feature_mode, scope in trace_distances:
         results.append(evaluate_trace_distance(rows, feature_mode=feature_mode, scope=scope))
+    for feature_mode, scope in linear_probes:
+        results.append(evaluate_linear_probe(rows, feature_mode=feature_mode, scope=scope, l2=linear_probe_l2))
     return results
 
 
@@ -176,6 +202,8 @@ def run_sweep(
     heuristics: tuple[str, ...] = DEFAULT_HEURISTICS,
     prototypes: tuple[tuple[str, str, str], ...] = DEFAULT_PROTOTYPES,
     trace_distances: tuple[tuple[str, str], ...] = DEFAULT_TRACE_DISTANCES,
+    linear_probes: tuple[tuple[str, str], ...] = DEFAULT_LINEAR_PROBES,
+    linear_probe_l2: float = 1.0,
 ) -> dict[str, Any]:
     seed_results = []
     for seed in seeds:
@@ -195,6 +223,8 @@ def run_sweep(
                         heuristics=heuristics,
                         prototypes=prototypes,
                         trace_distances=trace_distances,
+                        linear_probes=linear_probes,
+                        linear_probe_l2=linear_probe_l2,
                     )
                 ],
             }
@@ -208,6 +238,8 @@ def run_sweep(
         "heuristics": list(heuristics),
         "prototypes": [":".join(config) for config in prototypes],
         "trace_distances": [":".join(config) for config in trace_distances],
+        "linear_probes": [":".join(config) for config in linear_probes],
+        "linear_probe_l2": linear_probe_l2,
         "seed_results": seed_results,
         "aggregate": aggregate,
     }
@@ -238,12 +270,20 @@ def main() -> None:
         type=parse_trace_distance_config,
         help="Trace-distance selector as feature:scope. Repeat to override the default trace-distance list.",
     )
+    parser.add_argument(
+        "--linear-probe-config",
+        action="append",
+        type=parse_linear_probe_config,
+        help="Linear learned verifier as feature:scope. Repeat to override the default linear-probe list.",
+    )
+    parser.add_argument("--linear-probe-l2", type=float, default=1.0)
     args = parser.parse_args()
 
     seeds = list(range(args.seed_start, args.seed_start + args.num_seeds))
     heuristics = tuple(args.heuristic) if args.heuristic else DEFAULT_HEURISTICS
     prototypes = tuple(args.prototype_config) if args.prototype_config else DEFAULT_PROTOTYPES
     trace_distances = tuple(args.trace_distance_config) if args.trace_distance_config else DEFAULT_TRACE_DISTANCES
+    linear_probes = tuple(args.linear_probe_config) if args.linear_probe_config else DEFAULT_LINEAR_PROBES
     summary = run_sweep(
         load_jsonl(args.manifest),
         seeds=seeds,
@@ -252,6 +292,8 @@ def main() -> None:
         heuristics=heuristics,
         prototypes=prototypes,
         trace_distances=trace_distances,
+        linear_probes=linear_probes,
+        linear_probe_l2=args.linear_probe_l2,
     )
     summary["manifest"] = str(args.manifest)
     args.output.parent.mkdir(parents=True, exist_ok=True)

@@ -422,10 +422,17 @@ class BenchmarkAdaptersTest(unittest.TestCase):
                         {"selector": "rank0", "mean_success": 0.0},
                         {"selector": "random_expected", "mean_success": 0.9},
                         {"selector": "heuristic:energy_sum_max", "mean_success": 0.0},
+                        {"selector": "linear_probe:action_distribution:same_task:ridge_l2_1", "mean_success": 0.5},
                         {"selector": "prototype:gripper_distribution:same_task:nearest_positive", "mean_success": 1.0},
+                        {"selector": "linear_probe:gripper_distribution:same_task:ridge_l2_1", "mean_success": 1.5},
                         {
                             "selector": "prototype:object_relation_distribution:same_task:nearest_positive",
                             "mean_success": 2.0,
+                            "min_feature_case_coverage": 1.0,
+                        },
+                        {
+                            "selector": "linear_probe:phase_object_relation_joint_gripper_distribution:same_task:ridge_l2_1",
+                            "mean_success": 1.8,
                             "min_feature_case_coverage": 1.0,
                         },
                     ]
@@ -441,6 +448,9 @@ class BenchmarkAdaptersTest(unittest.TestCase):
             self.assertEqual(rows[0]["task_name"], "stack_blocks_two")
             self.assertEqual(rows[0]["cases"], 2)
             self.assertEqual(rows[0]["relation"], 2.0)
+            self.assertEqual(rows[0]["linear_action"], 0.5)
+            self.assertEqual(rows[0]["linear_gripper"], 1.5)
+            self.assertEqual(rows[0]["linear_phase_relation_robot"], 1.8)
             self.assertEqual(rows[0]["relation_min_coverage"], 1.0)
             self.assertIn("| stack_blocks_two | 2 | 0.0/2 | 0.9/2 | 0.0/2", markdown)
 

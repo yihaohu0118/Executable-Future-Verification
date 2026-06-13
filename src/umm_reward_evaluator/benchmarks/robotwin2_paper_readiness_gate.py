@@ -22,8 +22,12 @@ MATCHED_NEGATIVE_MARKERS = ("matched_", "energy_matched", "negative_probe")
 ENVELOPE_COLUMNS = (
     "gripper",
     "phase_gripper",
+    "linear_gripper",
+    "linear_phase_gripper",
+    "linear_phase_joint_gripper",
     "relation",
     "phase_relation_robot",
+    "linear_phase_relation_robot",
 )
 BASELINE_COLUMNS = (
     "rank0",
@@ -32,6 +36,7 @@ BASELINE_COLUMNS = (
     "smooth",
     "length",
     "action",
+    "linear_action",
     "dtw_action",
     "dtw_gripper",
     "dtw_joint",
@@ -42,6 +47,7 @@ BASELINE_COLUMNS = (
 RELATION_COLUMNS = (
     "relation",
     "phase_relation_robot",
+    "linear_phase_relation_robot",
 )
 
 
@@ -225,6 +231,7 @@ def evaluate_paper_readiness(
         best_relation = _max_value(selector, RELATION_COLUMNS)
         gripper = _value(selector, "gripper")
         dtw_gripper = _value(selector, "dtw_gripper")
+        linear_action = _value(selector, "linear_action")
         relation_coverage = _value(selector, "relation_min_coverage")
 
         strong_envelope = (
@@ -260,6 +267,7 @@ def evaluate_paper_readiness(
                 "best_relation": best_relation,
                 "gripper": gripper,
                 "dtw_gripper": dtw_gripper,
+                "linear_action": linear_action,
                 "relation_min_coverage": relation_coverage,
                 "relation_rescue": relation_rescue,
             }

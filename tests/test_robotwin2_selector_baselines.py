@@ -5,6 +5,7 @@ from unittest import mock
 
 from umm_reward_evaluator.benchmarks import robotwin2_gripper_aware_trace as trace
 from umm_reward_evaluator.benchmarks.robotwin2_selector_baselines import (
+    evaluate_linear_probe,
     evaluate_trace_distance,
     evaluate_heuristic,
     evaluate_prototype,
@@ -24,6 +25,7 @@ from umm_reward_evaluator.benchmarks.robotwin2_gripper_aware_trace import (
 from umm_reward_evaluator.benchmarks.robotwin2_selector_failure_analysis import run_analysis
 from umm_reward_evaluator.benchmarks.robotwin2_rank_randomization_sweep import (
     parse_prototype_config,
+    parse_linear_probe_config,
     parse_trace_distance_config,
     run_sweep,
 )
@@ -111,6 +113,18 @@ class RoboTwin2SelectorBaselinesTest(unittest.TestCase):
         self.assertEqual(prototype["overall"]["selector_success"], 4)
         self.assertEqual(prototype["overall"]["selector_oracle_match"], 4)
         self.assertEqual(len(prototype["scored_rows"]), len(self.rows))
+
+    def test_linear_probe_is_a_learned_verifier_baseline(self):
+        selector = evaluate_linear_probe(
+            self.rows,
+            feature_mode="gripper_distribution",
+            scope="same_task",
+            l2=1.0,
+        )
+        self.assertEqual(selector["overall"]["cases"], 4)
+        self.assertEqual(selector["overall"]["selector_success"], 4)
+        self.assertEqual(selector["feature_coverage"]["case_coverage_rate"], 1.0)
+        self.assertEqual(len(selector["scored_rows"]), len(self.rows))
 
     def test_nearest_pos_neg_uses_negative_neighbors(self):
         rows = [
@@ -507,15 +521,18 @@ class RoboTwin2SelectorBaselinesTest(unittest.TestCase):
             heuristics=("smoothness_max",),
             prototypes=(parse_prototype_config("gripper_distribution:same_task:nearest_pos_neg"),),
             trace_distances=(parse_trace_distance_config("dtw_gripper:same_task"),),
+            linear_probes=(parse_linear_probe_config("gripper_distribution:same_task"),),
         )
         selectors = {row["selector"] for row in summary["aggregate"]["selectors"]}
         self.assertIn("heuristic:smoothness_max", selectors)
         self.assertIn("prototype:gripper_distribution:same_task:nearest_pos_neg", selectors)
         self.assertIn("trace_distance:dtw_gripper:same_task:nearest_positive", selectors)
+        self.assertIn("linear_probe:gripper_distribution:same_task:ridge_l2_1", selectors)
         self.assertNotIn("heuristic:energy_sum_max", selectors)
         self.assertEqual(summary["heuristics"], ["smoothness_max"])
         self.assertEqual(summary["prototypes"], ["gripper_distribution:same_task:nearest_pos_neg"])
         self.assertEqual(summary["trace_distances"], ["dtw_gripper:same_task"])
+        self.assertEqual(summary["linear_probes"], ["gripper_distribution:same_task"])
 
     def test_kshot_sweep_reports_source_plus_target_calibration(self):
         summary = run_kshot_sweep(
