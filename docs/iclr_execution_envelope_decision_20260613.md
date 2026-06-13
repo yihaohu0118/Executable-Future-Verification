@@ -177,6 +177,12 @@ is the minimal diagnostic needed before spending more GPU time on
 case, the paper gets a stronger counterintuitive claim that gripper execution
 envelopes are powerful but insufficient for multi-stage spatial manipulation.
 
+Selector outputs now report `feature_coverage`. This is a guardrail against a
+new failure mode introduced by relation features: old manifests without
+`actor_pose_vector` or `actor_pairwise_distances` can still produce zero-filled
+scores, but their coverage will be 0 and they must not be used for object-
+relation claims.
+
 ## Paper Story After This Update
 
 The strongest current story is not "gripper timing solves executable future

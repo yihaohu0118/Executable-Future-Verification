@@ -218,6 +218,65 @@ def state_trace(row: dict[str, Any]) -> list[dict[str, Any]]:
     return trace if isinstance(trace, list) else []
 
 
+def feature_required_trace_keys(feature_mode: str) -> list[str]:
+    if feature_mode in {"action_distribution", "dtw_action"}:
+        return []
+    if feature_mode in {"state_distribution", "dtw_joint"}:
+        return ["joint_action_vector"]
+    if feature_mode in {"object_distribution", "object_relation_distribution", "phase_object_distribution", "phase_object_relation_distribution", "dtw_object", "dtw_object_relation"}:
+        return ["actor_pose_vector", "actor_pairwise_distances"]
+    if feature_mode in {"gripper_distribution", "phase_gripper_distribution", "dtw_gripper"}:
+        return ["left_gripper", "right_gripper"]
+    if feature_mode in {"phase_joint_distribution"}:
+        return ["joint_action_vector"]
+    if feature_mode in {"phase_joint_gripper_distribution", "dtw_joint_gripper"}:
+        return ["joint_action_vector", "left_gripper", "right_gripper"]
+    if feature_mode in {"phase_object_joint_gripper_distribution", "phase_object_relation_joint_gripper_distribution", "dtw_object_joint_gripper", "dtw_object_relation_joint_gripper"}:
+        return ["actor_pose_vector", "actor_pairwise_distances", "joint_action_vector", "left_gripper", "right_gripper"]
+    return []
+
+
+def _has_nonempty_value(snapshot: dict[str, Any], key: str) -> bool:
+    value = snapshot.get(key)
+    if value is None:
+        return False
+    return int(np.asarray(value).reshape(-1).size) > 0
+
+
+def row_has_required_trace_keys(row: dict[str, Any], required_keys: list[str]) -> bool:
+    if not required_keys:
+        return True
+    trace = state_trace(row)
+    if not trace:
+        return False
+    for snapshot in trace:
+        if not isinstance(snapshot, dict):
+            return False
+        if any(not _has_nonempty_value(snapshot, key) for key in required_keys):
+            return False
+    return True
+
+
+def feature_coverage(rows: list[dict[str, Any]], feature_mode: str) -> dict[str, Any]:
+    required_keys = feature_required_trace_keys(feature_mode)
+    covered_rows = [row for row in rows if row_has_required_trace_keys(row, required_keys)]
+    grouped = group_cases(rows)
+    covered_cases = 0
+    for case_rows in grouped.values():
+        if all(row_has_required_trace_keys(row, required_keys) for row in case_rows):
+            covered_cases += 1
+    return {
+        "feature_mode": feature_mode,
+        "required_trace_keys": required_keys,
+        "rows": len(rows),
+        "rows_with_required_trace_keys": len(covered_rows),
+        "row_coverage_rate": len(covered_rows) / len(rows) if rows else 0.0,
+        "cases": len(grouped),
+        "cases_with_all_candidates_covered": covered_cases,
+        "case_coverage_rate": covered_cases / len(grouped) if grouped else 0.0,
+    }
+
+
 def padded(arr: Any, dim: int) -> np.ndarray:
     value = np.asarray(arr if arr is not None else [], dtype=np.float32).reshape(-1)
     out = np.zeros((dim,), dtype=np.float32)
@@ -281,10 +340,10 @@ def phase_trace_distribution_features(
 def object_relation_frame(snapshot: dict[str, Any], dims: dict[str, int]) -> np.ndarray:
     pose_dim = dims.get("actor_pose_vector", 1)
     pair_dim = dims.get("actor_pairwise_distances", 1)
-    pose = padded(snapshot.get("actor_pose_vector"), pose_dim)
+    actor_count = max((pose_dim + 6) // 7, 1)
+    pose = padded(snapshot.get("actor_pose_vector"), actor_count * 7)
     pairwise = padded(snapshot.get("actor_pairwise_distances"), pair_dim)
 
-    actor_count = max(pose_dim // 7, 1)
     positions = pose[: actor_count * 7].reshape(actor_count, 7)[:, :3]
     names = snapshot.get("actor_names")
     if isinstance(names, list) and names:
@@ -563,6 +622,7 @@ def evaluate_prototype(rows: list[dict[str, Any]], *, feature_mode: str, scope: 
         selector_name=f"prototype:{feature_mode}:{scope}:{prototype_mode}",
         selected_by_case=selected,
     )
+    result["feature_coverage"] = feature_coverage(rows, feature_mode)
     result["scored_rows"] = scored_rows
     return result
 
@@ -600,6 +660,7 @@ def evaluate_trace_distance(rows: list[dict[str, Any]], *, feature_mode: str, sc
         selector_name=f"trace_distance:{feature_mode}:{scope}:nearest_positive",
         selected_by_case=selected,
     )
+    result["feature_coverage"] = feature_coverage(rows, feature_mode)
     result["scored_rows"] = scored_rows
     return result
 

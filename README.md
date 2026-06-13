@@ -162,6 +162,10 @@ PYTHONPATH=src python -m umm_reward_evaluator.benchmarks.robotwin2_selector_base
   --trace-distance-feature dtw_object_relation_joint_gripper
 ```
 
+Prototype and trace-distance outputs include `feature_coverage`. Do not use an
+object or object-relation selector in a main table unless all main-table cases
+have complete required trace keys.
+
 Run the multi-seed anonymous rank/candidate-ID sweep:
 
 ```bash

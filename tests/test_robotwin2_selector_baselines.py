@@ -6,6 +6,7 @@ from umm_reward_evaluator.benchmarks.robotwin2_selector_baselines import (
     evaluate_prototype,
     evaluate_random_expected,
     evaluate_rank0,
+    feature_coverage,
 )
 from umm_reward_evaluator.benchmarks.robotwin2_antitemplate_diagnostics import diagnose_manifest
 from umm_reward_evaluator.benchmarks.robotwin2_gripper_aware_trace import build_candidates, compact_scene_state
@@ -216,6 +217,31 @@ class RoboTwin2SelectorBaselinesTest(unittest.TestCase):
         self.assertEqual(relation["overall"]["selector_success"], 2)
         self.assertEqual(phase_relation["overall"]["selector_success"], 2)
         self.assertEqual(relation_dtw["overall"]["selector_success"], 2)
+        self.assertEqual(relation["feature_coverage"]["case_coverage_rate"], 1.0)
+        self.assertEqual(relation_dtw["feature_coverage"]["row_coverage_rate"], 1.0)
+
+    def test_object_relation_feature_reports_missing_object_trace_coverage(self):
+        rows = [
+            make_row("stack", "seed=0", "rank0", 0, False, [[1.0]], [1.0]),
+            make_row("stack", "seed=0", "success", 1, True, [[1.0]], [1.0]),
+            make_row("stack", "seed=1", "rank0", 0, False, [[1.0]], [1.0]),
+            make_row("stack", "seed=1", "success", 1, True, [[1.0]], [1.0]),
+        ]
+        for row in rows:
+            for snapshot in row["metadata"]["state_trace"]:
+                snapshot.pop("actor_pose_vector")
+                snapshot.pop("actor_pairwise_distances")
+
+        coverage = feature_coverage(rows, "object_relation_distribution")
+        selector = evaluate_prototype(
+            rows,
+            feature_mode="object_relation_distribution",
+            scope="same_task",
+            prototype_mode="nearest_positive",
+        )
+        self.assertEqual(coverage["rows_with_required_trace_keys"], 0)
+        self.assertEqual(coverage["cases_with_all_candidates_covered"], 0)
+        self.assertEqual(selector["feature_coverage"]["row_coverage_rate"], 0.0)
 
     def test_compact_scene_state_records_named_actor_poses(self):
         class Pose:
