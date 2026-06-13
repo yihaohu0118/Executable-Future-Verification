@@ -112,6 +112,10 @@ from umm_reward_evaluator.benchmarks.world_model_artifact_audit import (
     build_audit as build_world_model_artifact_audit,
     render_markdown as render_world_model_artifact_audit_markdown,
 )
+from umm_reward_evaluator.benchmarks.world_model_bridge_gate import (
+    evaluate_bridge as evaluate_world_model_bridge,
+    render_markdown as render_world_model_bridge_markdown,
+)
 
 
 class BenchmarkAdaptersTest(unittest.TestCase):
@@ -574,6 +578,117 @@ class BenchmarkAdaptersTest(unittest.TestCase):
         self.assertIn("Mode: EXECUTE=1", shell_script)
         self.assertIn("AUTO_GPU_IDS=3,4", shell_script)
         self.assertIn("finalize fresh pressure run", shell_script)
+
+    def test_world_model_bridge_gate_blocks_without_diagnostic_registry(self):
+        entries = [
+            {
+                "benchmark": "RoboCasa365",
+                "year": 2026,
+                "layer": "executable_primary",
+                "status": "passed",
+                "cases": 64,
+                "tasks": 4,
+                "rank0_success": 0,
+                "oracle_success": 64,
+                "method_success": 63.6,
+                "best_non_oracle_baseline_success": 31.0,
+            },
+            {
+                "benchmark": "RoboTwin2",
+                "year": 2025,
+                "layer": "executable_second",
+                "status": "pending",
+                "cases": 13,
+                "tasks": 6,
+                "rank0_success": 0,
+                "oracle_success": 13,
+                "method_success": 11.0,
+                "best_non_oracle_baseline_success": 11.04,
+            },
+            {
+                "benchmark": "MiraBench",
+                "year": 2026,
+                "layer": "world_model_diagnostic",
+                "status": "pending",
+                "cases": 0,
+                "tasks": 0,
+                "rank0_success": 0,
+                "oracle_success": 0,
+                "method_success": 0,
+                "best_non_oracle_baseline_success": 0,
+                "shortcut_controls": [],
+            },
+        ]
+
+        result = evaluate_world_model_bridge(entries)
+
+        self.assertFalse(result["passed"])
+        self.assertEqual(result["claim_level"], "executable_with_pending_world_model_bridge")
+        failed = {check["name"] for check in result["checks"] if not check["passed"]}
+        self.assertIn("diagnostic_artifact_pipeline", failed)
+        self.assertIn("diagnostic_registry", failed)
+        markdown = render_world_model_bridge_markdown(result)
+        self.assertIn("Do not title the paper as a world-model benchmark result yet", markdown)
+        self.assertIn("multi-candidate judgment/proxy artifacts", markdown)
+
+    def test_world_model_bridge_gate_passes_with_proxy_beating_diagnostic(self):
+        entries = [
+            {
+                "benchmark": "RoboCasa365",
+                "year": 2026,
+                "layer": "executable_primary",
+                "status": "passed",
+                "cases": 64,
+                "tasks": 4,
+                "rank0_success": 0,
+                "oracle_success": 64,
+                "method_success": 63.6,
+                "best_non_oracle_baseline_success": 31.0,
+            },
+            {
+                "benchmark": "RoboTwin2",
+                "year": 2025,
+                "layer": "executable_second",
+                "status": "pending",
+                "cases": 13,
+                "tasks": 6,
+                "rank0_success": 0,
+                "oracle_success": 13,
+                "method_success": 11.0,
+                "best_non_oracle_baseline_success": 11.04,
+            },
+            {
+                "benchmark": "RoboTrustBench",
+                "year": 2026,
+                "layer": "trust_diagnostic",
+                "status": "passed",
+                "cases": 128,
+                "tasks": 4,
+                "rank0_success": 34,
+                "oracle_success": 96,
+                "method_success": 74,
+                "best_non_oracle_baseline_success": 60,
+                "shortcut_controls": [
+                    "rank0",
+                    "random",
+                    "energy_or_magnitude",
+                    "action_only",
+                    "candidate_id_or_rank_remap",
+                    "oracle_judgment_labels",
+                    "proxy_or_rank0_failure",
+                    "visual_or_model_score_proxy",
+                ],
+            },
+        ]
+
+        result = evaluate_world_model_bridge(entries)
+
+        self.assertTrue(result["passed"])
+        self.assertEqual(result["claim_level"], "world_model_connected_evidence")
+        self.assertEqual(result["summary"]["diagnostic_registry_ready"], ["RoboTrustBench"])
+        markdown = render_world_model_bridge_markdown(result)
+        self.assertIn("world-model future-selection verifier", markdown)
+        self.assertNotIn("Do not title the paper as a world-model benchmark result yet", markdown)
 
     def test_robotwin2_main_table_gate_checks_errors_and_feature_coverage(self):
         rows = convert_robotwin2(
