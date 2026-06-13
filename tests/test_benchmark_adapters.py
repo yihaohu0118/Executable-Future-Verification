@@ -59,7 +59,7 @@ from umm_reward_evaluator.benchmarks.robotwin2_raw_integrity_report import (
     render_markdown as render_raw_integrity_markdown,
 )
 from umm_reward_evaluator.benchmarks.robotwin2_partial_raw_rescue_plan import build_rescue_plan
-from umm_reward_evaluator.benchmarks.robotwin2_resume_command_plan import build_command_plan
+from umm_reward_evaluator.benchmarks.robotwin2_resume_command_plan import build_command_plan, render_shell_script
 from umm_reward_evaluator.benchmarks.robotwin2_gripper_aware_trace import (
     CandidateSpec,
     split_resume_rows,
@@ -400,6 +400,15 @@ class BenchmarkAdaptersTest(unittest.TestCase):
         self.assertIn("TASKS=handover_block", command_text)
         self.assertIn("SEEDS=0", command_text)
         self.assertEqual(command_plan["skipped_files"][0]["task_name"], "easy_task")
+        shell_script = render_shell_script(command_plan)
+        self.assertIn("set -euo pipefail", shell_script)
+        self.assertIn("Mode: EXECUTE=0", shell_script)
+        self.assertIn("RESUME_PARTIAL=1 EXECUTE=0", shell_script)
+
+        empty_plan = build_command_plan(rescue_plan, max_priority=0, require_object_state=True)
+        empty_script = render_shell_script(empty_plan)
+        self.assertIn("No RoboTwin2 resume commands selected", empty_script)
+        self.assertNotIn("scripts/robotwin2_bounded_window_launcher.sh", empty_script)
 
     def test_robotwin2_main_table_gate_checks_errors_and_feature_coverage(self):
         rows = convert_robotwin2(

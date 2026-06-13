@@ -248,13 +248,18 @@ python -m umm_reward_evaluator.benchmarks.robotwin2_resume_command_plan \
   --max-priority 1 \
   --require-object-state \
   --output-json RUN_ROOT/selectors/robotwin2_resume_command_plan.json \
-  --output-md RUN_ROOT/selectors/robotwin2_resume_command_plan.md
+  --output-md RUN_ROOT/selectors/robotwin2_resume_command_plan.md \
+  --output-sh RUN_ROOT/selectors/robotwin2_resume_dry_run.sh
 ```
 
 `RESUME_PARTIAL=1` reuses complete existing candidate rows, reruns missing
 candidate IDs, and reruns rows marked with `metadata.candidate_error`. It fails
 fast on unknown or duplicate candidate IDs so a corrupted partial file cannot
-silently enter the paper table. The current high-value partial rescue targets
+silently enter the paper table. The generated shell script is dry-run by default
+because `--execute` is absent. Regenerate it with `--execute` only after checking
+that the GPU is free and no user training job will be preempted.
+
+The current high-value partial rescue targets
 are:
 
 | Task | Seed | Existing candidates | Missing candidates | Why it matters |
