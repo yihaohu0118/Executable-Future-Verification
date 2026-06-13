@@ -28,7 +28,9 @@ LOG_DIR="$RUN_ROOT/logs"
 LOG_FILE="$LOG_DIR/${TASK_NAME}_${CANDIDATE_PRESET}_seeds_${SEEDS//[^0-9A-Za-z_-]/_}.log"
 CONFLICT_FILE="$LOG_DIR/.${TASK_NAME}_${CANDIDATE_PRESET}_seeds_${SEEDS//[^0-9A-Za-z_-]/_}.gpu_conflict"
 
-mkdir -p "$RAW_DIR" "$LOG_DIR"
+if [ "$DRY_RUN" != "1" ]; then
+  mkdir -p "$RAW_DIR" "$LOG_DIR"
+fi
 
 find_free_gpu() {
   if ! command -v nvidia-smi >/dev/null 2>&1; then

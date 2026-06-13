@@ -60,6 +60,11 @@ from umm_reward_evaluator.benchmarks.robotwin2_raw_integrity_report import (
 )
 from umm_reward_evaluator.benchmarks.robotwin2_partial_raw_rescue_plan import build_rescue_plan
 from umm_reward_evaluator.benchmarks.robotwin2_resume_command_plan import build_command_plan, render_shell_script
+from umm_reward_evaluator.benchmarks.robotwin2_evidence_window_plan import (
+    build_evidence_window_plan,
+    render_markdown as render_evidence_window_markdown,
+    render_shell_script as render_evidence_window_shell_script,
+)
 from umm_reward_evaluator.benchmarks.robotwin2_gripper_aware_trace import (
     CandidateSpec,
     split_resume_rows,
@@ -409,6 +414,44 @@ class BenchmarkAdaptersTest(unittest.TestCase):
         empty_script = render_shell_script(empty_plan)
         self.assertIn("No RoboTwin2 resume commands selected", empty_script)
         self.assertNotIn("scripts/robotwin2_bounded_window_launcher.sh", empty_script)
+
+    def test_robotwin2_evidence_window_plan_generates_main_task_commands(self):
+        plan = build_evidence_window_plan(run_root="/runs/robotwin2_next", seed_start=2)
+
+        self.assertFalse(plan["execute"])
+        self.assertEqual([command["task_name"] for command in plan["commands"]], ["handover_block", "place_object_basket", "stack_bowls_two", "stack_blocks_two"])
+        self.assertTrue(all(command["planned_cases"] == 4 for command in plan["commands"]))
+        self.assertTrue(all(command["seeds"] == "2-5" for command in plan["commands"]))
+        self.assertIn("EXECUTE=0", plan["commands"][0]["command"])
+        self.assertIn("TASKS=handover_block", plan["commands"][0]["command"])
+        self.assertIn("scripts/robotwin2_finalize_run.sh /runs/robotwin2_next handover_block place_object_basket stack_bowls_two stack_blocks_two", plan["finalize_command"])
+
+        markdown = render_evidence_window_markdown(plan)
+        self.assertIn("RoboTwin2 Evidence Window Plan", markdown)
+        self.assertIn("supported envelope selector", markdown)
+        shell_script = render_evidence_window_shell_script(plan)
+        self.assertIn("set -euo pipefail", shell_script)
+        self.assertIn("=== dry-run finalize command ===", shell_script)
+        self.assertIn("printf '%s\\n'", shell_script)
+
+    def test_robotwin2_evidence_window_plan_can_include_diagnostic_press_stapler(self):
+        plan = build_evidence_window_plan(
+            run_root="/runs/robotwin2_next",
+            include_diagnostic=True,
+            cases_per_main_task=5,
+            cases_per_diagnostic_task=3,
+            execute=True,
+        )
+
+        commands = {command["task_name"]: command for command in plan["commands"]}
+        self.assertEqual(commands["handover_block"]["planned_cases"], 5)
+        self.assertEqual(commands["press_stapler"]["planned_cases"], 3)
+        self.assertTrue(commands["press_stapler"]["diagnostic_only"])
+        self.assertIn("EXECUTE=1", commands["press_stapler"]["command"])
+        self.assertIn("press_stapler", plan["finalize_command"])
+        shell_script = render_evidence_window_shell_script(plan)
+        self.assertIn("=== finalize RoboTwin2 evidence window ===", shell_script)
+        self.assertIn("scripts/robotwin2_finalize_run.sh", shell_script)
 
     def test_robotwin2_main_table_gate_checks_errors_and_feature_coverage(self):
         rows = convert_robotwin2(

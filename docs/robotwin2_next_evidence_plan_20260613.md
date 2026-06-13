@@ -94,6 +94,22 @@ Minimum candidate pool per case:
 - reverse/shuffle/block-swap/action-axis controls;
 - candidate-ID and rank remapping for selector sweeps.
 
+Generate the dry-run command plan before starting the window:
+
+```bash
+PYTHONPATH=src python3 -m umm_reward_evaluator.benchmarks.robotwin2_evidence_window_plan \
+  --run-root /home/yihao_hyh/efv_runs/robotwin2_evidence_window_20260613_k4 \
+  --include-diagnostic \
+  --output-json docs/robotwin2_evidence_window_plan_20260613.json \
+  --output-md docs/robotwin2_evidence_window_plan_20260613.md \
+  --output-sh docs/robotwin2_evidence_window_plan_20260613.sh
+```
+
+Only regenerate with `--execute` after checking GPU ownership and active
+training jobs. The generated shell script still uses the bounded launcher, one
+task at a time, with `GPU_ID=auto`, candidate-ID/rank remap analysis, and 24
+required candidates per case.
+
 ## Readiness Gates
 
 Do not promote RoboTwin2 to main ICLR evidence until all of these pass:

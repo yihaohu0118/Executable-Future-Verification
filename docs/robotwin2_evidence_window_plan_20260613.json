@@ -1,0 +1,115 @@
+{
+  "candidate_pool_requirements": [
+    "planner/rank0 failure when possible",
+    "full gripper-aware expert candidate",
+    "hard positives that are not full-template copies",
+    "energy-matched negatives",
+    "contact-direction or gripper-timing negatives",
+    "low-DTW negatives near the expert trace",
+    "reverse/shuffle/block-swap/action-axis controls",
+    "candidate-ID and rank remapping in selector sweeps"
+  ],
+  "candidate_preset": "targeted_energy_matched",
+  "commands": [
+    {
+      "command": "EXECUTE=0 GPU_ID=auto TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=handover_block SEEDS=0-3 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=0 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_evidence_window_20260613_k4",
+      "diagnostic_only": false,
+      "minimum_cases": 4,
+      "planned_cases": 4,
+      "role": "main anti-template/contact task",
+      "seeds": "0-3",
+      "task_name": "handover_block"
+    },
+    {
+      "command": "EXECUTE=0 GPU_ID=auto TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=place_object_basket SEEDS=0-3 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=0 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_evidence_window_20260613_k4",
+      "diagnostic_only": false,
+      "minimum_cases": 4,
+      "planned_cases": 4,
+      "role": "spatial constraint task",
+      "seeds": "0-3",
+      "task_name": "place_object_basket"
+    },
+    {
+      "command": "EXECUTE=0 GPU_ID=auto TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=stack_bowls_two SEEDS=0-3 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=0 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_evidence_window_20260613_k4",
+      "diagnostic_only": false,
+      "minimum_cases": 4,
+      "planned_cases": 4,
+      "role": "multistage gripper/contact task",
+      "seeds": "0-3",
+      "task_name": "stack_bowls_two"
+    },
+    {
+      "command": "EXECUTE=0 GPU_ID=auto TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=stack_blocks_two SEEDS=0-3 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=0 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_evidence_window_20260613_k4",
+      "diagnostic_only": false,
+      "minimum_cases": 4,
+      "planned_cases": 4,
+      "role": "multistage endpoint-vs-trace stress task",
+      "seeds": "0-3",
+      "task_name": "stack_blocks_two"
+    },
+    {
+      "command": "EXECUTE=0 GPU_ID=auto TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=press_stapler SEEDS=0-2 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=0 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_evidence_window_20260613_k4",
+      "diagnostic_only": true,
+      "minimum_cases": 3,
+      "planned_cases": 3,
+      "role": "permissive counterexample",
+      "seeds": "0-2",
+      "task_name": "press_stapler"
+    }
+  ],
+  "execute": false,
+  "finalize_command": "PYTHONPATH=src PYTHON_BIN=python3 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_finalize_run.sh /home/yihao_hyh/efv_runs/robotwin2_evidence_window_20260613_k4 handover_block place_object_basket stack_bowls_two stack_blocks_two press_stapler",
+  "gpu_id": "auto",
+  "num_sweep_seeds": 10,
+  "readiness_gates": [
+    "at least four base-ready tasks have rank0 failure and oracle success",
+    "at least three tasks have matched negative cases",
+    "at least two tasks have diverse non-template successes",
+    "at least two tasks have matched low-DTW failures near the expert trace",
+    "at least three tasks show a supported envelope selector beating the strongest simple/template baseline",
+    "at least one task shows relation/contact-aware rescue over gripper-only or template-distance selectors",
+    "no main-table method column is unsupported by held-out calibration data"
+  ],
+  "required_candidates_per_case": 24,
+  "run_root": "/home/yihao_hyh/efv_runs/robotwin2_evidence_window_20260613_k4",
+  "seed_start": 0,
+  "stop_rule": "Downgrade to diagnostic/workshop scope if 4 tasks x 4 cases keep showing oracle headroom but no supported selector margin over DTW/action/heuristic baselines.",
+  "targets": [
+    {
+      "diagnostic_only": false,
+      "keep_rule": "keep",
+      "minimum_cases": 4,
+      "role": "main anti-template/contact task",
+      "task_name": "handover_block"
+    },
+    {
+      "diagnostic_only": false,
+      "keep_rule": "keep",
+      "minimum_cases": 4,
+      "role": "spatial constraint task",
+      "task_name": "place_object_basket"
+    },
+    {
+      "diagnostic_only": false,
+      "keep_rule": "keep if oracle headroom appears",
+      "minimum_cases": 4,
+      "role": "multistage gripper/contact task",
+      "task_name": "stack_bowls_two"
+    },
+    {
+      "diagnostic_only": false,
+      "keep_rule": "keep if gripper-aware trace works",
+      "minimum_cases": 4,
+      "role": "multistage endpoint-vs-trace stress task",
+      "task_name": "stack_blocks_two"
+    },
+    {
+      "diagnostic_only": true,
+      "keep_rule": "keep as negative control",
+      "minimum_cases": 3,
+      "role": "permissive counterexample",
+      "task_name": "press_stapler"
+    }
+  ],
+  "task_config": "demo_clean_k5"
+}
