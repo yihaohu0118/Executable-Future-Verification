@@ -92,6 +92,21 @@ support the EFV claim that future selection is brittle.
 Only update `docs/iclr_evidence_stack_registry.json` after this diagnostic gate
 passes and the selector result beats the planner-score or visual-proxy baseline.
 
+Build that selector table with:
+
+```bash
+python -m umm_reward_evaluator.benchmarks.world_model_diagnostic_selector_table \
+  --manifest RUN_ROOT/manifests/diagnostic_manifest.jsonl \
+  --verifier-score-key metadata.efv_score \
+  --output-json RUN_ROOT/selectors/world_model_diagnostic_selector_table.json \
+  --output-md RUN_ROOT/selectors/world_model_diagnostic_selector_table.md
+```
+
+The table reports rank0, random-expected, planner/model-score proxy,
+`metadata.efv_score`, and oracle-best judgment success. The EFV score must beat
+the planner/model proxy before the diagnostic benchmark should be counted in
+the ICLR evidence stack.
+
 ## How This Fits The EFV Story
 
 RoboCasa365 and RoboTwin2 test executable action candidates in simulation.

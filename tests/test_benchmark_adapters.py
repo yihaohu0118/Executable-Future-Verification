@@ -35,6 +35,10 @@ from umm_reward_evaluator.benchmarks.world_model_diagnostic_gate import (
     evaluate_diagnostic_gate,
     render_markdown as render_diagnostic_gate_markdown,
 )
+from umm_reward_evaluator.benchmarks.world_model_diagnostic_selector_table import (
+    evaluate_selectors as evaluate_diagnostic_selectors,
+    render_markdown as render_diagnostic_selector_markdown,
+)
 
 
 class BenchmarkAdaptersTest(unittest.TestCase):
@@ -806,6 +810,70 @@ class BenchmarkAdaptersTest(unittest.TestCase):
         self.assertFalse(failed_gap["passed"])
         failed_gap_checks = {check["name"]: check["passed"] for check in failed_gap["checks"]}
         self.assertFalse(failed_gap_checks["planner_score_proxy_gap"])
+
+    def test_world_model_diagnostic_selector_table_compares_proxy_and_verifier(self):
+        rows = convert_diagnostic(
+            [
+                {
+                    "benchmark": "mirabench",
+                    "task_name": "pick_mug",
+                    "case_id": "case0",
+                    "candidate_id": "visual_best",
+                    "candidate_rank_by_planner": 0,
+                    "label": "fail",
+                    "planner_score": 0.9,
+                    "metadata": {"efv_score": 0.1},
+                    "video_path": "a.mp4",
+                },
+                {
+                    "benchmark": "mirabench",
+                    "task_name": "pick_mug",
+                    "case_id": "case0",
+                    "candidate_id": "action_faithful",
+                    "candidate_rank_by_planner": 1,
+                    "label": "pass",
+                    "planner_score": 0.2,
+                    "metadata": {"efv_score": 0.8},
+                    "video_path": "b.mp4",
+                },
+                {
+                    "benchmark": "mirabench",
+                    "task_name": "open_drawer",
+                    "case_id": "case1",
+                    "candidate_id": "visual_best",
+                    "candidate_rank_by_planner": 0,
+                    "label": "fail",
+                    "planner_score": 0.7,
+                    "metadata": {"efv_score": 0.3},
+                    "video_path": "c.mp4",
+                },
+                {
+                    "benchmark": "mirabench",
+                    "task_name": "open_drawer",
+                    "case_id": "case1",
+                    "candidate_id": "constraint_faithful",
+                    "candidate_rank_by_planner": 1,
+                    "label": "pass",
+                    "planner_score": 0.1,
+                    "metadata": {"efv_score": 0.9},
+                    "video_path": "d.mp4",
+                },
+            ],
+            default_benchmark="mirabench",
+            default_suite="action_conditioned_reliability",
+            default_verification_target="action_conditioned_reliability",
+            score_key=None,
+            threshold=None,
+        )
+        result = evaluate_diagnostic_selectors(rows, verifier_score_key="metadata.efv_score")
+        selectors = {row["selector"]: row for row in result["selectors"]}
+        self.assertEqual(selectors["rank0"]["selector_success"], 0.0)
+        self.assertEqual(selectors["planner_or_model_score"]["selector_success"], 0.0)
+        self.assertEqual(selectors["verifier_score:metadata.efv_score"]["selector_success"], 2.0)
+        self.assertEqual(selectors["oracle"]["selector_success"], 2.0)
+        markdown = render_diagnostic_selector_markdown(result)
+        self.assertIn("`metadata.efv_score`", markdown)
+        self.assertIn("planner_or_model_score", markdown)
 
     def test_rank_randomization_groups_by_task_and_case(self):
         rows = []
