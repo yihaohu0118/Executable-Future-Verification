@@ -5,6 +5,18 @@ Date checked: 2026-06-13
 Detailed availability snapshot:
 `docs/world_model_benchmark_availability_20260613.md`.
 
+Machine-readable closure plan:
+`docs/world_model_diagnostic_closure_plan_current.md`.
+
+Regenerate it with:
+
+```bash
+python -m umm_reward_evaluator.benchmarks.world_model_diagnostic_closure_plan \
+  --evidence-json docs/iclr_evidence_stack_registry.json \
+  --output-json docs/world_model_diagnostic_closure_plan_current.json \
+  --output-md docs/world_model_diagnostic_closure_plan_current.md
+```
+
 ## Current Public Status
 
 ### MiraBench

@@ -60,6 +60,10 @@ from umm_reward_evaluator.benchmarks.world_model_diagnostic_selector_table impor
     evaluate_selectors as evaluate_diagnostic_selectors,
     render_markdown as render_diagnostic_selector_markdown,
 )
+from umm_reward_evaluator.benchmarks.world_model_diagnostic_closure_plan import (
+    build_closure_plan,
+    render_markdown as render_diagnostic_closure_markdown,
+)
 
 
 class BenchmarkAdaptersTest(unittest.TestCase):
@@ -1034,6 +1038,50 @@ class BenchmarkAdaptersTest(unittest.TestCase):
         self.assertIn("visual_or_model_score_proxy", passed["shortcut_controls"])
         markdown = render_registry_proposal_markdown(passed)
         self.assertIn("MiraBench", markdown)
+
+    def test_world_model_diagnostic_closure_plan_prioritizes_public_paths(self):
+        entries = [
+            {
+                "benchmark": "RoboTrustBench",
+                "year": 2026,
+                "layer": "trust_diagnostic",
+                "cases": 40,
+                "tasks": 4,
+                "rank0_success": 0,
+                "oracle_success": 0,
+                "shortcut_controls": [],
+            },
+            {
+                "benchmark": "MiraBench",
+                "year": 2026,
+                "layer": "world_model_diagnostic",
+                "cases": 0,
+                "tasks": 0,
+                "rank0_success": 0,
+                "oracle_success": 0,
+                "shortcut_controls": [],
+            },
+            {
+                "benchmark": "RoboWM-Bench",
+                "year": 2026,
+                "layer": "robustness_diagnostic",
+                "cases": 10,
+                "tasks": 1,
+                "rank0_success": 7,
+                "oracle_success": 7,
+                "shortcut_controls": [],
+            },
+        ]
+        plan = build_closure_plan(entries)
+        self.assertEqual(plan["recommended_order"], ["MiraBench", "RoboTrustBench", "RoboWM-Bench"])
+        rows = {row["benchmark"]: row for row in plan["diagnostic_benchmarks"]}
+        self.assertEqual(rows["MiraBench"]["closure_status"], "blocked_public_artifacts")
+        self.assertEqual(rows["RoboTrustBench"]["closure_status"], "adapter_validation_only")
+        self.assertEqual(rows["RoboWM-Bench"]["closure_status"], "conditional_robustness_diagnostic")
+        self.assertIn("oracle_judgment_labels", rows["RoboTrustBench"]["missing"])
+        markdown = render_diagnostic_closure_markdown(plan)
+        self.assertIn("adapter_validation_only", markdown)
+        self.assertIn("paper rule", markdown)
 
     def test_world_model_diagnostic_label_and_score_conversion(self):
         rows = convert_diagnostic(

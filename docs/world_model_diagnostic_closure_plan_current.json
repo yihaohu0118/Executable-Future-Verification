@@ -1,0 +1,82 @@
+{
+  "diagnostic_benchmarks": [
+    {
+      "benchmark": "MiraBench",
+      "cases": 0,
+      "closure_status": "blocked_public_artifacts",
+      "layer": "world_model_diagnostic",
+      "missing": [
+        "cases",
+        "action_only",
+        "candidate_id_or_rank_remap",
+        "energy_or_magnitude",
+        "oracle_judgment_labels",
+        "proxy_or_rank0_failure",
+        "random",
+        "rank0",
+        "visual_or_model_score_proxy"
+      ],
+      "next_action": "Wait for public judgment/result artifacts, then convert them into a multi-candidate diagnostic manifest.",
+      "priority": 1,
+      "source_urls": [
+        "https://arxiv.org/abs/2605.29360"
+      ],
+      "tasks": 0,
+      "year": 2026
+    },
+    {
+      "benchmark": "RoboTrustBench",
+      "cases": 40,
+      "closure_status": "adapter_validation_only",
+      "layer": "trust_diagnostic",
+      "missing": [
+        "action_only",
+        "candidate_id_or_rank_remap",
+        "energy_or_magnitude",
+        "oracle_judgment_labels",
+        "proxy_or_rank0_failure",
+        "random",
+        "rank0",
+        "visual_or_model_score_proxy",
+        "oracle_headroom"
+      ],
+      "next_action": "Use the public subset only to validate request generation and manifest plumbing; do not count it as a paper-level diagnostic.",
+      "priority": 2,
+      "source_urls": [
+        "https://arxiv.org/abs/2606.01600",
+        "https://huiqiongli.github.io/RoboTrustBench/",
+        "https://huggingface.co/datasets/Huiqiong0124/RoboTrustBench_Dataset"
+      ],
+      "tasks": 4,
+      "year": 2026
+    },
+    {
+      "benchmark": "RoboWM-Bench",
+      "cases": 10,
+      "closure_status": "conditional_robustness_diagnostic",
+      "layer": "robustness_diagnostic",
+      "missing": [
+        "action_only",
+        "candidate_id_or_rank_remap",
+        "energy_or_magnitude",
+        "oracle_judgment_labels",
+        "proxy_or_rank0_failure",
+        "random",
+        "rank0",
+        "visual_or_model_score_proxy",
+        "oracle_headroom"
+      ],
+      "next_action": "Keep this as a robustness diagnostic until GT replay/evaluator stability is resolved under a pinned official patch.",
+      "priority": 3,
+      "source_urls": [],
+      "tasks": 1,
+      "year": 2026
+    }
+  ],
+  "paper_rule": "Do not count a diagnostic benchmark until its gate passes and the EFV selector beats the visual/model-score proxy.",
+  "recommended_order": [
+    "MiraBench",
+    "RoboTrustBench",
+    "RoboWM-Bench"
+  ]
+}
