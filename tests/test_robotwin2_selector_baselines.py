@@ -114,6 +114,33 @@ class RoboTwin2SelectorBaselinesTest(unittest.TestCase):
         self.assertEqual(prototype["overall"]["selector_oracle_match"], 4)
         self.assertEqual(len(prototype["scored_rows"]), len(self.rows))
 
+    def test_prototype_and_sweep_handle_single_case_without_training_rows(self):
+        rows = [
+            make_row("handover", "seed=0", "rank0", 0, False, [[0.0]], [0.0]),
+            make_row("handover", "seed=0", "success", 1, True, [[1.0]], [1.0]),
+        ]
+        prototype = evaluate_prototype(
+            rows,
+            feature_mode="gripper_distribution",
+            scope="same_task",
+            prototype_mode="nearest_positive",
+        )
+        self.assertEqual(prototype["overall"]["cases"], 1)
+        self.assertEqual(len(prototype["scored_rows"]), len(rows))
+
+        summary = run_sweep(
+            rows,
+            seeds=[0],
+            mode="failure_rank0_shuffle_rest",
+            remap_candidate_ids=True,
+            prototypes=(parse_prototype_config("gripper_distribution:same_task:nearest_positive"),),
+            trace_distances=(),
+            linear_probes=(),
+            heuristics=(),
+        )
+        selectors = {item["selector"] for item in summary["aggregate"]["selectors"]}
+        self.assertIn("prototype:gripper_distribution:same_task:nearest_positive", selectors)
+
     def test_linear_probe_is_a_learned_verifier_baseline(self):
         selector = evaluate_linear_probe(
             self.rows,

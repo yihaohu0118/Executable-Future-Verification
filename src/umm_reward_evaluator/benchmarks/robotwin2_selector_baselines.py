@@ -631,11 +631,14 @@ def evaluate_prototype(rows: list[dict[str, Any]], *, feature_mode: str, scope: 
             train_rows = [row for other_key, case_rows in grouped.items() if other_key != key for row in case_rows]
         else:
             raise ValueError(f"unknown train scope: {scope}")
-        x_train = np.stack([feature_vector(row, feature_mode, dims=dims) for row in train_rows]).astype(np.float32)
         x_test = np.stack([feature_vector(row, feature_mode, dims=dims) for row in test_rows]).astype(np.float32)
-        x_train, x_test = normalize_train_test(x_train, x_test)
-        y_train = np.asarray([1.0 if row["oracle_success"] else 0.0 for row in train_rows], dtype=np.float32)
-        scores = prototype_scores(x_train, y_train, x_test, prototype_mode)
+        if train_rows:
+            x_train = np.stack([feature_vector(row, feature_mode, dims=dims) for row in train_rows]).astype(np.float32)
+            x_train, x_test = normalize_train_test(x_train, x_test)
+            y_train = np.asarray([1.0 if row["oracle_success"] else 0.0 for row in train_rows], dtype=np.float32)
+            scores = prototype_scores(x_train, y_train, x_test, prototype_mode)
+        else:
+            scores = np.zeros((len(test_rows),), dtype=np.float32)
         selected[key] = select_by_score(test_rows, scores.tolist())
         for row, score in zip(test_rows, scores):
             payload = dict(row)
