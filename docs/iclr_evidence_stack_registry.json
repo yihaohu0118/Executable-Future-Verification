@@ -25,12 +25,12 @@
       "year": 2025,
       "layer": "executable_second",
       "status": "pending",
-      "cases": 5,
-      "tasks": 1,
+      "cases": 9,
+      "tasks": 3,
       "rank0_success": 0,
-      "oracle_success": 5,
-      "method_success": 5,
-      "best_non_oracle_baseline_success": 3,
+      "oracle_success": 9,
+      "method_success": 0,
+      "best_non_oracle_baseline_success": 0,
       "shortcut_controls": [
         "rank0",
         "random",
@@ -38,7 +38,7 @@
         "action_only",
         "candidate_id_or_rank_remap"
       ],
-      "evidence": "stamp_seal K=5 is clean, but the ICLR gate requires a six-task primary window with at least four base-ready tasks and at least one relation-rescue task."
+      "evidence": "stamp_seal K=5 is clean; stack_blocks_two and open_laptop each have 2 clean cases with rank0 0/2 and oracle 2/2. The latest RoboTwin2 paper-readiness gate still fails: only 2 base-ready tasks in the current multitask run, relation coverage is 0, and no relation-rescue task is proven."
     },
     {
       "benchmark": "MiraBench",
