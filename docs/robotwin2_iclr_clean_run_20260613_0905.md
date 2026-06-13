@@ -57,6 +57,33 @@ The original driver posthoc command only includes the primary-window task list.
 After replacement traces finish, rerun multitask analysis manually over all
 tasks that produced usable raw JSONL files.
 
+## Bad-Seed Continuation Fix
+
+The first clean window exposed a sampler robustness issue: one failed seed could
+abort the entire task before later seeds were attempted. This is especially bad
+for RoboTwin2 because some official expert initializations fail for individual
+seeds even when the task is otherwise usable.
+
+The trace generator was updated after the run started:
+
+- commit: `958a7ba`
+- Python flag: `--continue-on-seed-error`
+- shell default: `CONTINUE_ON_SEED_ERROR=1`
+
+New trace jobs skip only the failed seed and keep collecting later seeds. This
+does not convert failed expert initialization into a negative example; it only
+prevents one bad seed from discarding the rest of the task.
+
+After syncing `958a7ba` to dev2, supplementary jobs were launched for tasks
+that failed or stalled on seed 0:
+
+| Supplement task | GPU | Seeds | Reason |
+| --- | ---: | --- | --- |
+| `open_microwave` | 2 | `1-7` | seed 0 expert initialization failed |
+| `stack_bowls_two` | 4 | `1-7` | seed 0 expert rollout did not succeed |
+| `place_object_basket` | 6 | `1-7` | seed 0 expert initialization failed |
+| `press_stapler` | 7 | `1-7` | seed 0 expert initialization failed |
+
 ## Launch Command
 
 The run was started as a background driver. Each task is launched through
