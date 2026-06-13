@@ -12,6 +12,8 @@ fi
 REQUIRE_CANDIDATES_PER_CASE="${REQUIRE_CANDIDATES_PER_CASE:-24}"
 NUM_SWEEP_SEEDS="${NUM_SWEEP_SEEDS:-10}"
 DEFAULT_SUITE="${DEFAULT_SUITE:-demo_clean_k5}"
+MIN_MAIN_TABLE_CASES="${MIN_MAIN_TABLE_CASES:-1}"
+MIN_ORACLE_BETTER_CASES="${MIN_ORACLE_BETTER_CASES:-1}"
 
 mkdir -p "$RUN_ROOT/manifests" "$RUN_ROOT/selectors"
 
@@ -28,6 +30,8 @@ for task in "${TASKS[@]}"; do
   diagnostics_md="$RUN_ROOT/selectors/${task}_targeted_energy_matched_diagnostics.md"
   trace_audit_json="$RUN_ROOT/selectors/${task}_targeted_energy_matched_trace_field_audit.json"
   trace_audit_md="$RUN_ROOT/selectors/${task}_targeted_energy_matched_trace_field_audit.md"
+  base_gate_json="$RUN_ROOT/selectors/${task}_targeted_energy_matched_main_table_gate.json"
+  relation_gate_json="$RUN_ROOT/selectors/${task}_targeted_energy_matched_relation_gate.json"
   sweep_json="$RUN_ROOT/selectors/${task}_targeted_energy_matched_rankrand_sweep.json"
   failures_json="$RUN_ROOT/selectors/${task}_targeted_energy_matched_failure_analysis.json"
   failures_md="$RUN_ROOT/selectors/${task}_targeted_energy_matched_failure_analysis.md"
@@ -50,6 +54,30 @@ PY
   if [ "$cases" = "0" ]; then
     echo "skip selector analysis for $task: no complete cases"
     continue
+  fi
+
+  if python -m umm_reward_evaluator.benchmarks.robotwin2_main_table_gate \
+    --manifest "$manifest" \
+    --output "$base_gate_json" \
+    --required-candidates-per-case "$REQUIRE_CANDIDATES_PER_CASE" \
+    --min-cases "$MIN_MAIN_TABLE_CASES" \
+    --min-oracle-better-cases "$MIN_ORACLE_BETTER_CASES"; then
+    echo "base main-table gate passed for $task: $base_gate_json"
+  else
+    echo "base main-table gate failed for $task: $base_gate_json"
+  fi
+
+  if python -m umm_reward_evaluator.benchmarks.robotwin2_main_table_gate \
+    --manifest "$manifest" \
+    --output "$relation_gate_json" \
+    --required-candidates-per-case "$REQUIRE_CANDIDATES_PER_CASE" \
+    --min-cases "$MIN_MAIN_TABLE_CASES" \
+    --min-oracle-better-cases "$MIN_ORACLE_BETTER_CASES" \
+    --require-feature object_relation_distribution \
+    --require-feature phase_object_relation_joint_gripper_distribution; then
+    echo "relation main-table gate passed for $task: $relation_gate_json"
+  else
+    echo "relation main-table gate failed for $task: $relation_gate_json"
   fi
 
   python -m umm_reward_evaluator.benchmarks.robotwin2_trace_field_audit \

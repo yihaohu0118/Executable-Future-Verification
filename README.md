@@ -178,6 +178,12 @@ PYTHONPATH=src python -m umm_reward_evaluator.benchmarks.robotwin2_main_table_ga
   --require-feature phase_object_relation_joint_gripper_distribution
 ```
 
+`scripts/robotwin2_multitask_analysis.sh` writes these gate reports
+automatically for each task:
+
+- `selectors/<task>_targeted_energy_matched_main_table_gate.json`
+- `selectors/<task>_targeted_energy_matched_relation_gate.json`
+
 Run the multi-seed anonymous rank/candidate-ID sweep:
 
 ```bash
