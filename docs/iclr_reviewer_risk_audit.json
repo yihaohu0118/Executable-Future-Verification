@@ -1,0 +1,82 @@
+{
+  "open_high_risks": 0,
+  "open_risks": 3,
+  "partial_high_risks": 3,
+  "partially_defended_risks": 4,
+  "risks": [
+    {
+      "evidence": [
+        "RoboTwin2 has oracle headroom, but anti-template pressure is not closed.",
+        "non_template_success_tasks=0, low_dtw_failed_negative_tasks=0, dtw_template_beaten_tasks=0"
+      ],
+      "name": "expert_template_matching",
+      "next_action": "Prioritize non-template successes and low-DTW failed negatives before adding easier tasks.",
+      "severity": "high",
+      "status": "partially_defended"
+    },
+    {
+      "evidence": [
+        "RoboCasa365 passes, but the second executable benchmark is still pending."
+      ],
+      "name": "single_benchmark_overclaim",
+      "next_action": "Do not claim multi-benchmark effectiveness until RoboTwin2 passes the paper-readiness gate.",
+      "severity": "high",
+      "status": "partially_defended"
+    },
+    {
+      "evidence": [
+        "RoboCasa365 includes rank0/random/energy/action-only/rank-remap controls."
+      ],
+      "name": "weak_or_shortcut_baselines",
+      "next_action": "Carry the same controls plus DTW nearest-positive into RoboTwin2 and diagnostics.",
+      "severity": "high",
+      "status": "partially_defended"
+    },
+    {
+      "evidence": [
+        "Only RoboCasa365 currently passes; no real robot or second executable benchmark is closed."
+      ],
+      "name": "no_real_robot",
+      "next_action": "State the sim-only boundary explicitly; do not claim real-robot transfer without hardware evidence.",
+      "severity": "medium",
+      "status": "open"
+    },
+    {
+      "evidence": [
+        "No passed diagnostic currently shows EFV beating a visual/model-score proxy."
+      ],
+      "name": "visual_plausibility_proxy",
+      "next_action": "Report visual/model-score proxy selectors next to EFV on MiraBench/RoboTrustBench/RoboWM-style diagnostics.",
+      "severity": "medium",
+      "status": "open"
+    },
+    {
+      "evidence": [
+        "No world-model/trust diagnostic layer currently passes with oracle labels and proxy baseline controls."
+      ],
+      "name": "world_model_relevance",
+      "next_action": "Convert one 2025-2026 public diagnostic benchmark into a multi-candidate selector table.",
+      "severity": "medium",
+      "status": "open"
+    },
+    {
+      "evidence": [
+        "Primary RoboCasa365 evidence card validates."
+      ],
+      "name": "system_artifact_or_partial_run",
+      "next_action": "Require raw-integrity audits before manifest conversion and evidence-card validation before registry promotion.",
+      "severity": "medium",
+      "status": "partially_defended"
+    },
+    {
+      "evidence": [
+        "RoboCasa365 method-vs-best-baseline margin=32.6"
+      ],
+      "name": "counterintuitive_signal_strength",
+      "next_action": "Keep the counterintuitive claim tied to rank0/oracle headroom and shortcut-controlled negatives.",
+      "severity": "low",
+      "status": "defended"
+    }
+  ],
+  "verdict": "not_ready_for_strong_claim"
+}

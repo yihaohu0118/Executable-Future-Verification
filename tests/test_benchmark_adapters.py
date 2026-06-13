@@ -33,6 +33,10 @@ from umm_reward_evaluator.benchmarks.iclr_boss_dashboard import (
     build_dashboard,
     render_markdown as render_boss_dashboard_markdown,
 )
+from umm_reward_evaluator.benchmarks.iclr_reviewer_risk_audit import (
+    build_risk_audit,
+    render_markdown as render_reviewer_risk_markdown,
+)
 from umm_reward_evaluator.benchmarks.randomize_planner_rank import randomize_manifest_rows
 from umm_reward_evaluator.benchmarks.robotwin2_main_table_gate import evaluate_gate
 from umm_reward_evaluator.benchmarks.robotwin2_paper_readiness_gate import (
@@ -1201,6 +1205,144 @@ class BenchmarkAdaptersTest(unittest.TestCase):
         markdown = render_boss_dashboard_markdown(report)
         self.assertIn("Worth continuing", markdown)
         self.assertIn("Benchmark Coverage", markdown)
+
+    def test_iclr_reviewer_risk_audit_flags_current_attack_surface(self):
+        controls = [
+            "rank0",
+            "random",
+            "energy_or_magnitude",
+            "action_only",
+            "candidate_id_or_rank_remap",
+        ]
+        gate = evaluate_evidence_stack(
+            [
+                {
+                    "benchmark": "RoboCasa365",
+                    "year": 2026,
+                    "layer": "executable_primary",
+                    "status": "passed",
+                    "cases": 64,
+                    "tasks": 4,
+                    "rank0_success": 0,
+                    "oracle_success": 64,
+                    "method_success": 63,
+                    "best_non_oracle_baseline_success": 31,
+                    "shortcut_controls": controls,
+                },
+                {
+                    "benchmark": "RoboTwin2",
+                    "year": 2025,
+                    "layer": "executable_second",
+                    "status": "pending",
+                    "cases": 9,
+                    "tasks": 3,
+                    "rank0_success": 0,
+                    "oracle_success": 9,
+                    "method_success": 0,
+                    "best_non_oracle_baseline_success": 0,
+                    "shortcut_controls": controls,
+                },
+                {
+                    "benchmark": "MiraBench",
+                    "year": 2026,
+                    "layer": "world_model_diagnostic",
+                    "status": "pending",
+                    "cases": 0,
+                    "tasks": 0,
+                    "rank0_success": 0,
+                    "oracle_success": 0,
+                    "method_success": 0,
+                    "best_non_oracle_baseline_success": 0,
+                    "shortcut_controls": [],
+                },
+            ]
+        )
+
+        report = build_risk_audit(gate)
+        risks = {risk["name"]: risk for risk in report["risks"]}
+
+        self.assertEqual(report["verdict"], "not_ready_for_strong_claim")
+        self.assertEqual(risks["expert_template_matching"]["status"], "partially_defended")
+        self.assertEqual(risks["single_benchmark_overclaim"]["status"], "partially_defended")
+        self.assertEqual(risks["world_model_relevance"]["status"], "open")
+        self.assertEqual(risks["counterintuitive_signal_strength"]["status"], "defended")
+        markdown = render_reviewer_risk_markdown(report)
+        self.assertIn("expert_template_matching", markdown)
+        self.assertIn("not_ready_for_strong_claim", markdown)
+
+    def test_iclr_reviewer_risk_audit_drops_when_second_benchmark_and_diagnostic_close(self):
+        controls = [
+            "rank0",
+            "random",
+            "energy_or_magnitude",
+            "action_only",
+            "candidate_id_or_rank_remap",
+        ]
+        diagnostic_controls = controls + [
+            "oracle_judgment_labels",
+            "proxy_or_rank0_failure",
+            "visual_or_model_score_proxy",
+        ]
+        gate = evaluate_evidence_stack(
+            [
+                {
+                    "benchmark": "RoboCasa365",
+                    "year": 2026,
+                    "layer": "executable_primary",
+                    "status": "passed",
+                    "cases": 64,
+                    "tasks": 4,
+                    "rank0_success": 0,
+                    "oracle_success": 64,
+                    "method_success": 63,
+                    "best_non_oracle_baseline_success": 31,
+                    "shortcut_controls": controls,
+                },
+                {
+                    "benchmark": "RoboTwin2",
+                    "year": 2025,
+                    "layer": "executable_second",
+                    "status": "passed",
+                    "cases": 32,
+                    "tasks": 4,
+                    "rank0_success": 2,
+                    "oracle_success": 28,
+                    "method_success": 24,
+                    "best_non_oracle_baseline_success": 18,
+                    "shortcut_controls": controls,
+                    "paper_readiness_passed": True,
+                    "anti_template_pressure_passed": True,
+                    "non_template_success_tasks": 2,
+                    "low_dtw_failed_negative_tasks": 2,
+                    "dtw_template_beaten_tasks": 3,
+                    "raw_integrity_passed": True,
+                },
+                {
+                    "benchmark": "MiraBench",
+                    "year": 2026,
+                    "layer": "world_model_diagnostic",
+                    "status": "passed",
+                    "cases": 80,
+                    "tasks": 8,
+                    "rank0_success": 30,
+                    "oracle_success": 65,
+                    "method_success": 54,
+                    "best_non_oracle_baseline_success": 45,
+                    "shortcut_controls": diagnostic_controls,
+                },
+            ],
+            min_cases_per_passed_benchmark=16,
+        )
+
+        report = build_risk_audit(gate)
+        risks = {risk["name"]: risk for risk in report["risks"]}
+
+        self.assertNotEqual(report["verdict"], "not_ready_for_strong_claim")
+        self.assertEqual(risks["expert_template_matching"]["status"], "defended")
+        self.assertEqual(risks["single_benchmark_overclaim"]["status"], "defended")
+        self.assertEqual(risks["world_model_relevance"]["status"], "defended")
+        self.assertEqual(risks["visual_plausibility_proxy"]["status"], "defended")
+        self.assertEqual(risks["no_real_robot"]["status"], "partially_defended")
 
     def test_iclr_claim_report_marks_complete_stack_ready(self):
         controls = [

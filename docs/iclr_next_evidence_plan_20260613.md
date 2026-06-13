@@ -135,6 +135,25 @@ after the next RoboTwin2 window:
 Continue toward ICLR only if RoboTwin2 closes the second-benchmark gap and at
 least one diagnostic world-model layer gives a credible external check.
 
+After updating `docs/iclr_evidence_stack_registry.json`, run the reviewer-risk
+audit before discussing the result as a paper claim:
+
+```bash
+python -m umm_reward_evaluator.benchmarks.iclr_reviewer_risk_audit \
+  --evidence-json docs/iclr_evidence_stack_registry.json \
+  --require-evidence-cards \
+  --evidence-card-root . \
+  --output-json docs/iclr_reviewer_risk_audit.json \
+  --output-md docs/iclr_reviewer_risk_audit.md
+```
+
+This report is intentionally stricter than headline accuracy. It tracks whether
+the current stack is still vulnerable to expert-template matching, single
+benchmark overclaiming, weak shortcut baselines, visual-plausibility proxy
+confounds, no-real-robot objections, and partial-run/system-artifact leakage.
+Do not promote a result into the main proposal while any high-severity risk is
+open.
+
 ## Next Execution Order
 
 1. Keep the current GPU state untouched while user training occupies dev2.
