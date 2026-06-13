@@ -85,6 +85,27 @@ Required properties:
   `metadata.dimension`, or `metadata.failure_category`;
 - rank/candidate-ID controls if model order or generation ID could leak labels.
 
+If benchmark prompt metadata and candidate judgments are stored separately,
+merge them first. This is the expected path for RoboTrustBench-style releases
+where the prompt/image metadata and model evaluation rows may be separate files:
+
+```bash
+python -m umm_reward_evaluator.benchmarks.world_model_diagnostic_merge_judgments \
+  --requests RUN_ROOT/robotrustbench_generation_requests.jsonl \
+  --judgments RUN_ROOT/judgments/model_outputs_with_scores.jsonl \
+  --output-records RUN_ROOT/manifests/diagnostic_records.jsonl \
+  --output-manifest RUN_ROOT/manifests/diagnostic_manifest.jsonl \
+  --output-summary RUN_ROOT/manifests/diagnostic_manifest.summary.json \
+  --default-benchmark RoboTrustBench \
+  --default-suite trustworthiness_subset \
+  --default-verification-target trustworthiness
+```
+
+The judgment rows should contain one row per candidate future with fields such
+as `sample_id`, `candidate_id`, `video_path`, `label` or `judgment`,
+`visual_quality_score` or `model_score`, and non-label verifier features such
+as `motion_consistency`, `action_following_score`, or `constraint_score`.
+
 Then run:
 
 ```bash

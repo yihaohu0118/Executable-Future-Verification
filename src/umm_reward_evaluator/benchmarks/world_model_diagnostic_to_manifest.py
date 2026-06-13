@@ -71,7 +71,7 @@ def _as_actions(record: dict[str, Any]) -> list[list[float]]:
 
 def _success(record: dict[str, Any], *, score_key: str | None, threshold: float | None) -> bool:
     for key in ("oracle_success", "success", "pass", "is_valid", "is_reliable", "is_trustworthy"):
-        if key in record:
+        if key in record and record[key] is not None:
             return bool(record[key])
     label = record.get("label", record.get("judgment", record.get("verdict")))
     if isinstance(label, str):

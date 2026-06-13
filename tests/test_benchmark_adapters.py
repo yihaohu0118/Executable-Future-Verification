@@ -69,6 +69,7 @@ from umm_reward_evaluator.benchmarks.robotrustbench_requests import (
 )
 from umm_reward_evaluator.benchmarks.world_model_diagnostic_to_manifest import convert_records as convert_diagnostic
 from umm_reward_evaluator.benchmarks.world_model_diagnostic_calibrate_verifier import calibrate_scores
+from umm_reward_evaluator.benchmarks.world_model_diagnostic_merge_judgments import normalize_judgments
 from umm_reward_evaluator.benchmarks.world_model_diagnostic_gate import (
     evaluate_diagnostic_gate,
     render_markdown as render_diagnostic_gate_markdown,
@@ -1543,6 +1544,64 @@ class BenchmarkAdaptersTest(unittest.TestCase):
         self.assertEqual({row["train_rows"] for row in summary["by_case"]}, {4})
         by_id = {row["candidate_id"]: row for row in scored}
         self.assertGreater(by_id["case0_good"]["metadata"]["efv_score"], by_id["case0_bad"]["metadata"]["efv_score"])
+
+    def test_world_model_diagnostic_merge_judgments_with_requests(self):
+        requests = [
+            {
+                "benchmark": "robotrustbench",
+                "suite": "subset",
+                "sample_id": "C_001",
+                "case_id": "C_001",
+                "task_name": "Counterfactual",
+                "scenario": "Counterfactual",
+                "subcategory": "Object Absence",
+                "instruction": "take the bottle",
+                "verification_target": "trustworthiness",
+                "metadata": {"scenario": "Counterfactual", "failure_category": "Object Absence"},
+            }
+        ]
+        judgments = [
+            {
+                "sample_id": "C_001",
+                "candidate_id": "visually_good",
+                "rank": 0,
+                "video_path": "vis.mp4",
+                "visual_quality_score": 0.9,
+                "motion_consistency": 0.2,
+                "label": "fail",
+            },
+            {
+                "sample_id": "C_001",
+                "candidate_id": "trustworthy",
+                "rank": 1,
+                "video_path": "trust.mp4",
+                "visual_quality_score": 0.3,
+                "motion_consistency": 0.8,
+                "label": "pass",
+            },
+        ]
+        records = normalize_judgments(
+            judgments,
+            requests=requests,
+            default_benchmark="robotrustbench",
+            default_suite="trustworthiness_subset",
+            default_verification_target="trustworthiness",
+        )
+        self.assertEqual(records[0]["task_name"], "Counterfactual")
+        self.assertEqual(records[0]["planner_score"], 0.9)
+        self.assertEqual(records[0]["metadata"]["failure_category"], "Object Absence")
+        manifest = convert_diagnostic(
+            records,
+            default_benchmark="robotrustbench",
+            default_suite="trustworthiness_subset",
+            default_verification_target="trustworthiness",
+            score_key=None,
+            threshold=None,
+        )
+        by_id = {row["candidate_id"]: row for row in manifest}
+        self.assertFalse(by_id["visually_good"]["oracle_success"])
+        self.assertTrue(by_id["trustworthy"]["oracle_success"])
+        self.assertEqual(by_id["visually_good"]["oracle_best_candidate_id"], "trustworthy")
 
     def test_robotrustbench_prompt_requests_encode_expected_behavior(self):
         requests = convert_robotrustbench_requests(
