@@ -12,7 +12,7 @@ scripts/iclr_refresh_reports.sh
 The refresh script intentionally continues after `iclr_evidence_stack_gate`
 fails, because the current expected status is still not paper-ready. It
 regenerates the stack gate, claim report, status report, gap report, boss
-dashboard, and world-model diagnostic closure plan.
+dashboard, world-model diagnostic closure plan, and world-model artifact audit.
 
 To run only the stack gate:
 
@@ -63,6 +63,20 @@ python -m umm_reward_evaluator.benchmarks.iclr_gap_report \
 The gap report is the best artifact to use before allocating the next
 experiment window: it lists the missing layers, benchmark-level blockers, and
 the next action for each pending benchmark.
+
+Generate the world-model artifact audit with:
+
+```bash
+python -m umm_reward_evaluator.benchmarks.world_model_artifact_audit \
+  --evidence-json docs/iclr_evidence_stack_registry.json \
+  --output-json docs/world_model_artifact_audit_current.json \
+  --output-md docs/world_model_artifact_audit_current.md
+```
+
+The artifact audit is stricter than the closure plan: it separates public
+prompt subsets from paper-countable multi-candidate judgment artifacts and
+reports whether each diagnostic benchmark is ready for the pipeline or only
+adapter validation.
 
 For a Chinese decision brief, use:
 

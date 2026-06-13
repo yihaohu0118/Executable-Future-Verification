@@ -103,6 +103,10 @@ from umm_reward_evaluator.benchmarks.world_model_diagnostic_closure_plan import 
     render_markdown as render_diagnostic_closure_markdown,
 )
 from umm_reward_evaluator.benchmarks.world_model_diagnostic_pipeline import run_pipeline
+from umm_reward_evaluator.benchmarks.world_model_artifact_audit import (
+    build_audit as build_world_model_artifact_audit,
+    render_markdown as render_world_model_artifact_audit_markdown,
+)
 
 
 class BenchmarkAdaptersTest(unittest.TestCase):
@@ -1854,6 +1858,67 @@ class BenchmarkAdaptersTest(unittest.TestCase):
         markdown = render_diagnostic_closure_markdown(plan)
         self.assertIn("adapter_validation_only", markdown)
         self.assertIn("paper rule", markdown)
+
+    def test_world_model_artifact_audit_separates_subset_from_registry_ready(self):
+        entries = [
+            {
+                "benchmark": "MiraBench",
+                "year": 2026,
+                "layer": "world_model_diagnostic",
+                "status": "pending",
+                "cases": 0,
+                "tasks": 0,
+                "rank0_success": 0,
+                "oracle_success": 0,
+                "method_success": 0,
+                "best_non_oracle_baseline_success": 0,
+                "shortcut_controls": [],
+            },
+            {
+                "benchmark": "RoboTrustBench",
+                "year": 2026,
+                "layer": "trust_diagnostic",
+                "status": "pending",
+                "cases": 40,
+                "tasks": 4,
+                "rank0_success": 0,
+                "oracle_success": 0,
+                "method_success": 0,
+                "best_non_oracle_baseline_success": 0,
+                "shortcut_controls": [],
+            },
+            {
+                "benchmark": "MiraBench-Unit",
+                "year": 2026,
+                "layer": "world_model_diagnostic",
+                "status": "passed",
+                "cases": 16,
+                "tasks": 2,
+                "rank0_success": 4,
+                "oracle_success": 16,
+                "method_success": 14,
+                "best_non_oracle_baseline_success": 10,
+                "shortcut_controls": [
+                    "rank0",
+                    "random",
+                    "energy_or_magnitude",
+                    "action_only",
+                    "candidate_id_or_rank_remap",
+                    "oracle_judgment_labels",
+                    "proxy_or_rank0_failure",
+                    "visual_or_model_score_proxy",
+                ],
+            },
+        ]
+        audit = build_world_model_artifact_audit(entries)
+        rows = {row["benchmark"]: row for row in audit["diagnostic_artifacts"]}
+        self.assertEqual(rows["MiraBench"]["artifact_status"], "blocked_public_artifacts")
+        self.assertEqual(rows["RoboTrustBench"]["artifact_status"], "adapter_or_subset_only")
+        self.assertTrue(rows["MiraBench-Unit"]["registry_ready"])
+        self.assertEqual(audit["summary"]["registry_ready"], 1)
+        markdown = render_world_model_artifact_audit_markdown(audit)
+        self.assertIn("pipeline-ready", markdown)
+        self.assertIn("prompt_subset_only", markdown)
 
     def test_world_model_diagnostic_label_and_score_conversion(self):
         rows = convert_diagnostic(

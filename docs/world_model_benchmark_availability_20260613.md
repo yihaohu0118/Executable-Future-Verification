@@ -1,10 +1,29 @@
 # World-Model Benchmark Availability Snapshot
 
-Date checked: 2026-06-13
+Date checked: 2026-06-13. Artifact audit refreshed on 2026-06-14.
 
 This note records what is actually usable for the third EFV evidence layer.
 The goal is to avoid counting a benchmark name before its public artifacts can
 support a reproducible selector table.
+
+Current machine-readable audit:
+
+- `docs/world_model_artifact_audit_current.json`
+- `docs/world_model_artifact_audit_current.md`
+
+Regenerate it with:
+
+```bash
+python -m umm_reward_evaluator.benchmarks.world_model_artifact_audit \
+  --evidence-json docs/iclr_evidence_stack_registry.json \
+  --output-json docs/world_model_artifact_audit_current.json \
+  --output-md docs/world_model_artifact_audit_current.md
+```
+
+As of the 2026-06-14 audit, no world-model diagnostic layer is paper-countable:
+MiraBench is blocked on public judgment artifacts, RoboTrustBench is still a
+prompt-subset / adapter-validation path, and RoboWM-Bench remains conditional
+on official replay/evaluator stability.
 
 ## MiraBench
 

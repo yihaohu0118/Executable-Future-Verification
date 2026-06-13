@@ -71,5 +71,12 @@ PYTHONPATH=src "$PYTHON_BIN" -m umm_reward_evaluator.benchmarks.world_model_diag
   --output-md "$DOCS_DIR/world_model_diagnostic_closure_plan_current.md"
 
 echo
+echo "=== world-model artifact audit ==="
+PYTHONPATH=src "$PYTHON_BIN" -m umm_reward_evaluator.benchmarks.world_model_artifact_audit \
+  --evidence-json "$EVIDENCE_JSON" \
+  --output-json "$DOCS_DIR/world_model_artifact_audit_current.json" \
+  --output-md "$DOCS_DIR/world_model_artifact_audit_current.md"
+
+echo
 echo "refreshed ICLR evidence reports under $DOCS_DIR"
 echo "gate_exit=$GATE_STATUS"

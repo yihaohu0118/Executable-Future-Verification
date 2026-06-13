@@ -1,0 +1,113 @@
+{
+  "diagnostic_artifacts": [
+    {
+      "artifact_note": "public_judgments_not_found",
+      "artifact_status": "blocked_public_artifacts",
+      "benchmark": "MiraBench",
+      "cases": 0,
+      "layer": "world_model_diagnostic",
+      "missing": [
+        "cases",
+        "tasks",
+        "oracle_headroom",
+        "method_margin",
+        "shortcut_controls",
+        "passed_registry_proposal",
+        "public_multi_candidate_records",
+        "judgment_labels",
+        "model_score_proxy"
+      ],
+      "missing_controls": [
+        "action_only",
+        "candidate_id_or_rank_remap",
+        "energy_or_magnitude",
+        "oracle_judgment_labels",
+        "proxy_or_rank0_failure",
+        "random",
+        "rank0",
+        "visual_or_model_score_proxy"
+      ],
+      "next_action": "Watch for official annotation/result artifacts; run world_model_diagnostic_pipeline once public records exist.",
+      "pipeline_ready": false,
+      "registry_ready": false,
+      "source_urls": [
+        "https://arxiv.org/abs/2605.29360"
+      ],
+      "tasks": 0,
+      "year": 2026
+    },
+    {
+      "artifact_note": "prompt_subset_only",
+      "artifact_status": "adapter_or_subset_only",
+      "benchmark": "RoboTrustBench",
+      "cases": 40,
+      "layer": "trust_diagnostic",
+      "missing": [
+        "oracle_headroom",
+        "method_margin",
+        "shortcut_controls",
+        "passed_registry_proposal",
+        "full_or_paper_scale_release",
+        "multi_candidate_judgments"
+      ],
+      "missing_controls": [
+        "action_only",
+        "candidate_id_or_rank_remap",
+        "energy_or_magnitude",
+        "oracle_judgment_labels",
+        "proxy_or_rank0_failure",
+        "random",
+        "rank0",
+        "visual_or_model_score_proxy"
+      ],
+      "next_action": "Use the public subset only to validate request generation; wait for full benchmark or collect candidate judgments before claiming results.",
+      "pipeline_ready": false,
+      "registry_ready": false,
+      "source_urls": [
+        "https://arxiv.org/abs/2606.01600",
+        "https://huiqiongli.github.io/RoboTrustBench/",
+        "https://huggingface.co/datasets/Huiqiong0124/RoboTrustBench_Dataset"
+      ],
+      "tasks": 4,
+      "year": 2026
+    },
+    {
+      "artifact_note": "conditional_unstable_replay",
+      "artifact_status": "adapter_or_subset_only",
+      "benchmark": "RoboWM-Bench",
+      "cases": 10,
+      "layer": "robustness_diagnostic",
+      "missing": [
+        "oracle_headroom",
+        "method_margin",
+        "shortcut_controls",
+        "passed_registry_proposal",
+        "pinned_official_replay_patch",
+        "gt_replay_ceiling"
+      ],
+      "missing_controls": [
+        "action_only",
+        "candidate_id_or_rank_remap",
+        "energy_or_magnitude",
+        "oracle_judgment_labels",
+        "proxy_or_rank0_failure",
+        "random",
+        "rank0",
+        "visual_or_model_score_proxy"
+      ],
+      "next_action": "Keep as conditional robustness diagnostic until official replay/evaluator stability is pinned.",
+      "pipeline_ready": false,
+      "registry_ready": false,
+      "source_urls": [],
+      "tasks": 1,
+      "year": 2026
+    }
+  ],
+  "paper_rule": "Do not count a world-model diagnostic benchmark unless registry_ready is true and the evidence card validates.",
+  "summary": {
+    "blocked_public_artifacts": 1,
+    "diagnostic_benchmarks": 3,
+    "pipeline_ready": 0,
+    "registry_ready": 0
+  }
+}
