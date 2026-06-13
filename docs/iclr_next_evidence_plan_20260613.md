@@ -69,6 +69,21 @@ futures over near-template failures. DTW nearest-positive selectors are treated
 as template baselines; they do not count as evidence that the proposed execution
 envelope mechanism has beaten the expert-template shortcut.
 
+The dedicated RoboTwin2 anti-template pressure report should be inspected before
+any headline table is trusted:
+
+```bash
+python -m umm_reward_evaluator.benchmarks.robotwin2_antitemplate_pressure_gate \
+  --run-root RUN_ROOT \
+  --output-json RUN_ROOT/selectors/robotwin2_antitemplate_pressure_gate.json \
+  --output-md RUN_ROOT/selectors/robotwin2_antitemplate_pressure_gate.md
+```
+
+Passing this report means the method wins specifically on tasks where the
+candidate pool contains both successful non-template futures and failed
+low-DTW futures. Failing it is actionable: either the pool lacks anti-template
+pressure, or DTW/expert-template matching still explains the result.
+
 ### 3. One World-Model Diagnostic Layer
 
 The paper needs one diagnostic layer that connects the method to current
@@ -108,8 +123,8 @@ least one diagnostic world-model layer gives a credible external check.
 1. Keep the current GPU state untouched while user training occupies dev2.
 2. When a clean window exists, run the bounded RoboTwin2 launcher with
    `RUN_ANALYSIS_AFTER=1` so raw integrity audit runs before analysis.
-3. Inspect the paper-readiness gate before looking at headline selector
-   accuracy.
+3. Inspect the paper-readiness gate and anti-template pressure gate before
+   looking at headline selector accuracy.
 4. If RoboTwin2 passes, freeze RoboCasa365 and RoboTwin2 tables, then instantiate
    one world-model diagnostic manifest.
 5. If RoboTwin2 fails, do not expand blindly. First inspect whether the failure

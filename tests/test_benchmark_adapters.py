@@ -41,6 +41,10 @@ from umm_reward_evaluator.benchmarks.robotwin2_paper_readiness_gate import (
     evaluate_paper_readiness,
     render_markdown as render_paper_readiness_markdown,
 )
+from umm_reward_evaluator.benchmarks.robotwin2_antitemplate_pressure_gate import (
+    evaluate_pressure_gate,
+    render_markdown as render_antitemplate_pressure_markdown,
+)
 from umm_reward_evaluator.benchmarks.robotwin2_readiness_report import collect_reports, render_markdown
 from umm_reward_evaluator.benchmarks.robotwin2_selector_table import (
     collect_selector_rows,
@@ -629,6 +633,59 @@ class BenchmarkAdaptersTest(unittest.TestCase):
                 min_relation_rescue_tasks=1,
             )
             self.assertFalse(failed["passed"])
+
+    def test_robotwin2_antitemplate_pressure_gate_flags_template_shortcut(self):
+        manifest_evidence = {
+            "stack_blocks_two": {
+                "cases": 2,
+                "non_template_success_cases": 2,
+                "matched_negative_cases": 2,
+            }
+        }
+        antitemplate_evidence = {
+            "stack_blocks_two": {
+                "cases": 2,
+                "diverse_non_full_success_cases": 2,
+                "matched_low_dtw_negative_cases": 2,
+            }
+        }
+        passed = evaluate_pressure_gate(
+            selector_rows={
+                "stack_blocks_two": {
+                    "cases": 2,
+                    "rank0": 0.0,
+                    "random": 0.5,
+                    "dtw_joint_gripper": 0.5,
+                    "phase_relation_robot": 2.0,
+                }
+            },
+            manifest_evidence=manifest_evidence,
+            antitemplate_evidence=antitemplate_evidence,
+            min_pressure_tasks=1,
+            min_method_advantage_tasks=1,
+        )
+        self.assertTrue(passed["passed"])
+        self.assertIn("`method_beats_template_tasks` | pass", render_antitemplate_pressure_markdown(passed))
+
+        template_shortcut = evaluate_pressure_gate(
+            selector_rows={
+                "stack_blocks_two": {
+                    "cases": 2,
+                    "rank0": 0.0,
+                    "random": 0.5,
+                    "dtw_joint_gripper": 2.0,
+                    "phase_relation_robot": 2.0,
+                }
+            },
+            manifest_evidence=manifest_evidence,
+            antitemplate_evidence=antitemplate_evidence,
+            min_pressure_tasks=1,
+            min_method_advantage_tasks=1,
+        )
+        self.assertFalse(template_shortcut["passed"])
+        risk = template_shortcut["tasks"][0]["risk_reasons"]
+        self.assertIn("dtw_template_not_beaten", risk)
+        self.assertIn("dtw_template_near_oracle", risk)
 
     def test_iclr_evidence_stack_gate_requires_three_modern_layers(self):
         controls = [

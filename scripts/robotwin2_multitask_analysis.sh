@@ -23,6 +23,8 @@ selector_table_json="$RUN_ROOT/selectors/robotwin2_selector_table.json"
 selector_table_md="$RUN_ROOT/selectors/robotwin2_selector_table.md"
 paper_gate_json="$RUN_ROOT/selectors/robotwin2_paper_readiness_gate.json"
 paper_gate_md="$RUN_ROOT/selectors/robotwin2_paper_readiness_gate.md"
+antitemplate_pressure_json="$RUN_ROOT/selectors/robotwin2_antitemplate_pressure_gate.json"
+antitemplate_pressure_md="$RUN_ROOT/selectors/robotwin2_antitemplate_pressure_gate.md"
 
 for task in "${TASKS[@]}"; do
   input_dir="$RUN_ROOT/raw/$task"
@@ -132,3 +134,8 @@ if "$PYTHON_BIN" -m umm_reward_evaluator.benchmarks.robotwin2_paper_readiness_ga
 else
   echo "paper readiness gate failed: $paper_gate_json"
 fi
+
+"$PYTHON_BIN" -m umm_reward_evaluator.benchmarks.robotwin2_antitemplate_pressure_gate \
+  --run-root "$RUN_ROOT" \
+  --output-json "$antitemplate_pressure_json" \
+  --output-md "$antitemplate_pressure_md"

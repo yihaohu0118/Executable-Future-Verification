@@ -82,6 +82,37 @@ treated as template-matching baselines rather than as mechanism evidence. Failin
 the gate means the result can still be a diagnostic, but the paper should not
 rely on it as the second benchmark.
 
+## Anti-Template Pressure Gate
+
+The paper-readiness gate is the main decision rule, but the most important
+reviewer risk deserves a separate report:
+
+```bash
+python -m umm_reward_evaluator.benchmarks.robotwin2_antitemplate_pressure_gate \
+  --run-root RUN_ROOT \
+  --output-json RUN_ROOT/selectors/robotwin2_antitemplate_pressure_gate.json \
+  --output-md RUN_ROOT/selectors/robotwin2_antitemplate_pressure_gate.md
+```
+
+This gate asks a narrower question:
+
+> On tasks that contain both diverse successful futures and failed low-DTW
+> futures, does the EFV envelope/relation selector beat nearest-template DTW
+> baselines?
+
+It separates two failure modes that should not be conflated:
+
+- `missing_anti_template_pressure`: the task still does not contain the right
+  hard positives and near-template failures, so the claim is under-tested.
+- `dtw_template_not_beaten` or `dtw_template_near_oracle`: the candidate pool
+  is pressured enough, but nearest-expert/template matching already explains
+  the result.
+
+The multitask analysis script writes this report by default after the selector
+table and paper-readiness gate. It does not fail the analysis process unless
+run manually with `--fail-on-risk`; the intended workflow is to inspect the
+report before updating any paper table or evidence card.
+
 ## Task Roles
 
 The next window should prioritize tasks by role, not by convenience.
