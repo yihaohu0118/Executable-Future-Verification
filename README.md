@@ -128,6 +128,8 @@ is disk space rather than GPU availability. See
   validators, selector baselines, and controls.
 - `scripts/dev2_efv_preflight_audit.sh`: read-only dev2 disk/GPU/result audit
   before launching RoboTwin2 windows.
+- `scripts/dev2_checkpoint_cleanup_audit.sh`: read-only checkpoint space audit
+  and approval template for restoring dev2 disk space.
 - `tests/`: lightweight tests for manifest conversion, controls, and selector
   baselines.
 

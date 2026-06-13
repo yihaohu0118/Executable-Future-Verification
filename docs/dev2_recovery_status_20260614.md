@@ -23,6 +23,19 @@ Read-only preflight at `2026-06-14`:
 The current blocker is disk, not GPU. Do not start persistent RoboTwin2 waiters
 until free space is restored and the remote EFV checkout is updated.
 
+Follow-up read-only check after GitHub `b5b9e8e`:
+
+- `/`, `/home`, and `/tmp` are still `100%` full with `0` available;
+- GPU0/1 still host active `evogym-train` Python processes at about `74080`
+  MiB each;
+- GPU2-7 are still idle at about `1` MiB each;
+- `/home/yihao_hyh/Executable-Future-Verification` is still at `10a8efb`;
+- no deletion or process kill was performed.
+
+Use `scripts/dev2_checkpoint_cleanup_audit.sh` on dev2 for a read-only cleanup
+report. The script prints disk status, active GPU compute apps, large checkpoint
+directories, and an approval template. It intentionally contains no `rm`.
+
 ## Large Disk Consumers
 
 Read-only `du` shows the main pressure is under
