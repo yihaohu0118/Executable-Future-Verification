@@ -21,7 +21,7 @@ The unifying claim is:
 | P0 | RoboCasa365 | 2026 | Primary executable manipulation evidence | Running, strong n16 hard-negative results | task success / oracle recovery |
 | P1 | RoboTwin 2.0 | 2025 | Second executable manipulation benchmark | Dedicated dev2 env works; clean expert smoke passed; needs candidate tracing | task success under randomized dual-arm tasks |
 | P2 | MiraBench | 2026 | Action-conditioned world-model reliability diagnostic | Paper public; code/data release not yet confirmed in search | action fidelity / optimism-bias labels |
-| P3 | RoboTrustBench | 2026 | Trust/counterfactual/adversarial video-world-model diagnostic | Paper public; code/data release not yet confirmed in search | trustworthiness criteria |
+| P3 | RoboTrustBench | 2026 | Trust/counterfactual/adversarial video-world-model diagnostic | Project page and 40-sample HuggingFace subset public; full dataset coming soon | trustworthiness criteria |
 | Conditional | RoboWM-Bench | 2026 | Embodied world-model-to-action benchmark | Environment works after Vulkan/EGL fix; public eval has Pick reset mismatch | simulator success after official clarification |
 
 Source links:
@@ -105,6 +105,19 @@ RoboTrustBench tests video world models under:
 This can support the safety/trust version of the claim: generated videos can look coherent while violating constraints, counterfactual grounding, physical interaction, or unsafe-instruction suppression.
 
 Use the same diagnostic adapter as MiraBench.
+
+Current public-data status:
+
+- project page: `https://huiqiongli.github.io/RoboTrustBench/`;
+- HuggingFace dataset: `Huiqiong0124/RoboTrustBench_Dataset`;
+- current release contains a 40-sample subset across Normal,
+  Constraint-sensitive, Counterfactual, and Adversarial categories;
+- the dataset card states that the full dataset is coming soon.
+
+Therefore RoboTrustBench is useful now for adapter validation and prompt-level
+diagnostic plumbing, but it should not be marked as a passed paper-level
+benchmark until we have a multi-candidate judgment manifest and the diagnostic
+gate passes.
 
 ### RoboWM-Bench
 

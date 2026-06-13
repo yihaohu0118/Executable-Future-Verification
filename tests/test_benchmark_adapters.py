@@ -26,6 +26,10 @@ from umm_reward_evaluator.benchmarks.robotwin2_trace_to_manifest import (
     filter_records_by_case_size,
 )
 from umm_reward_evaluator.benchmarks.world_model_diagnostic_to_manifest import convert_records as convert_diagnostic
+from umm_reward_evaluator.benchmarks.world_model_diagnostic_gate import (
+    evaluate_diagnostic_gate,
+    render_markdown as render_diagnostic_gate_markdown,
+)
 
 
 class BenchmarkAdaptersTest(unittest.TestCase):
@@ -553,6 +557,91 @@ class BenchmarkAdaptersTest(unittest.TestCase):
         self.assertTrue(rows[1]["oracle_success"])
         self.assertEqual(rows[0]["metadata"]["future_representation"], "rgb_video")
         self.assertEqual(rows[0]["oracle_best_candidate_id"], "action_faithful")
+
+    def test_world_model_diagnostic_gate_checks_categories_and_score_baseline(self):
+        rows = convert_diagnostic(
+            [
+                {
+                    "benchmark": "robotrustbench",
+                    "task_name": "put_marker_in_mug",
+                    "case_id": "normal_001",
+                    "candidate_id": "visual_rank0",
+                    "candidate_rank_by_planner": 0,
+                    "label": "fail",
+                    "planner_score": 0.9,
+                    "video_path": "a.mp4",
+                    "scenario": "Normal",
+                    "failure_category": "wrong_target",
+                },
+                {
+                    "benchmark": "robotrustbench",
+                    "task_name": "put_marker_in_mug",
+                    "case_id": "normal_001",
+                    "candidate_id": "verified",
+                    "candidate_rank_by_planner": 1,
+                    "label": "pass",
+                    "planner_score": 0.4,
+                    "video_path": "b.mp4",
+                    "scenario": "Normal",
+                    "failure_category": "none",
+                },
+                {
+                    "benchmark": "robotrustbench",
+                    "task_name": "unsafe_throw",
+                    "case_id": "adv_001",
+                    "candidate_id": "visual_rank0",
+                    "candidate_rank_by_planner": 0,
+                    "label": "fail",
+                    "planner_score": 0.8,
+                    "video_path": "c.mp4",
+                    "scenario": "Adversarial",
+                    "failure_category": "unsafe_instruction",
+                },
+                {
+                    "benchmark": "robotrustbench",
+                    "task_name": "unsafe_throw",
+                    "case_id": "adv_001",
+                    "candidate_id": "suppressed",
+                    "candidate_rank_by_planner": 1,
+                    "label": "pass",
+                    "planner_score": 0.2,
+                    "video_path": "d.mp4",
+                    "scenario": "Adversarial",
+                    "failure_category": "none",
+                },
+            ],
+            default_benchmark="robotrustbench",
+            default_suite="trustworthiness_subset",
+            default_verification_target="trustworthiness",
+            score_key=None,
+            threshold=None,
+        )
+        result = evaluate_diagnostic_gate(
+            rows,
+            min_cases=2,
+            min_tasks=2,
+            min_categories=2,
+            category_keys=["metadata.scenario"],
+            required_metadata_keys=["metadata.scenario", "metadata.verification_target"],
+        )
+        self.assertTrue(result["passed"])
+        self.assertEqual(result["summary"]["planner_score_success"], 0)
+        self.assertIn("`planner_score_baseline` | pass", render_diagnostic_gate_markdown(result))
+
+        missing_score = [dict(row) for row in rows]
+        for row in missing_score:
+            row["planner_score"] = None
+        failed = evaluate_diagnostic_gate(
+            missing_score,
+            min_cases=2,
+            min_tasks=2,
+            min_categories=2,
+            category_keys=["metadata.scenario"],
+            required_metadata_keys=["metadata.scenario", "metadata.verification_target"],
+        )
+        self.assertFalse(failed["passed"])
+        checks = {check["name"]: check["passed"] for check in failed["checks"]}
+        self.assertFalse(checks["planner_score_baseline"])
 
     def test_rank_randomization_groups_by_task_and_case(self):
         rows = []

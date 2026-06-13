@@ -43,7 +43,8 @@ world-model diagnostic benchmark. The next work that can make this gate pass is:
    `robotwin2_paper_readiness_gate.py`.
 2. Import at least one public diagnostic layer, preferably MiraBench first,
    through `world_model_diagnostic_to_manifest.py`.
-3. Update `docs/iclr_evidence_stack_registry.json` only with result files that
+3. Validate the diagnostic manifest with `world_model_diagnostic_gate.py`.
+4. Update `docs/iclr_evidence_stack_registry.json` only with result files that
    passed their own benchmark-level gates.
 
 Until this gate passes, the project should be described as:

@@ -59,14 +59,14 @@
       "year": 2026,
       "layer": "trust_diagnostic",
       "status": "pending",
-      "cases": 0,
-      "tasks": 0,
+      "cases": 40,
+      "tasks": 4,
       "rank0_success": 0,
       "oracle_success": 0,
       "method_success": 0,
       "best_non_oracle_baseline_success": 0,
       "shortcut_controls": [],
-      "evidence": "Use only if public data is available before MiraBench or as an optional trust/counterfactual diagnostic layer."
+      "evidence": "A public HuggingFace 40-sample subset is available, covering Normal, Constraint-sensitive, Counterfactual, and Adversarial prompts. It is not the full benchmark and does not yet contain our multi-candidate judgment manifest."
     },
     {
       "benchmark": "RoboWM-Bench",
