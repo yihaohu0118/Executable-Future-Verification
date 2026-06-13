@@ -39,15 +39,20 @@ def compact_ranks(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def filter_rows(
     rows: list[dict[str, Any]],
     *,
-    exclude_metadata_key: str,
-    exclude_metadata_value: str,
+    exclude_metadata_key: str | None,
+    exclude_metadata_value: str | None,
+    exclude_candidate_ids: set[str] | None = None,
     preserve_ranks: bool,
 ) -> list[dict[str, Any]]:
-    filtered = [
-        dict(row)
-        for row in rows
-        if str(metadata_value(row, exclude_metadata_key)) != exclude_metadata_value
-    ]
+    excluded_ids = exclude_candidate_ids or set()
+    filtered = []
+    for row in rows:
+        if str(row.get("candidate_id")) in excluded_ids:
+            continue
+        if exclude_metadata_key is not None and exclude_metadata_value is not None:
+            if str(metadata_value(row, exclude_metadata_key)) == exclude_metadata_value:
+                continue
+        filtered.append(dict(row))
     if not preserve_ranks:
         filtered = compact_ranks(filtered)
     return annotate_oracle_best(filtered)
@@ -60,14 +65,21 @@ def main() -> None:
     parser.add_argument("--summary", type=Path)
     parser.add_argument("--exclude-metadata-key", default="profile")
     parser.add_argument("--exclude-metadata-value", default="original")
+    parser.add_argument("--exclude-candidate-id", action="append", default=[])
     parser.add_argument("--preserve-ranks", action="store_true")
     args = parser.parse_args()
 
     rows = load_jsonl(args.manifest)
+    exclude_metadata_key = args.exclude_metadata_key
+    exclude_metadata_value = args.exclude_metadata_value
+    if args.exclude_metadata_key == "" or args.exclude_metadata_value == "":
+        exclude_metadata_key = None
+        exclude_metadata_value = None
     filtered = filter_rows(
         rows,
-        exclude_metadata_key=args.exclude_metadata_key,
-        exclude_metadata_value=args.exclude_metadata_value,
+        exclude_metadata_key=exclude_metadata_key,
+        exclude_metadata_value=exclude_metadata_value,
+        exclude_candidate_ids=set(args.exclude_candidate_id),
         preserve_ranks=args.preserve_ranks,
     )
     write_jsonl(args.output, filtered)
@@ -79,6 +91,7 @@ def main() -> None:
             "output_manifest": str(args.output),
             "excluded_metadata_key": args.exclude_metadata_key,
             "excluded_metadata_value": args.exclude_metadata_value,
+            "excluded_candidate_ids": sorted(set(args.exclude_candidate_id)),
             "input_rows": len(rows),
             "output_rows": len(filtered),
             "preserve_ranks": args.preserve_ranks,

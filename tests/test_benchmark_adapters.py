@@ -38,6 +38,7 @@ from umm_reward_evaluator.benchmarks.iclr_reviewer_risk_audit import (
     render_markdown as render_reviewer_risk_markdown,
 )
 from umm_reward_evaluator.benchmarks.randomize_planner_rank import randomize_manifest_rows
+from umm_reward_evaluator.benchmarks.filter_candidate_manifest import filter_rows
 from umm_reward_evaluator.benchmarks.robotwin2_main_table_gate import evaluate_gate
 from umm_reward_evaluator.benchmarks.robotwin2_paper_readiness_gate import (
     collect_antitemplate_evidence,
@@ -145,6 +146,54 @@ class BenchmarkAdaptersTest(unittest.TestCase):
         self.assertEqual(summary["cases"], 2)
         self.assertEqual(summary["rank0_success"], 1)
         self.assertEqual(summary["oracle_success"], 2)
+
+    def test_filter_candidate_manifest_can_remove_exact_expert_candidate(self):
+        rows = annotate_oracle_best(
+            [
+                {
+                    "benchmark": "robotwin2",
+                    "suite": "unit",
+                    "task_name": "handover_block",
+                    "case_id": "seed=0",
+                    "candidate_id": "rank0",
+                    "candidate_rank_by_planner": 0,
+                    "actions": [[0.0]],
+                    "oracle_success": False,
+                },
+                {
+                    "benchmark": "robotwin2",
+                    "suite": "unit",
+                    "task_name": "handover_block",
+                    "case_id": "seed=0",
+                    "candidate_id": "full_gripper_aware",
+                    "candidate_rank_by_planner": 1,
+                    "actions": [[1.0]],
+                    "oracle_success": True,
+                },
+                {
+                    "benchmark": "robotwin2",
+                    "suite": "unit",
+                    "task_name": "handover_block",
+                    "case_id": "seed=0",
+                    "candidate_id": "repeat_precontact",
+                    "candidate_rank_by_planner": 2,
+                    "actions": [[2.0]],
+                    "oracle_success": True,
+                },
+            ]
+        )
+
+        filtered = filter_rows(
+            rows,
+            exclude_metadata_key=None,
+            exclude_metadata_value=None,
+            exclude_candidate_ids={"full_gripper_aware"},
+            preserve_ranks=False,
+        )
+
+        self.assertEqual([row["candidate_id"] for row in filtered], ["rank0", "repeat_precontact"])
+        self.assertEqual([row["candidate_rank_by_planner"] for row in filtered], [0, 1])
+        self.assertTrue(all(row["oracle_best_candidate_id"] == "repeat_precontact" for row in filtered))
 
     def test_evidence_card_validator_requires_controls_and_claim_boundary(self):
         card = {
