@@ -68,8 +68,24 @@ local execution feasibility.
 ## Current Mechanism Signal
 
 RoboCasa365 already shows a large oracle-selection gap and strong robot-envelope
-signals. The latest RoboTwin2 `handover_block seed=0` gives a sharper mechanism
-example:
+signals. A RoboTwin2 `handover_block` quick analysis on two complete
+24-candidate seeds gives a sharper mechanism example:
+
+- `rank0` is `0/2` while oracle is `2/2`;
+- random selection is only `0.4/2` in expectation;
+- action energy, length, smoothness, and action-only learned baselines are
+  `0/2`;
+- `prototype:contact_envelope:same_task:nearest_positive`,
+  `prototype:contact_envelope:same_task:nearest_pos_neg`,
+  `trace_distance:dtw_contact_envelope:same_task:nearest_positive`, and
+  `linear_probe:contact_envelope:same_task:ridge_l2_1` are all `2/2`;
+- object-relation-only selectors are not stable on this task
+  (`object_relation_distribution` is `0/2`, DTW object relation is about
+  `1.28/2` over anonymous remaps);
+- the anti-template diagnostics find non-full-template successes and matched
+  negatives in both cases.
+
+At the candidate level:
 
 - `first_action_rank0` fails;
 - `full_gripper_aware` succeeds;
@@ -82,6 +98,13 @@ example:
 This is the useful phenomenon: success is not simply "closest to full expert."
 Some non-template futures are executable, while many globally similar or
 energy-matched futures fail when the contact phase is wrong.
+
+The current limitation is equally important: DTW template baselines also reach
+`2/2` on this small handover window. This means the handover quick analysis can
+support the contact-envelope-vs-shortcut claim, but it cannot yet support the
+stronger claim that EFV beats expert-template matching. The RoboTwin2 paper
+readiness gate therefore still fails until more tasks show selector margins
+under anti-template pressure.
 
 ## Key Reviewer Risks
 
