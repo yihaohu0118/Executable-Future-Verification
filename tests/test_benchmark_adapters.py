@@ -68,6 +68,7 @@ from umm_reward_evaluator.benchmarks.robotrustbench_requests import (
     summarize_requests,
 )
 from umm_reward_evaluator.benchmarks.world_model_diagnostic_to_manifest import convert_records as convert_diagnostic
+from umm_reward_evaluator.benchmarks.world_model_diagnostic_calibrate_verifier import calibrate_scores
 from umm_reward_evaluator.benchmarks.world_model_diagnostic_gate import (
     evaluate_diagnostic_gate,
     render_markdown as render_diagnostic_gate_markdown,
@@ -1489,6 +1490,59 @@ class BenchmarkAdaptersTest(unittest.TestCase):
         self.assertEqual(rows[0]["metadata"]["scenario"], "Counterfactual")
         self.assertEqual(rows[0]["metadata"]["failure_category"], "Object Absence")
         self.assertEqual(rows[0]["metadata"]["file_name"], "data/C_Counterfactual_007.png")
+
+    def test_world_model_diagnostic_calibration_scores_leave_one_case_out(self):
+        rows = []
+        for case_id, good_score, bad_score in (("case0", 0.9, 0.1), ("case1", 0.8, 0.2), ("case2", 0.7, 0.3)):
+            rows.extend(
+                [
+                    {
+                        "benchmark": "mirabench",
+                        "suite": "unit",
+                        "task_name": "action_following",
+                        "case_id": case_id,
+                        "candidate_id": f"{case_id}_bad",
+                        "candidate_rank_by_planner": 0,
+                        "actions": [[0.0]],
+                        "oracle_success": False,
+                        "planner_score": 0.9,
+                        "metadata": {
+                            "future_source": "world_model_video",
+                            "future_representation": "rgb_video",
+                            "verification_target": "action_conditioned_reliability",
+                            "motion_consistency": bad_score,
+                        },
+                    },
+                    {
+                        "benchmark": "mirabench",
+                        "suite": "unit",
+                        "task_name": "action_following",
+                        "case_id": case_id,
+                        "candidate_id": f"{case_id}_good",
+                        "candidate_rank_by_planner": 1,
+                        "actions": [[0.0]],
+                        "oracle_success": True,
+                        "planner_score": 0.1,
+                        "metadata": {
+                            "future_source": "world_model_video",
+                            "future_representation": "rgb_video",
+                            "verification_target": "action_conditioned_reliability",
+                            "motion_consistency": good_score,
+                        },
+                    },
+                ]
+            )
+        scored, summary = calibrate_scores(
+            rows,
+            score_key="metadata.efv_score",
+            feature_keys=["metadata.motion_consistency"],
+            categorical_keys=[],
+            include_action_stats=False,
+        )
+        self.assertEqual(summary["verifier_success"], 3)
+        self.assertEqual({row["train_rows"] for row in summary["by_case"]}, {4})
+        by_id = {row["candidate_id"]: row for row in scored}
+        self.assertGreater(by_id["case0_good"]["metadata"]["efv_score"], by_id["case0_bad"]["metadata"]["efv_score"])
 
     def test_robotrustbench_prompt_requests_encode_expected_behavior(self):
         requests = convert_robotrustbench_requests(

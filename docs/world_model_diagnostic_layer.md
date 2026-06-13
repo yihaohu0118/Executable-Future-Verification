@@ -107,6 +107,29 @@ support the EFV claim that future selection is brittle.
 Only update `docs/iclr_evidence_stack_registry.json` after this diagnostic gate
 passes and the selector result beats the planner-score or visual-proxy baseline.
 
+If the manifest does not already contain `metadata.efv_score`, generate it with
+the leave-one-case-out diagnostic calibrator. The calibrator uses labels from
+other cases only, writes a verifier score back into candidate metadata, and
+reports whether the calibrated selector beats rank0 before the final gates:
+
+```bash
+python -m umm_reward_evaluator.benchmarks.world_model_diagnostic_calibrate_verifier \
+  --manifest RUN_ROOT/manifests/diagnostic_manifest.jsonl \
+  --output-manifest RUN_ROOT/manifests/diagnostic_calibrated_manifest.jsonl \
+  --output-summary-json RUN_ROOT/selectors/world_model_diagnostic_calibrated_verifier.json \
+  --output-summary-md RUN_ROOT/selectors/world_model_diagnostic_calibrated_verifier.md \
+  --score-key metadata.efv_score \
+  --feature-key metadata.motion_consistency \
+  --feature-key metadata.action_following_score \
+  --categorical-key metadata.scenario \
+  --no-action-stats
+```
+
+Do not use label-derived fields such as `label`, `judgment`, `verdict`,
+`oracle_success`, or human annotation scores as verifier features. The calibrator
+rejects label-like feature names by default because that would turn the
+diagnostic layer into label leakage rather than future verification.
+
 Build that selector table with:
 
 ```bash
@@ -143,6 +166,10 @@ CPU-only evidence chain:
 
 ```bash
 PYTHONPATH=src PYTHON_BIN=python3 \
+  CALIBRATE_EFV_SCORE=1 \
+  CALIBRATION_FEATURE_KEYS="metadata.motion_consistency metadata.action_following_score" \
+  CALIBRATION_CATEGORICAL_KEYS="metadata.scenario" \
+  CALIBRATION_NO_ACTION_STATS=1 \
   scripts/world_model_diagnostic_finalize_run.sh \
   RUN_ROOT \
   RUN_ROOT/manifests/diagnostic_manifest.jsonl \

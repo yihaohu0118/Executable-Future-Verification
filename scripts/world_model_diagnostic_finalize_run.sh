@@ -24,8 +24,48 @@ MIN_PLANNER_SCORE_ORACLE_GAP="${MIN_PLANNER_SCORE_ORACLE_GAP:-1}"
 MIN_PLANNER_SCORE_FAILURES="${MIN_PLANNER_SCORE_FAILURES:-1}"
 MIN_VERIFIER_PROXY_MARGIN="${MIN_VERIFIER_PROXY_MARGIN:-1.0}"
 PROXY_SCORE_KEY="${PROXY_SCORE_KEY:-__planner_or_model__}"
+CALIBRATE_EFV_SCORE="${CALIBRATE_EFV_SCORE:-0}"
+CALIBRATION_FEATURE_KEYS="${CALIBRATION_FEATURE_KEYS:-}"
+CALIBRATION_CATEGORICAL_KEYS="${CALIBRATION_CATEGORICAL_KEYS:-}"
+CALIBRATION_METHOD="${CALIBRATION_METHOD:-ridge}"
+CALIBRATION_INCLUDE_PLANNER_SCORE="${CALIBRATION_INCLUDE_PLANNER_SCORE:-0}"
+CALIBRATION_INCLUDE_RANK="${CALIBRATION_INCLUDE_RANK:-0}"
+CALIBRATION_NO_ACTION_STATS="${CALIBRATION_NO_ACTION_STATS:-0}"
 
 mkdir -p "$RUN_ROOT/selectors"
+mkdir -p "$RUN_ROOT/manifests"
+
+if [ "$CALIBRATE_EFV_SCORE" = "1" ]; then
+  calibrated_manifest="$RUN_ROOT/manifests/world_model_diagnostic_calibrated_manifest.jsonl"
+  calibration_summary_json="$RUN_ROOT/selectors/world_model_diagnostic_calibrated_verifier.json"
+  calibration_summary_md="$RUN_ROOT/selectors/world_model_diagnostic_calibrated_verifier.md"
+  calibration_args=()
+  for key in $CALIBRATION_FEATURE_KEYS; do
+    calibration_args+=(--feature-key "$key")
+  done
+  for key in $CALIBRATION_CATEGORICAL_KEYS; do
+    calibration_args+=(--categorical-key "$key")
+  done
+  if [ "$CALIBRATION_INCLUDE_PLANNER_SCORE" = "1" ]; then
+    calibration_args+=(--include-planner-score)
+  fi
+  if [ "$CALIBRATION_INCLUDE_RANK" = "1" ]; then
+    calibration_args+=(--include-rank)
+  fi
+  if [ "$CALIBRATION_NO_ACTION_STATS" = "1" ]; then
+    calibration_args+=(--no-action-stats)
+  fi
+  echo "=== calibrate diagnostic verifier ==="
+  "$PYTHON_BIN_CMD" -m umm_reward_evaluator.benchmarks.world_model_diagnostic_calibrate_verifier \
+    --manifest "$MANIFEST" \
+    --output-manifest "$calibrated_manifest" \
+    --output-summary-json "$calibration_summary_json" \
+    --output-summary-md "$calibration_summary_md" \
+    --score-key "$VERIFIER_SCORE_KEY" \
+    --method "$CALIBRATION_METHOD" \
+    "${calibration_args[@]}"
+  MANIFEST="$calibrated_manifest"
+fi
 
 diagnostic_gate_json="$RUN_ROOT/selectors/world_model_diagnostic_gate.json"
 diagnostic_gate_md="$RUN_ROOT/selectors/world_model_diagnostic_gate.md"
