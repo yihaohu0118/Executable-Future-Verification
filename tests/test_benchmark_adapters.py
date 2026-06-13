@@ -29,6 +29,10 @@ from umm_reward_evaluator.benchmarks.iclr_gap_report import (
     build_gap_report,
     render_markdown as render_gap_report_markdown,
 )
+from umm_reward_evaluator.benchmarks.iclr_boss_dashboard import (
+    build_dashboard,
+    render_markdown as render_boss_dashboard_markdown,
+)
 from umm_reward_evaluator.benchmarks.randomize_planner_rank import randomize_manifest_rows
 from umm_reward_evaluator.benchmarks.robotwin2_main_table_gate import evaluate_gate
 from umm_reward_evaluator.benchmarks.robotwin2_paper_readiness_gate import (
@@ -993,6 +997,68 @@ class BenchmarkAdaptersTest(unittest.TestCase):
         markdown = render_gap_report_markdown(report)
         self.assertIn("bounded sequential launcher", markdown)
         self.assertIn("diagnostic layer", markdown)
+
+    def test_iclr_boss_dashboard_prioritizes_robotwin2_gap(self):
+        controls = [
+            "rank0",
+            "random",
+            "energy_or_magnitude",
+            "action_only",
+            "candidate_id_or_rank_remap",
+        ]
+        gate = evaluate_evidence_stack(
+            [
+                {
+                    "benchmark": "RoboCasa365",
+                    "year": 2026,
+                    "layer": "executable_primary",
+                    "status": "passed",
+                    "cases": 64,
+                    "tasks": 4,
+                    "rank0_success": 0,
+                    "oracle_success": 64,
+                    "method_success": 63,
+                    "best_non_oracle_baseline_success": 31,
+                    "shortcut_controls": controls,
+                },
+                {
+                    "benchmark": "RoboTwin2",
+                    "year": 2025,
+                    "layer": "executable_second",
+                    "status": "pending",
+                    "cases": 9,
+                    "tasks": 3,
+                    "rank0_success": 0,
+                    "oracle_success": 9,
+                    "method_success": 0,
+                    "best_non_oracle_baseline_success": 0,
+                    "shortcut_controls": controls,
+                },
+                {
+                    "benchmark": "MiraBench",
+                    "year": 2026,
+                    "layer": "world_model_diagnostic",
+                    "status": "pending",
+                    "cases": 0,
+                    "tasks": 0,
+                    "rank0_success": 0,
+                    "oracle_success": 0,
+                    "method_success": 0,
+                    "best_non_oracle_baseline_success": 0,
+                    "shortcut_controls": [],
+                },
+            ]
+        )
+        report = build_dashboard(gate)
+        self.assertEqual(report["maturity"], "focused_push")
+        self.assertFalse(report["evidence_stack_passed"])
+        self.assertEqual(report["counterintuitive_signal"]["status"], "strong")
+        self.assertIn("RoboTwin2", report["next_priority"])
+        self.assertEqual(report["top_blockers"][0]["benchmark"], "RoboTwin2")
+        self.assertTrue(any("DTW nearest-positive" in trigger for trigger in report["kill_or_downgrade_triggers"]))
+        markdown = render_boss_dashboard_markdown(report)
+        self.assertIn("Worth continuing", markdown)
+        self.assertIn("Benchmark Coverage", markdown)
 
     def test_iclr_claim_report_marks_complete_stack_ready(self):
         controls = [
