@@ -11,6 +11,7 @@ from umm_reward_evaluator.benchmarks.robotwin2_selector_table import (
     collect_selector_rows,
     render_markdown as render_selector_table_markdown,
 )
+from umm_reward_evaluator.benchmarks.robotwin2_trace_field_audit import audit_rows
 from umm_reward_evaluator.benchmarks.robotwin2_trace_to_manifest import (
     convert_records as convert_robotwin2,
     filter_records_by_case_size,
@@ -251,6 +252,54 @@ class BenchmarkAdaptersTest(unittest.TestCase):
             self.assertFalse(rows[0]["relation_gate_passed"])
             self.assertEqual(rows[0]["relation_min_case_coverage"], 0.0)
             self.assertIn("| stack_blocks_two | 2 | 0/2 | 2/2 | 2/2 | pass | fail | 0.00 |", markdown)
+
+    def test_robotwin2_trace_field_audit_reports_actor_names_and_static_pollution(self):
+        rows = [
+            {
+                "benchmark": "robotwin2",
+                "suite": "unit",
+                "task_name": "stack_blocks_two",
+                "case_id": "seed=0",
+                "candidate_id": "rank0",
+                "candidate_rank_by_planner": 0,
+                "actions": [[0.0]],
+                "oracle_success": False,
+                "metadata": {
+                    "state_trace": [
+                        {
+                            "actor_names": ["block1", "table"],
+                            "actor_pose_vector": [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0],
+                            "actor_pairwise_distances": [1.0],
+                        }
+                    ]
+                },
+            },
+            {
+                "benchmark": "robotwin2",
+                "suite": "unit",
+                "task_name": "stack_blocks_two",
+                "case_id": "seed=0",
+                "candidate_id": "success",
+                "candidate_rank_by_planner": 1,
+                "actions": [[1.0]],
+                "oracle_success": True,
+                "metadata": {
+                    "state_trace": [
+                        {
+                            "actor_names": ["block1", "table"],
+                            "actor_pose_vector": [0, 0, 0, 1, 0, 0, 0, 0.2, 0, 0, 1, 0, 0, 0],
+                            "actor_pairwise_distances": [0.2],
+                        }
+                    ]
+                },
+            },
+        ]
+        summary = audit_rows(rows)
+        self.assertEqual(summary["actor_name_candidate_counts"]["block1"], 2)
+        self.assertEqual(summary["actor_name_candidate_counts"]["table"], 2)
+        self.assertEqual(summary["cases_with_actor_names"], 1)
+        self.assertEqual(summary["cases_with_static_actor_pollution"], 1)
+        self.assertEqual(summary["case_rows"][0]["static_actor_names"], ["table"])
 
     def test_robotwin2_selector_table_extracts_key_sweep_rows(self):
         with TemporaryDirectory() as tmp:
