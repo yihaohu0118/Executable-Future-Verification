@@ -239,17 +239,16 @@ tables. If `object_state_rows` is zero, the next run can test phase-gripper
 mechanisms but still cannot support relation/contact verifier claims.
 
 For partial files that contain valid candidate IDs, use resume mode instead of
-rerunning the whole seed:
+rerunning the whole seed. Generate a command plan first:
 
 ```bash
 cd /home/yihao_hyh/Executable-Future-Verification
-RESUME_PARTIAL=1 EXECUTE=1 GPU_ID=auto TASKS="handover_block" SEEDS=0 \
-  scripts/robotwin2_bounded_window_launcher.sh \
-  /home/yihao_hyh/efv_runs/robotwin2_iclr_clean_YYYYMMDD
-
-RESUME_PARTIAL=1 EXECUTE=1 GPU_ID=auto TASKS="place_object_basket press_stapler" SEEDS=1 \
-  scripts/robotwin2_bounded_window_launcher.sh \
-  /home/yihao_hyh/efv_runs/robotwin2_iclr_clean_YYYYMMDD
+python -m umm_reward_evaluator.benchmarks.robotwin2_resume_command_plan \
+  --rescue-json RUN_ROOT/selectors/robotwin2_partial_raw_rescue_plan.json \
+  --max-priority 5 \
+  --require-object-state \
+  --output-json RUN_ROOT/selectors/robotwin2_resume_command_plan.json \
+  --output-md RUN_ROOT/selectors/robotwin2_resume_command_plan.md
 ```
 
 `RESUME_PARTIAL=1` reuses complete existing candidate rows, reruns missing

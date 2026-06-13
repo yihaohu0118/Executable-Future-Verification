@@ -59,6 +59,7 @@ from umm_reward_evaluator.benchmarks.robotwin2_raw_integrity_report import (
     render_markdown as render_raw_integrity_markdown,
 )
 from umm_reward_evaluator.benchmarks.robotwin2_partial_raw_rescue_plan import build_rescue_plan
+from umm_reward_evaluator.benchmarks.robotwin2_resume_command_plan import build_command_plan
 from umm_reward_evaluator.benchmarks.robotwin2_gripper_aware_trace import (
     CandidateSpec,
     split_resume_rows,
@@ -343,6 +344,62 @@ class BenchmarkAdaptersTest(unittest.TestCase):
             self.assertEqual(plan["task_recommendations"][0]["best_reason"], "short_partial")
             self.assertEqual(plan["rescue_files"][0]["missing_candidates"], 2)
             self.assertEqual(plan["task_summary"]["stack_blocks_two"]["empty"], 1)
+
+    def test_robotwin2_resume_command_plan_selects_high_value_partials(self):
+        rescue_plan = {
+            "raw_root": "/runs/robotwin2/raw",
+            "rescue_files": [
+                {
+                    "path": "handover_block/seed_0.jsonl",
+                    "task_name": "handover_block",
+                    "seed": "0",
+                    "rows": 9,
+                    "missing_candidates": 15,
+                    "success_rows": 2,
+                    "failure_rows": 7,
+                    "object_state_rows": 9,
+                    "rescue_priority": 1,
+                    "rescue_reason": "high_value_partial",
+                },
+                {
+                    "path": "press_stapler/seed_1.jsonl",
+                    "task_name": "press_stapler",
+                    "seed": "1",
+                    "rows": 8,
+                    "missing_candidates": 16,
+                    "success_rows": 5,
+                    "failure_rows": 3,
+                    "object_state_rows": 8,
+                    "rescue_priority": 1,
+                    "rescue_reason": "high_value_partial",
+                },
+                {
+                    "path": "easy_task/seed_2.jsonl",
+                    "task_name": "easy_task",
+                    "seed": "2",
+                    "rows": 6,
+                    "missing_candidates": 18,
+                    "success_rows": 6,
+                    "failure_rows": 0,
+                    "object_state_rows": 6,
+                    "rescue_priority": 35,
+                    "rescue_reason": "no_failure_yet",
+                },
+            ],
+        }
+
+        command_plan = build_command_plan(rescue_plan, max_priority=5, require_object_state=True)
+
+        self.assertFalse(command_plan["execute"])
+        self.assertEqual(command_plan["run_root"], "/runs/robotwin2")
+        self.assertEqual([item["path"] for item in command_plan["selected_files"]], ["handover_block/seed_0.jsonl", "press_stapler/seed_1.jsonl"])
+        self.assertEqual({command["task_name"] for command in command_plan["commands"]}, {"handover_block", "press_stapler"})
+        command_text = "\n".join(command["command"] for command in command_plan["commands"])
+        self.assertIn("RESUME_PARTIAL=1", command_text)
+        self.assertIn("EXECUTE=0", command_text)
+        self.assertIn("TASKS=handover_block", command_text)
+        self.assertIn("SEEDS=0", command_text)
+        self.assertEqual(command_plan["skipped_files"][0]["task_name"], "easy_task")
 
     def test_robotwin2_main_table_gate_checks_errors_and_feature_coverage(self):
         rows = convert_robotwin2(
