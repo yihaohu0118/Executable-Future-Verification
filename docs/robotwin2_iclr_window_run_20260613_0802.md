@@ -33,6 +33,27 @@ Observed remote processes after launch:
 
 The launcher selected GPU0 for the first task, `stack_blocks_two`.
 
+## Stop Status
+
+The run was stopped after Ray training reclaimed all GPUs. At
+`2026-06-13T08:07:41Z`, the RoboTwin2 process was still in
+`stack_blocks_two` seed 0 initialization and had not written any candidate rows
+to `raw/stack_blocks_two/seed_0.jsonl`. A subsequent GPU process check showed
+Ray training processes occupying all GPUs again, including GPU0. To avoid
+interfering with the user's training job, only the EFV/RoboTwin2 processes from
+this run were terminated:
+
+| PID | Action |
+| ---: | --- |
+| 2268139 | terminated RoboTwin2 Python process |
+| 2268140 | terminated log tee |
+| 2268026 | terminated per-task runner |
+| 2268025 | terminated window launcher |
+| 2268024 | terminated launch shell |
+| 2292529 | terminated CPU-only posthoc watcher |
+
+No Ray or training process was stopped.
+
 ## Logs
 
 ```text
@@ -74,5 +95,5 @@ This run is the first attempt to close the RoboTwin2 paper-readiness gap:
 - required outcome: at least four base-ready tasks, at least one relation-ready
   task, and at least one relation-rescue mechanism.
 
-Do not count this run as evidence until the posthoc readiness gates are
-generated.
+Do not count this run as evidence. It produced no usable candidate rows before
+being stopped to protect the training workload.

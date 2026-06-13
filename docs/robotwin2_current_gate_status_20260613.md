@@ -67,8 +67,10 @@ progress, but it is not ready as the second main ICLR benchmark.
 
 ## Next Safe Action
 
-Update: the six-task primary window was launched after dev2 GPUs became free.
-See `docs/robotwin2_iclr_window_run_20260613_0802.md`.
+Update: the six-task primary window was briefly launched after dev2 GPUs
+appeared free, but it was stopped before producing usable candidate rows when
+Ray training reclaimed all GPUs. See
+`docs/robotwin2_iclr_window_run_20260613_0802.md`.
 
 For future reruns, use:
 

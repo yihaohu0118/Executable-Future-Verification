@@ -13,6 +13,8 @@ CANDIDATE_PRESET="${CANDIDATE_PRESET:-targeted_energy_matched}"
 GPU_ID="${GPU_ID:-0}"
 WAIT_FOR_GPU="${WAIT_FOR_GPU:-1}"
 GPU_WAIT_SECONDS="${GPU_WAIT_SECONDS:-60}"
+GPU_STABLE_SECONDS="${GPU_STABLE_SECONDS:-30}"
+GPU_FREE_MAX_MEMORY_MB="${GPU_FREE_MAX_MEMORY_MB:-1024}"
 RUN_ANALYSIS_AFTER="${RUN_ANALYSIS_AFTER:-0}"
 DRY_RUN="${DRY_RUN:-0}"
 
@@ -27,8 +29,7 @@ find_free_gpu() {
     return 1
   fi
   for gpu in $(nvidia-smi --query-gpu=index --format=csv,noheader,nounits 2>/dev/null); do
-    busy="$(nvidia-smi -i "$gpu" --query-compute-apps=pid --format=csv,noheader,nounits 2>/dev/null | tr -d '[:space:]')"
-    if [ -z "$busy" ]; then
+    if gpu_is_free "$gpu"; then
       echo "$gpu"
       return 0
     fi
@@ -36,11 +37,26 @@ find_free_gpu() {
   return 1
 }
 
+gpu_is_free() {
+  gpu="$1"
+  busy="$(nvidia-smi -i "$gpu" --query-compute-apps=pid --format=csv,noheader,nounits 2>/dev/null | tr -d '[:space:]')"
+  memory_used="$(nvidia-smi -i "$gpu" --query-gpu=memory.used --format=csv,noheader,nounits 2>/dev/null | tr -d '[:space:]')"
+  [ -z "$busy" ] && [ -n "$memory_used" ] && [ "$memory_used" -le "$GPU_FREE_MAX_MEMORY_MB" ]
+}
+
 if [ "$GPU_ID" = "auto" ] && [ "$DRY_RUN" != "1" ]; then
   selected_gpu="$(find_free_gpu || true)"
   if [ -z "$selected_gpu" ]; then
     echo "$(date -Is) no free GPU found for $TASK_NAME; exiting without starting simulation" >&2
     exit 75
+  fi
+  if [ "$GPU_STABLE_SECONDS" -gt 0 ]; then
+    echo "$(date -Is) GPU $selected_gpu looks free; rechecking after ${GPU_STABLE_SECONDS}s"
+    sleep "$GPU_STABLE_SECONDS"
+    if ! gpu_is_free "$selected_gpu"; then
+      echo "$(date -Is) GPU $selected_gpu no longer free for $TASK_NAME; exiting without starting simulation" >&2
+      exit 75
+    fi
   fi
   GPU_ID="$selected_gpu"
 fi

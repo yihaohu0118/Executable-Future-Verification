@@ -140,5 +140,8 @@ GPU_ID=auto SEEDS=0-7 scripts/robotwin2_iclr_window_launcher.sh \
 ```
 
 Set `EXECUTE=1` only when the GPU is free. With `GPU_ID=auto`, the launcher
-starts only if a GPU is already idle; otherwise it exits without waiting,
-killing, or preempting processes.
+starts only if a GPU is already idle, uses at most
+`GPU_FREE_MAX_MEMORY_MB=1024` MB, and remains free after a short stability
+check; otherwise it exits without waiting, killing, or preempting processes.
+If training jobs are actively restarting or reclaiming GPUs, do not start the
+window even if a GPU appears briefly idle.
