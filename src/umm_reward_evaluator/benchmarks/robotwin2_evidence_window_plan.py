@@ -62,6 +62,15 @@ def _shell_env(env: dict[str, str]) -> str:
     return " ".join(f"{key}={shlex.quote(value)}" for key, value in env.items())
 
 
+def _parse_gpu_ids(value: str | None) -> list[str] | None:
+    if value is None:
+        return None
+    gpu_ids = [item.strip() for item in value.replace(",", " ").split() if item.strip()]
+    if not gpu_ids:
+        raise ValueError("gpu_ids must include at least one GPU id")
+    return gpu_ids
+
+
 def build_evidence_window_plan(
     *,
     run_root: str | None = None,
@@ -72,6 +81,7 @@ def build_evidence_window_plan(
     cases_per_diagnostic_task: int = 3,
     execute: bool = False,
     gpu_id: str = "auto",
+    gpu_ids: list[str] | None = None,
     task_config: str = "demo_clean_k5",
     candidate_preset: str = "targeted_energy_matched",
     launcher: str = "scripts/robotwin2_bounded_window_launcher.sh",
@@ -91,16 +101,18 @@ def build_evidence_window_plan(
         if include_diagnostic:
             targets.extend(DEFAULT_DIAGNOSTIC_TASKS)
 
+    assigned_gpu_ids = gpu_ids or [gpu_id]
     commands = []
     finalize_tasks: list[str] = []
-    for target in targets:
+    for target_index, target in enumerate(targets):
         cases = cases_per_diagnostic_task if target.diagnostic_only else cases_per_main_task
         cases = max(cases, target.minimum_cases)
         seeds = _seed_range(cases, seed_start=seed_start)
         finalize_tasks.append(target.task_name)
+        assigned_gpu_id = assigned_gpu_ids[target_index % len(assigned_gpu_ids)]
         env = {
             "EXECUTE": "1" if execute else "0",
-            "GPU_ID": gpu_id,
+            "GPU_ID": assigned_gpu_id,
             "TASK_CONFIG": task_config,
             "CANDIDATE_PRESET": candidate_preset,
             "TASKS": target.task_name,
@@ -118,6 +130,7 @@ def build_evidence_window_plan(
                 "minimum_cases": target.minimum_cases,
                 "planned_cases": cases,
                 "seeds": seeds,
+                "gpu_id": assigned_gpu_id,
                 "command": f"{_shell_env(env)} {shlex.quote(launcher)} {shlex.quote(resolved_run_root)}",
             }
         )
@@ -137,6 +150,7 @@ def build_evidence_window_plan(
         "run_root": resolved_run_root,
         "execute": execute,
         "gpu_id": gpu_id,
+        "gpu_ids": assigned_gpu_ids,
         "task_config": task_config,
         "candidate_preset": candidate_preset,
         "required_candidates_per_case": required_candidates_per_case,
@@ -161,6 +175,7 @@ def render_markdown(plan: dict[str, Any], *, title: str = "RoboTwin2 Evidence Wi
         f"- run root: `{plan['run_root']}`",
         f"- execute: `{str(plan['execute']).lower()}`",
         f"- gpu id: `{plan['gpu_id']}`",
+        f"- gpu ids: `{', '.join(plan.get('gpu_ids', [plan['gpu_id']]))}`",
         f"- task config: `{plan['task_config']}`",
         f"- candidate preset: `{plan['candidate_preset']}`",
         f"- required candidates per case: `{plan['required_candidates_per_case']}`",
@@ -168,16 +183,16 @@ def render_markdown(plan: dict[str, Any], *, title: str = "RoboTwin2 Evidence Wi
         "",
         "## Task Window",
         "",
-        "| Task | Role | Planned cases | Seeds | Keep rule |",
-        "| --- | --- | ---: | --- | --- |",
+        "| Task | GPU | Role | Planned cases | Seeds | Keep rule |",
+        "| --- | --- | --- | ---: | --- | --- |",
     ]
     target_by_name = {target["task_name"]: target for target in plan["targets"]}
     for command in plan["commands"]:
         target = target_by_name[command["task_name"]]
         diagnostic = "diagnostic only; " if command["diagnostic_only"] else ""
         lines.append(
-            f"| `{command['task_name']}` | {command['role']} | {command['planned_cases']} | "
-            f"`{command['seeds']}` | {diagnostic}{target['keep_rule']} |"
+            f"| `{command['task_name']}` | `{command['gpu_id']}` | {command['role']} | "
+            f"{command['planned_cases']} | `{command['seeds']}` | {diagnostic}{target['keep_rule']} |"
         )
 
     lines.extend(
@@ -264,6 +279,7 @@ def main() -> None:
     parser.add_argument("--cases-per-diagnostic-task", type=int, default=3)
     parser.add_argument("--execute", action="store_true")
     parser.add_argument("--gpu-id", default="auto")
+    parser.add_argument("--gpu-ids", help="Comma- or space-separated GPU ids assigned round-robin by task.")
     parser.add_argument("--task-config", default="demo_clean_k5")
     parser.add_argument("--candidate-preset", default="targeted_energy_matched")
     parser.add_argument("--launcher", default="scripts/robotwin2_bounded_window_launcher.sh")
@@ -284,6 +300,7 @@ def main() -> None:
         cases_per_diagnostic_task=args.cases_per_diagnostic_task,
         execute=args.execute,
         gpu_id=args.gpu_id,
+        gpu_ids=_parse_gpu_ids(args.gpu_ids),
         task_config=args.task_config,
         candidate_preset=args.candidate_preset,
         launcher=args.launcher,

@@ -453,6 +453,25 @@ class BenchmarkAdaptersTest(unittest.TestCase):
         self.assertIn("=== finalize RoboTwin2 evidence window ===", shell_script)
         self.assertIn("scripts/robotwin2_finalize_run.sh", shell_script)
 
+    def test_robotwin2_evidence_window_plan_assigns_multiple_gpus(self):
+        plan = build_evidence_window_plan(
+            run_root="/runs/robotwin2_next",
+            include_diagnostic=True,
+            execute=True,
+            gpu_id="auto",
+            gpu_ids=["2", "3", "4"],
+        )
+
+        self.assertEqual(plan["gpu_ids"], ["2", "3", "4"])
+        assigned = [command["gpu_id"] for command in plan["commands"]]
+        self.assertEqual(assigned, ["2", "3", "4", "2", "3"])
+        self.assertIn("GPU_ID=2", plan["commands"][0]["command"])
+        self.assertIn("GPU_ID=3", plan["commands"][1]["command"])
+        self.assertIn("GPU_ID=4", plan["commands"][2]["command"])
+        markdown = render_evidence_window_markdown(plan)
+        self.assertIn("- gpu ids: `2, 3, 4`", markdown)
+        self.assertIn("| `place_object_basket` | `3` |", markdown)
+
     def test_robotwin2_main_table_gate_checks_errors_and_feature_coverage(self):
         rows = convert_robotwin2(
             [
