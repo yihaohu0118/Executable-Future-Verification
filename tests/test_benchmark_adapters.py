@@ -50,6 +50,7 @@ from umm_reward_evaluator.benchmarks.robotwin2_raw_integrity_report import (
     audit_raw_root,
     render_markdown as render_raw_integrity_markdown,
 )
+from umm_reward_evaluator.benchmarks.robotwin2_evidence_card import build_card as build_robotwin2_evidence_card
 from umm_reward_evaluator.benchmarks.robotwin2_trace_field_audit import audit_rows
 from umm_reward_evaluator.benchmarks.robotwin2_trace_to_manifest import (
     convert_records as convert_robotwin2,
@@ -1211,6 +1212,68 @@ class BenchmarkAdaptersTest(unittest.TestCase):
             extra_controls=["energy_or_magnitude", "action_only", "candidate_id_or_rank_remap"],
         )
         self.assertEqual(readiness_failed["status"], "pending")
+
+    def test_robotwin2_evidence_card_uses_strong_baseline_columns(self):
+        with TemporaryDirectory() as tmp:
+            run_root = Path(tmp)
+            selectors = run_root / "selectors"
+            selectors.mkdir()
+            for name in (
+                "robotwin2_raw_integrity_report.md",
+                "robotwin2_readiness_report.md",
+                "robotwin2_selector_table.md",
+                "robotwin2_paper_readiness_gate.md",
+                "robotwin2_registry_entry_proposal.md",
+            ):
+                (selectors / name).write_text("ok\n", encoding="utf-8")
+            registry_entry = {
+                "benchmark": "RoboTwin2",
+                "year": 2025,
+                "layer": "executable_second",
+                "status": "passed",
+                "cases": 8,
+                "tasks": 4,
+                "rank0_success": 0.0,
+                "oracle_success": 8.0,
+                "method_success": 7.0,
+                "best_non_oracle_baseline_success": 5.0,
+                "shortcut_controls": [
+                    "rank0",
+                    "random",
+                    "energy_or_magnitude",
+                    "action_only",
+                    "candidate_id_or_rank_remap",
+                ],
+                "evidence": "paper gate passed on synthetic unit fixture",
+            }
+            selector_table = {
+                "tasks": [
+                    {
+                        "task_name": "stack_blocks_two",
+                        "cases": 4,
+                        "linear_phase_relation_robot": 4.0,
+                        "dtw_joint_gripper": 3.0,
+                        "linear_action": 2.0,
+                    },
+                    {
+                        "task_name": "stamp_seal",
+                        "cases": 4,
+                        "linear_phase_relation_robot": 3.0,
+                        "dtw_joint_gripper": 2.0,
+                        "linear_action": 1.0,
+                    },
+                ]
+            }
+            card = build_robotwin2_evidence_card(
+                registry_entry=registry_entry,
+                selector_table=selector_table,
+                paper_gate={"passed": True},
+                run_root=run_root,
+            )
+            self.assertEqual(card["method_name"], "linear_phase_relation_robot")
+            self.assertEqual(card["best_non_oracle_baseline_name"], "dtw_joint_gripper")
+            result = validate_card(card, base_dir=Path("."))
+            self.assertTrue(result["passed"], result["errors"])
 
     def test_world_model_diagnostic_closure_plan_prioritizes_public_paths(self):
         entries = [

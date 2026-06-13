@@ -23,8 +23,31 @@ DEFAULT_DIAGNOSTIC_CONTROLS = [
     "visual_or_model_score_proxy",
 ]
 REQUIRED_DIAGNOSTIC_STACK_CONTROLS = set(DEFAULT_EXECUTABLE_CONTROLS) | set(DEFAULT_DIAGNOSTIC_CONTROLS)
-ENVELOPE_COLUMNS = ("gripper", "phase_gripper", "relation", "phase_relation_robot", "dtw_relation")
-BASELINE_COLUMNS = ("rank0", "random", "energy", "smooth", "action", "dtw_gripper")
+ENVELOPE_COLUMNS = (
+    "gripper",
+    "phase_gripper",
+    "linear_gripper",
+    "linear_phase_gripper",
+    "linear_phase_joint_gripper",
+    "relation",
+    "phase_relation_robot",
+    "linear_phase_relation_robot",
+)
+BASELINE_COLUMNS = (
+    "rank0",
+    "random",
+    "energy",
+    "smooth",
+    "length",
+    "action",
+    "linear_action",
+    "dtw_action",
+    "dtw_gripper",
+    "dtw_joint",
+    "dtw_joint_gripper",
+    "dtw_relation",
+    "dtw_relation_joint_gripper",
+)
 
 
 def _load_json(path: Path) -> dict[str, Any]:

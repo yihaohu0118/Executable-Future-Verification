@@ -201,9 +201,10 @@ PYTHONPATH=src PYTHON_BIN=python3 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS
 ```
 
 This script performs the raw integrity audit, multitask selector analysis,
-paper-readiness gate, and a conservative registry-entry proposal. It does not
-edit `docs/iclr_evidence_stack_registry.json`; inspect
-`RUN_ROOT/selectors/robotwin2_registry_entry_proposal.json` first.
+paper-readiness gate, a conservative registry-entry proposal, and a RoboTwin2
+evidence-card proposal. It does not edit `docs/iclr_evidence_stack_registry.json`;
+inspect `RUN_ROOT/selectors/robotwin2_registry_entry_proposal.json` and
+`RUN_ROOT/selectors/robotwin2_evidence_card_proposal.json` first.
 
 Use the full six-task `robotwin2_iclr_window_launcher.sh` only after the
 bounded window confirms complete candidate pools and at least three base-ready

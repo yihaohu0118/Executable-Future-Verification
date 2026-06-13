@@ -57,6 +57,18 @@ echo "Registry proposal written to:"
 echo "  $RUN_ROOT/selectors/robotwin2_registry_entry_proposal.json"
 echo "Inspect status before updating docs/iclr_evidence_stack_registry.json."
 
+echo
+echo "=== evidence card proposal ==="
+PYTHONPATH=src "$PYTHON_BIN_CMD" -m umm_reward_evaluator.benchmarks.robotwin2_evidence_card \
+  --run-root "$RUN_ROOT" \
+  --output-card "$RUN_ROOT/selectors/robotwin2_evidence_card_proposal.json" \
+  --output-validation-json "$RUN_ROOT/selectors/robotwin2_evidence_card_validation.json" \
+  --output-validation-md "$RUN_ROOT/selectors/robotwin2_evidence_card_validation.md"
+
+echo
+echo "Evidence card proposal written to:"
+echo "  $RUN_ROOT/selectors/robotwin2_evidence_card_proposal.json"
+
 if [ "$REFRESH_ICLR_REPORTS" = "1" ]; then
   echo
   echo "=== refresh ICLR reports ==="
