@@ -754,6 +754,11 @@ def main() -> None:
         choices=["default", "anti_template", "targeted_hard", "targeted_energy_matched"],
         default="default",
     )
+    parser.add_argument(
+        "--continue-on-seed-error",
+        action="store_true",
+        help="Continue later seeds when expert generation fails for an individual seed.",
+    )
     args = parser.parse_args()
 
     instruction = args.instruction or args.task_name.replace("_", " ")
@@ -764,17 +769,32 @@ def main() -> None:
         seeds = parse_seed_list(args.seeds) if args.seeds else read_seed_list(args.task_name, args.task_config)
         if args.max_seeds is not None:
             seeds = seeds[: args.max_seeds]
+        seed_failures = 0
         for seed in seeds:
-            run_one_seed(
-                task_name=args.task_name,
-                task_config=args.task_config,
-                seed=seed,
-                instruction=instruction,
-                output=args.output_dir / f"seed_{seed}.jsonl",
-                skip_existing=args.skip_existing,
-                candidate_preset=args.candidate_preset,
-                skip_replay_planner=args.skip_replay_planner,
-            )
+            try:
+                run_one_seed(
+                    task_name=args.task_name,
+                    task_config=args.task_config,
+                    seed=seed,
+                    instruction=instruction,
+                    output=args.output_dir / f"seed_{seed}.jsonl",
+                    skip_existing=args.skip_existing,
+                    candidate_preset=args.candidate_preset,
+                    skip_replay_planner=args.skip_replay_planner,
+                )
+            except SystemExit as exc:
+                if not args.continue_on_seed_error:
+                    raise
+                seed_failures += 1
+                print(f"seed={seed} skipped after SystemExit: {exc}", flush=True)
+            except Exception as exc:
+                if not args.continue_on_seed_error:
+                    raise
+                seed_failures += 1
+                traceback.print_exc()
+                print(f"seed={seed} skipped after error: {exc!r}", flush=True)
+        if seed_failures:
+            print(f"completed with skipped_seeds={seed_failures}/{len(seeds)}", flush=True)
         return
 
     if args.output is None:
