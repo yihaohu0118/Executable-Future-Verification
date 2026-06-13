@@ -55,6 +55,9 @@ from umm_reward_evaluator.benchmarks.robotwin2_raw_integrity_report import (
     render_markdown as render_raw_integrity_markdown,
 )
 from umm_reward_evaluator.benchmarks.robotwin2_evidence_card import build_card as build_robotwin2_evidence_card
+from umm_reward_evaluator.benchmarks.world_model_diagnostic_evidence_card import (
+    build_card as build_world_model_diagnostic_evidence_card,
+)
 from umm_reward_evaluator.benchmarks.robotwin2_trace_field_audit import audit_rows
 from umm_reward_evaluator.benchmarks.robotwin2_trace_to_manifest import (
     convert_records as convert_robotwin2,
@@ -1331,6 +1334,56 @@ class BenchmarkAdaptersTest(unittest.TestCase):
             self.assertEqual(card["best_non_oracle_baseline_name"], "dtw_joint_gripper")
             result = validate_card(card, base_dir=Path("."))
             self.assertTrue(result["passed"], result["errors"])
+
+    def test_world_model_diagnostic_evidence_card_uses_proxy_baseline(self):
+        with TemporaryDirectory() as tmp:
+            run_root = Path(tmp)
+            selector_table = {
+                "summary": {"cases": 3, "tasks": ["trust"]},
+                "selectors": [
+                    {"selector": "rank0", "selector_success": 1.0},
+                    {"selector": "random_expected", "selector_success": 1.2},
+                    {"selector": "planner_or_model_score", "selector_success": 1.0},
+                    {"selector": "verifier_score:metadata.efv_score", "selector_success": 3.0},
+                    {"selector": "oracle", "selector_success": 3.0},
+                ],
+            }
+            registry_entry = {
+                "benchmark": "RoboTrustBench",
+                "year": 2026,
+                "layer": "trust_diagnostic",
+                "status": "passed",
+                "cases": 3,
+                "tasks": 1,
+                "rank0_success": 1.0,
+                "oracle_success": 3.0,
+                "method_success": 3.0,
+                "best_non_oracle_baseline_success": 1.2,
+                "shortcut_controls": [
+                    "rank0",
+                    "random",
+                    "energy_or_magnitude",
+                    "action_only",
+                    "candidate_id_or_rank_remap",
+                    "oracle_judgment_labels",
+                    "proxy_or_rank0_failure",
+                    "visual_or_model_score_proxy",
+                ],
+                "evidence": "unit diagnostic evidence",
+            }
+            card = build_world_model_diagnostic_evidence_card(
+                registry_entry=registry_entry,
+                diagnostic_gate={"passed": True},
+                selector_table=selector_table,
+                readiness_gate={"passed": True},
+                verifier_selector="verifier_score:metadata.efv_score",
+                run_root=run_root,
+                evidence_docs=["diagnostic_gate.md"],
+            )
+            self.assertEqual(card["benchmark"], "RoboTrustBench")
+            self.assertEqual(card["best_non_oracle_baseline_success"], 1.2)
+            self.assertIn("visual/model-score proxy", card["counterintuitive_observation"])
+            self.assertIn("diagnostic world-model layer", card["claim_boundary"])
 
     def test_world_model_diagnostic_closure_plan_prioritizes_public_paths(self):
         entries = [

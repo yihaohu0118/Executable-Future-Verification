@@ -138,6 +138,34 @@ Only if this readiness gate passes should the registry proposal be generated
 with `--diagnostic-readiness-json`. A passed manifest gate alone is not enough
 for the diagnostic layer to count as the third benchmark.
 
+For a completed diagnostic manifest, use the finalize script to run the full
+CPU-only evidence chain:
+
+```bash
+PYTHONPATH=src PYTHON_BIN=python3 \
+  scripts/world_model_diagnostic_finalize_run.sh \
+  RUN_ROOT \
+  RUN_ROOT/manifests/diagnostic_manifest.jsonl \
+  MiraBench \
+  2026 \
+  world_model_diagnostic \
+  metadata.efv_score \
+  metadata.scenario metadata.failure_category
+```
+
+The script writes:
+
+- `RUN_ROOT/selectors/world_model_diagnostic_gate.{json,md}`;
+- `RUN_ROOT/selectors/world_model_diagnostic_selector_table.{json,md}`;
+- `RUN_ROOT/selectors/world_model_diagnostic_readiness_gate.{json,md}`;
+- `RUN_ROOT/selectors/world_model_diagnostic_registry_entry_proposal.{json,md}`;
+- `RUN_ROOT/selectors/world_model_diagnostic_evidence_card_proposal.json`;
+- `RUN_ROOT/selectors/world_model_diagnostic_evidence_card_validation.{json,md}`.
+
+It does not edit `docs/iclr_evidence_stack_registry.json`. Inspect the
+readiness gate, registry proposal, and evidence-card validation before counting
+the diagnostic layer.
+
 ## How This Fits The EFV Story
 
 RoboCasa365 and RoboTwin2 test executable action candidates in simulation.
