@@ -3,7 +3,18 @@
 This gate tracks whether the project has enough current-benchmark evidence to
 claim a main-conference executable-future verification story.
 
-Run:
+Refresh all current ICLR evidence reports with:
+
+```bash
+scripts/iclr_refresh_reports.sh
+```
+
+The refresh script intentionally continues after `iclr_evidence_stack_gate`
+fails, because the current expected status is still not paper-ready. It
+regenerates the stack gate, claim report, status report, gap report, boss
+dashboard, and world-model diagnostic closure plan.
+
+To run only the stack gate:
 
 ```bash
 python -m umm_reward_evaluator.benchmarks.iclr_evidence_stack_gate \

@@ -1,0 +1,292 @@
+{
+  "benchmarks": [
+    {
+      "benchmark": "RoboCasa365",
+      "best_non_oracle_baseline_success": 31.0,
+      "cases": 64,
+      "evidence": "RoboCasa365 regenerated random-position n16 hard-negative table: EEF+gripper distribution-only 63.6/64, object-only 31.0/64, action-only 28.4/64, rank0 0/64, oracle 64/64.",
+      "evidence_card": "docs/evidence_cards/robocasa365_hard_negative_n16.json",
+      "evidence_card_validation": {
+        "errors": [],
+        "present": true,
+        "required": true,
+        "valid": true,
+        "warnings": []
+      },
+      "gate_passed": true,
+      "layer": "executable_primary",
+      "method_success": 63.6,
+      "missing_controls": [],
+      "modern_year": true,
+      "oracle_success": 64,
+      "rank0_success": 0,
+      "required_controls": [
+        "action_only",
+        "candidate_id_or_rank_remap",
+        "energy_or_magnitude",
+        "random",
+        "rank0"
+      ],
+      "selector_margin": 32.6,
+      "shortcut_controls": [
+        "rank0",
+        "random",
+        "energy_or_magnitude",
+        "action_only",
+        "candidate_id_or_rank_remap"
+      ],
+      "status": "passed",
+      "tasks": 4,
+      "year": 2026
+    },
+    {
+      "benchmark": "RoboTwin2",
+      "best_non_oracle_baseline_success": 0,
+      "cases": 9,
+      "evidence": "stamp_seal K=5 is clean; stack_blocks_two and open_laptop each have 2 clean cases with rank0 0/2 and oracle 2/2. The latest RoboTwin2 paper-readiness gate still fails: only 2 base-ready tasks in the current multitask run, relation coverage is 0, and no relation-rescue task is proven.",
+      "evidence_card_validation": {
+        "errors": [
+          "missing evidence_card"
+        ],
+        "present": false,
+        "required": true,
+        "valid": false,
+        "warnings": []
+      },
+      "gate_passed": false,
+      "layer": "executable_second",
+      "method_success": 0,
+      "missing_controls": [],
+      "modern_year": true,
+      "oracle_success": 9,
+      "rank0_success": 0,
+      "required_controls": [
+        "action_only",
+        "candidate_id_or_rank_remap",
+        "energy_or_magnitude",
+        "random",
+        "rank0"
+      ],
+      "selector_margin": 0.0,
+      "shortcut_controls": [
+        "rank0",
+        "random",
+        "energy_or_magnitude",
+        "action_only",
+        "candidate_id_or_rank_remap"
+      ],
+      "status": "pending",
+      "tasks": 3,
+      "year": 2025
+    },
+    {
+      "availability_checked": "2026-06-13",
+      "benchmark": "MiraBench",
+      "best_non_oracle_baseline_success": 0,
+      "cases": 0,
+      "evidence": "Adapter exists through world_model_diagnostic_to_manifest.py, but public judgment data has not been imported into a manifest yet.",
+      "evidence_card_validation": {
+        "errors": [
+          "missing evidence_card"
+        ],
+        "present": false,
+        "required": true,
+        "valid": false,
+        "warnings": []
+      },
+      "gate_passed": false,
+      "layer": "world_model_diagnostic",
+      "method_success": 0,
+      "missing_controls": [
+        "action_only",
+        "candidate_id_or_rank_remap",
+        "energy_or_magnitude",
+        "oracle_judgment_labels",
+        "proxy_or_rank0_failure",
+        "random",
+        "rank0",
+        "visual_or_model_score_proxy"
+      ],
+      "modern_year": true,
+      "oracle_success": 0,
+      "rank0_success": 0,
+      "required_controls": [
+        "action_only",
+        "candidate_id_or_rank_remap",
+        "energy_or_magnitude",
+        "oracle_judgment_labels",
+        "proxy_or_rank0_failure",
+        "random",
+        "rank0",
+        "visual_or_model_score_proxy"
+      ],
+      "selector_margin": 0.0,
+      "shortcut_controls": [],
+      "source_urls": [
+        "https://arxiv.org/abs/2605.29360"
+      ],
+      "status": "pending",
+      "tasks": 0,
+      "year": 2026
+    },
+    {
+      "availability_checked": "2026-06-13",
+      "benchmark": "RoboTrustBench",
+      "best_non_oracle_baseline_success": 0,
+      "cases": 40,
+      "evidence": "A public HuggingFace 40-sample subset is available, covering Normal, Constraint-sensitive, Counterfactual, and Adversarial prompts. It is not the full 1,207-sample benchmark and does not yet contain our multi-candidate judgment manifest.",
+      "evidence_card_validation": {
+        "errors": [
+          "missing evidence_card"
+        ],
+        "present": false,
+        "required": true,
+        "valid": false,
+        "warnings": []
+      },
+      "gate_passed": false,
+      "layer": "trust_diagnostic",
+      "method_success": 0,
+      "missing_controls": [
+        "action_only",
+        "candidate_id_or_rank_remap",
+        "energy_or_magnitude",
+        "oracle_judgment_labels",
+        "proxy_or_rank0_failure",
+        "random",
+        "rank0",
+        "visual_or_model_score_proxy"
+      ],
+      "modern_year": true,
+      "oracle_success": 0,
+      "rank0_success": 0,
+      "required_controls": [
+        "action_only",
+        "candidate_id_or_rank_remap",
+        "energy_or_magnitude",
+        "oracle_judgment_labels",
+        "proxy_or_rank0_failure",
+        "random",
+        "rank0",
+        "visual_or_model_score_proxy"
+      ],
+      "selector_margin": 0.0,
+      "shortcut_controls": [],
+      "source_urls": [
+        "https://arxiv.org/abs/2606.01600",
+        "https://huiqiongli.github.io/RoboTrustBench/",
+        "https://huggingface.co/datasets/Huiqiong0124/RoboTrustBench_Dataset"
+      ],
+      "status": "pending",
+      "tasks": 4,
+      "year": 2026
+    },
+    {
+      "benchmark": "RoboWM-Bench",
+      "best_non_oracle_baseline_success": 0,
+      "cases": 10,
+      "evidence": "Current public evaluator audit found Pick reset API mismatch and 7/10 GT replay under a local reset shim; keep conditional until official clarification.",
+      "evidence_card_validation": {
+        "errors": [
+          "missing evidence_card"
+        ],
+        "present": false,
+        "required": true,
+        "valid": false,
+        "warnings": []
+      },
+      "gate_passed": false,
+      "layer": "robustness_diagnostic",
+      "method_success": 0,
+      "missing_controls": [
+        "action_only",
+        "candidate_id_or_rank_remap",
+        "energy_or_magnitude",
+        "oracle_judgment_labels",
+        "proxy_or_rank0_failure",
+        "random",
+        "rank0",
+        "visual_or_model_score_proxy"
+      ],
+      "modern_year": true,
+      "oracle_success": 7,
+      "rank0_success": 7,
+      "required_controls": [
+        "action_only",
+        "candidate_id_or_rank_remap",
+        "energy_or_magnitude",
+        "oracle_judgment_labels",
+        "proxy_or_rank0_failure",
+        "random",
+        "rank0",
+        "visual_or_model_score_proxy"
+      ],
+      "selector_margin": 0.0,
+      "shortcut_controls": [],
+      "status": "pending",
+      "tasks": 1,
+      "year": 2026
+    }
+  ],
+  "checks": [
+    {
+      "detail": {
+        "non_modern": []
+      },
+      "name": "modern_scope",
+      "passed": true
+    },
+    {
+      "detail": {
+        "benchmarks": [
+          "RoboCasa365"
+        ],
+        "minimum": 3
+      },
+      "name": "total_passed_benchmarks",
+      "passed": false
+    },
+    {
+      "detail": {
+        "benchmarks": [
+          "RoboCasa365"
+        ],
+        "minimum": 2
+      },
+      "name": "executable_layers",
+      "passed": false
+    },
+    {
+      "detail": {
+        "benchmarks": [],
+        "minimum": 1
+      },
+      "name": "diagnostic_layers",
+      "passed": false
+    },
+    {
+      "detail": {
+        "required": "RoboCasa365"
+      },
+      "name": "primary_robocasa_present",
+      "passed": true
+    },
+    {
+      "detail": {
+        "required": "RoboTwin2"
+      },
+      "name": "robotwin2_second_layer_present",
+      "passed": false
+    }
+  ],
+  "passed": false,
+  "thresholds": {
+    "min_cases_per_passed_benchmark": 16,
+    "min_diagnostic_passed": 1,
+    "min_executable_passed": 2,
+    "min_selector_margin": 1.0,
+    "min_tasks_per_passed_executable": 4,
+    "min_total_passed": 3,
+    "require_evidence_cards": true
+  }
+}

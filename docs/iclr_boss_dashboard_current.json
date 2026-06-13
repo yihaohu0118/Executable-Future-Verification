@@ -55,7 +55,8 @@
         "registry_status",
         "cases",
         "tasks",
-        "selector_margin"
+        "selector_margin",
+        "evidence_card"
       ],
       "gate_passed": false,
       "layer": "executable_second",
@@ -64,6 +65,12 @@
           "current": 9,
           "delta": 7,
           "required": 16
+        },
+        "evidence_card": {
+          "errors": [
+            "missing evidence_card"
+          ],
+          "present": false
         },
         "registry_status": {
           "current": "pending",
@@ -91,7 +98,8 @@
         "tasks",
         "oracle_headroom",
         "selector_margin",
-        "shortcut_controls"
+        "shortcut_controls",
+        "evidence_card"
       ],
       "gate_passed": false,
       "layer": "world_model_diagnostic",
@@ -100,6 +108,12 @@
           "current": 0,
           "delta": 16,
           "required": 16
+        },
+        "evidence_card": {
+          "errors": [
+            "missing evidence_card"
+          ],
+          "present": false
         },
         "oracle_headroom": {
           "oracle": 0.0,
@@ -140,11 +154,18 @@
         "registry_status",
         "oracle_headroom",
         "selector_margin",
-        "shortcut_controls"
+        "shortcut_controls",
+        "evidence_card"
       ],
       "gate_passed": false,
       "layer": "trust_diagnostic",
       "missing": {
+        "evidence_card": {
+          "errors": [
+            "missing evidence_card"
+          ],
+          "present": false
+        },
         "oracle_headroom": {
           "oracle": 0.0,
           "rank0": 0.0,

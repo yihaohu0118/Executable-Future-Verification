@@ -23,9 +23,9 @@
 
 | Benchmark | Layer | Priority | Blockers | Next action |
 | --- | --- | --- | --- | --- |
-| RoboTwin2 | executable_second | high | registry_status, cases, tasks, selector_margin | Run the bounded 4-task RoboTwin2 window and update the registry only after the paper-readiness gate passes. |
-| MiraBench | world_model_diagnostic | high | registry_status, cases, tasks, oracle_headroom, selector_margin, shortcut_controls | Instantiate a public diagnostic manifest with oracle judgments, visual/model-score proxy failures, and verifier margin. |
-| RoboTrustBench | trust_diagnostic | high | registry_status, oracle_headroom, selector_margin, shortcut_controls | Instantiate a public diagnostic manifest with oracle judgments, visual/model-score proxy failures, and verifier margin. |
+| RoboTwin2 | executable_second | high | registry_status, cases, tasks, selector_margin, evidence_card | Run the bounded 4-task RoboTwin2 window and update the registry only after the paper-readiness gate passes. |
+| MiraBench | world_model_diagnostic | high | registry_status, cases, tasks, oracle_headroom, selector_margin, shortcut_controls, evidence_card | Instantiate a public diagnostic manifest with oracle judgments, visual/model-score proxy failures, and verifier margin. |
+| RoboTrustBench | trust_diagnostic | high | registry_status, oracle_headroom, selector_margin, shortcut_controls, evidence_card | Instantiate a public diagnostic manifest with oracle judgments, visual/model-score proxy failures, and verifier margin. |
 
 ## Next Priority
 
