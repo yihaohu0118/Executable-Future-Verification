@@ -1,0 +1,232 @@
+{
+  "benchmark_gaps": [
+    {
+      "benchmark": "RoboCasa365",
+      "blockers": [],
+      "gate_passed": true,
+      "layer": "executable_primary",
+      "missing": {},
+      "next_action": "Keep this benchmark frozen unless upstream result files change.",
+      "priority": "none"
+    },
+    {
+      "benchmark": "RoboTwin2",
+      "blockers": [
+        "registry_status",
+        "cases",
+        "tasks",
+        "selector_margin",
+        "evidence_card"
+      ],
+      "gate_passed": false,
+      "layer": "executable_second",
+      "missing": {
+        "cases": {
+          "current": 9,
+          "delta": 7,
+          "required": 16
+        },
+        "evidence_card": {
+          "errors": [
+            "missing evidence_card"
+          ],
+          "present": false
+        },
+        "registry_status": {
+          "current": "pending",
+          "required": "passed"
+        },
+        "selector_margin": {
+          "current": 0.0,
+          "delta": 1.0,
+          "required": 1.0
+        },
+        "tasks": {
+          "current": 3,
+          "delta": 1,
+          "required": 4
+        }
+      },
+      "next_action": "Run the bounded 4-task RoboTwin2 window and update the registry only after the paper-readiness gate passes.",
+      "priority": "high"
+    },
+    {
+      "benchmark": "MiraBench",
+      "blockers": [
+        "registry_status",
+        "cases",
+        "tasks",
+        "oracle_headroom",
+        "selector_margin",
+        "shortcut_controls",
+        "evidence_card"
+      ],
+      "gate_passed": false,
+      "layer": "world_model_diagnostic",
+      "missing": {
+        "cases": {
+          "current": 0,
+          "delta": 16,
+          "required": 16
+        },
+        "evidence_card": {
+          "errors": [
+            "missing evidence_card"
+          ],
+          "present": false
+        },
+        "oracle_headroom": {
+          "oracle": 0.0,
+          "rank0": 0.0,
+          "required": "oracle > rank0"
+        },
+        "registry_status": {
+          "current": "pending",
+          "required": "passed"
+        },
+        "selector_margin": {
+          "current": 0.0,
+          "delta": 1.0,
+          "required": 1.0
+        },
+        "shortcut_controls": [
+          "action_only",
+          "candidate_id_or_rank_remap",
+          "energy_or_magnitude",
+          "oracle_judgment_labels",
+          "proxy_or_rank0_failure",
+          "random",
+          "rank0",
+          "visual_or_model_score_proxy"
+        ],
+        "tasks": {
+          "current": 0,
+          "delta": 1,
+          "required": 1
+        }
+      },
+      "next_action": "Instantiate a public diagnostic manifest with oracle judgments, visual/model-score proxy failures, and verifier margin.",
+      "priority": "high"
+    },
+    {
+      "benchmark": "RoboTrustBench",
+      "blockers": [
+        "registry_status",
+        "oracle_headroom",
+        "selector_margin",
+        "shortcut_controls",
+        "evidence_card"
+      ],
+      "gate_passed": false,
+      "layer": "trust_diagnostic",
+      "missing": {
+        "evidence_card": {
+          "errors": [
+            "missing evidence_card"
+          ],
+          "present": false
+        },
+        "oracle_headroom": {
+          "oracle": 0.0,
+          "rank0": 0.0,
+          "required": "oracle > rank0"
+        },
+        "registry_status": {
+          "current": "pending",
+          "required": "passed"
+        },
+        "selector_margin": {
+          "current": 0.0,
+          "delta": 1.0,
+          "required": 1.0
+        },
+        "shortcut_controls": [
+          "action_only",
+          "candidate_id_or_rank_remap",
+          "energy_or_magnitude",
+          "oracle_judgment_labels",
+          "proxy_or_rank0_failure",
+          "random",
+          "rank0",
+          "visual_or_model_score_proxy"
+        ]
+      },
+      "next_action": "Instantiate a public diagnostic manifest with oracle judgments, visual/model-score proxy failures, and verifier margin.",
+      "priority": "high"
+    },
+    {
+      "benchmark": "RoboWM-Bench",
+      "blockers": [
+        "registry_status",
+        "cases",
+        "oracle_headroom",
+        "selector_margin",
+        "shortcut_controls",
+        "evidence_card"
+      ],
+      "gate_passed": false,
+      "layer": "robustness_diagnostic",
+      "missing": {
+        "cases": {
+          "current": 10,
+          "delta": 6,
+          "required": 16
+        },
+        "evidence_card": {
+          "errors": [
+            "missing evidence_card"
+          ],
+          "present": false
+        },
+        "oracle_headroom": {
+          "oracle": 7.0,
+          "rank0": 7.0,
+          "required": "oracle > rank0"
+        },
+        "registry_status": {
+          "current": "pending",
+          "required": "passed"
+        },
+        "selector_margin": {
+          "current": 0.0,
+          "delta": 1.0,
+          "required": 1.0
+        },
+        "shortcut_controls": [
+          "action_only",
+          "candidate_id_or_rank_remap",
+          "energy_or_magnitude",
+          "oracle_judgment_labels",
+          "proxy_or_rank0_failure",
+          "random",
+          "rank0",
+          "visual_or_model_score_proxy"
+        ]
+      },
+      "next_action": "Instantiate a public diagnostic manifest with oracle judgments, visual/model-score proxy failures, and verifier margin.",
+      "priority": "high"
+    }
+  ],
+  "evidence_stack_passed": false,
+  "global_gaps": {
+    "failed_checks": [
+      "total_passed_benchmarks",
+      "executable_layers",
+      "diagnostic_layers",
+      "robotwin2_second_layer_present"
+    ],
+    "missing_diagnostic": 1,
+    "missing_executable": 1,
+    "missing_total": 2,
+    "passed_diagnostic": 0,
+    "passed_executable": 1,
+    "passed_total": 1,
+    "required_diagnostic": 1,
+    "required_executable": 2,
+    "required_total": 3
+  },
+  "next_actions": [
+    "First close RoboTwin2 with the bounded sequential launcher; this is the missing second executable layer.",
+    "Then close one 2026 diagnostic layer by converting public judgments into a multi-candidate EFV selector table."
+  ]
+}

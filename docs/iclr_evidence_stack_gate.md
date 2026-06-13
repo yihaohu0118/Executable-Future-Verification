@@ -39,6 +39,20 @@ python -m umm_reward_evaluator.benchmarks.iclr_status_report \
 This is the best artifact to send to collaborators because it combines the
 stack gate, claim guard, benchmark rows, and evidence-card status.
 
+Generate the action-oriented gap report with:
+
+```bash
+python -m umm_reward_evaluator.benchmarks.iclr_gap_report \
+  --evidence-json docs/iclr_evidence_stack_registry.json \
+  --require-evidence-cards \
+  --output-json docs/iclr_gap_report_current.json \
+  --output-md docs/iclr_gap_report_current.md
+```
+
+The gap report is the best artifact to use before allocating the next
+experiment window: it lists the missing layers, benchmark-level blockers, and
+the next action for each pending benchmark.
+
 For a Chinese decision brief, use:
 
 ```text
