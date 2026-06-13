@@ -8,6 +8,10 @@ from umm_reward_evaluator.benchmarks.iclr_evidence_stack_gate import (
     evaluate_evidence_stack,
     render_markdown as render_iclr_stack_markdown,
 )
+from umm_reward_evaluator.benchmarks.iclr_claim_report import (
+    build_claim_report,
+    render_markdown as render_claim_report_markdown,
+)
 from umm_reward_evaluator.benchmarks.randomize_planner_rank import randomize_manifest_rows
 from umm_reward_evaluator.benchmarks.robotwin2_main_table_gate import evaluate_gate
 from umm_reward_evaluator.benchmarks.robotwin2_paper_readiness_gate import (
@@ -612,6 +616,114 @@ class BenchmarkAdaptersTest(unittest.TestCase):
         self.assertFalse(weak_diagnostic["passed"])
         mira = [entry for entry in weak_diagnostic["benchmarks"] if entry["benchmark"] == "MiraBench"][0]
         self.assertIn("visual_or_model_score_proxy", mira["missing_controls"])
+
+    def test_iclr_claim_report_prevents_overclaiming_current_stack(self):
+        controls = [
+            "rank0",
+            "random",
+            "energy_or_magnitude",
+            "action_only",
+            "candidate_id_or_rank_remap",
+        ]
+        gate = evaluate_evidence_stack(
+            [
+                {
+                    "benchmark": "RoboCasa365",
+                    "year": 2026,
+                    "layer": "executable_primary",
+                    "status": "passed",
+                    "cases": 64,
+                    "tasks": 4,
+                    "rank0_success": 0,
+                    "oracle_success": 64,
+                    "method_success": 63,
+                    "best_non_oracle_baseline_success": 31,
+                    "shortcut_controls": controls,
+                },
+                {
+                    "benchmark": "RoboTwin2",
+                    "year": 2025,
+                    "layer": "executable_second",
+                    "status": "pending",
+                    "cases": 9,
+                    "tasks": 3,
+                    "rank0_success": 0,
+                    "oracle_success": 9,
+                    "method_success": 0,
+                    "best_non_oracle_baseline_success": 0,
+                    "shortcut_controls": controls,
+                },
+            ]
+        )
+        report = build_claim_report(gate)
+        self.assertEqual(report["claim_level"], "single_benchmark_mechanism")
+        self.assertIn("RoboCasa365", report["passed_benchmarks"])
+        self.assertTrue(any("multiple mainstream benchmarks" in claim for claim in report["prohibited_claims"]))
+        self.assertTrue(any("RoboTwin2 paper-readiness gate" in action for action in report["next_actions"]))
+        markdown = render_claim_report_markdown(report)
+        self.assertIn("`single_benchmark_mechanism`", markdown)
+
+    def test_iclr_claim_report_marks_complete_stack_ready(self):
+        controls = [
+            "rank0",
+            "random",
+            "energy_or_magnitude",
+            "action_only",
+            "candidate_id_or_rank_remap",
+        ]
+        diagnostic_controls = controls + [
+            "oracle_judgment_labels",
+            "proxy_or_rank0_failure",
+            "visual_or_model_score_proxy",
+        ]
+        gate = evaluate_evidence_stack(
+            [
+                {
+                    "benchmark": "RoboCasa365",
+                    "year": 2026,
+                    "layer": "executable_primary",
+                    "status": "passed",
+                    "cases": 64,
+                    "tasks": 4,
+                    "rank0_success": 0,
+                    "oracle_success": 64,
+                    "method_success": 63,
+                    "best_non_oracle_baseline_success": 31,
+                    "shortcut_controls": controls,
+                },
+                {
+                    "benchmark": "RoboTwin2",
+                    "year": 2025,
+                    "layer": "executable_second",
+                    "status": "passed",
+                    "cases": 32,
+                    "tasks": 4,
+                    "rank0_success": 2,
+                    "oracle_success": 28,
+                    "method_success": 24,
+                    "best_non_oracle_baseline_success": 18,
+                    "shortcut_controls": controls,
+                },
+                {
+                    "benchmark": "MiraBench",
+                    "year": 2026,
+                    "layer": "world_model_diagnostic",
+                    "status": "passed",
+                    "cases": 80,
+                    "tasks": 8,
+                    "rank0_success": 30,
+                    "oracle_success": 65,
+                    "method_success": 54,
+                    "best_non_oracle_baseline_success": 45,
+                    "shortcut_controls": diagnostic_controls,
+                },
+            ],
+            min_cases_per_passed_benchmark=16,
+        )
+        report = build_claim_report(gate)
+        self.assertEqual(report["claim_level"], "multi_benchmark_ready")
+        self.assertIn("MiraBench", report["passed_diagnostic_benchmarks"])
+        self.assertFalse(any("multiple mainstream benchmarks" in claim for claim in report["prohibited_claims"]))
 
     def test_world_model_diagnostic_label_and_score_conversion(self):
         rows = convert_diagnostic(

@@ -1,0 +1,25 @@
+# ICLR Claim Report
+
+- claim level: `single_benchmark_mechanism`
+- evidence stack passed: `false`
+- passed benchmarks: RoboCasa365
+- failed checks: total_passed_benchmarks, executable_layers, diagnostic_layers, robotwin2_second_layer_present
+
+## Allowed Claims
+
+- RoboCasa365 supports a strong mechanism claim: shortcut-controlled execution-envelope features recover futures that rank0, action-only, and object-only controls miss.
+- The project should be described as strong RoboCasa365 evidence with RoboTwin2 and world-model diagnostic evidence still in progress.
+
+## Prohibited Claims
+
+- Do not claim real-robot deployment or sim-to-real validation.
+- Do not claim a new world model or robot policy; the contribution is candidate future verification.
+- Do not claim validated performance across multiple mainstream benchmarks until RoboTwin2 and a diagnostic layer pass their gates.
+- Do not use RoboTwin2 as the second main executable benchmark yet.
+- Do not claim validation on world-model/trust diagnostics yet.
+
+## Next Actions
+
+- Close the RoboTwin2 paper-readiness gate: at least four base-ready tasks, anti-template successes, matched low-DTW negatives, selector margins, and one relation-rescue task.
+- Instantiate one public diagnostic layer with multi-candidate judgments, proxy-score failure, and an EFV selector table beating the visual/model-score proxy.
+- Update the evidence registry only after benchmark-level gates pass from current result files.

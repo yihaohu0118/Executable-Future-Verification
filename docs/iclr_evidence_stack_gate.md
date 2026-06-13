@@ -12,6 +12,19 @@ python -m umm_reward_evaluator.benchmarks.iclr_evidence_stack_gate \
   --output-md docs/iclr_evidence_stack_gate_result.md
 ```
 
+Generate the claim-level report with:
+
+```bash
+python -m umm_reward_evaluator.benchmarks.iclr_claim_report \
+  --evidence-json docs/iclr_evidence_stack_registry.json \
+  --output-json docs/iclr_claim_report_result.json \
+  --output-md docs/iclr_claim_report_result.md
+```
+
+The claim report is the safer artifact to read before writing paper text: it
+translates gate status into allowed claims, prohibited claims, and the next
+missing evidence.
+
 The default gate requires:
 
 | Requirement | Default |
