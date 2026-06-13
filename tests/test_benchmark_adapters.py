@@ -54,6 +54,7 @@ from umm_reward_evaluator.benchmarks.robotwin2_raw_integrity_report import (
     audit_raw_root,
     render_markdown as render_raw_integrity_markdown,
 )
+from umm_reward_evaluator.benchmarks.robotwin2_partial_raw_rescue_plan import build_rescue_plan
 from umm_reward_evaluator.benchmarks.robotwin2_evidence_card import build_card as build_robotwin2_evidence_card
 from umm_reward_evaluator.benchmarks.world_model_diagnostic_evidence_card import (
     build_card as build_world_model_diagnostic_evidence_card,
@@ -264,6 +265,38 @@ class BenchmarkAdaptersTest(unittest.TestCase):
             markdown = render_raw_integrity_markdown(report)
             self.assertIn("seed_1.jsonl", markdown)
             self.assertIn("ready for manifest: `false`", markdown)
+
+    def test_robotwin2_partial_raw_rescue_plan_prioritizes_mixed_partials(self):
+        with TemporaryDirectory() as tmp:
+            raw = Path(tmp) / "raw"
+            task_dir = raw / "press_stapler"
+            task_dir.mkdir(parents=True)
+            rows = [
+                {
+                    "task_name": "press_stapler",
+                    "seed": 1,
+                    "candidate_id": "rank0",
+                    "success": False,
+                    "metadata": {"candidate_source": "first_action", "state_trace": [{"left_gripper": 1.0}]},
+                },
+                {
+                    "task_name": "press_stapler",
+                    "seed": 1,
+                    "candidate_id": "full",
+                    "success": True,
+                    "metadata": {"candidate_source": "full_expert_trace", "state_trace": [{"left_gripper": 0.0}]},
+                },
+            ]
+            (task_dir / "seed_1.jsonl").write_text("\n".join(json.dumps(row) for row in rows) + "\n", encoding="utf-8")
+            empty_dir = raw / "stack_blocks_two"
+            empty_dir.mkdir()
+            (empty_dir / "seed_0.jsonl").write_text("", encoding="utf-8")
+
+            plan = build_rescue_plan(raw, required_candidates_per_case=4)
+            self.assertEqual(plan["task_recommendations"][0]["task_name"], "press_stapler")
+            self.assertEqual(plan["task_recommendations"][0]["best_reason"], "short_partial")
+            self.assertEqual(plan["rescue_files"][0]["missing_candidates"], 2)
+            self.assertEqual(plan["task_summary"]["stack_blocks_two"]["empty"], 1)
 
     def test_robotwin2_main_table_gate_checks_errors_and_feature_coverage(self):
         rows = convert_robotwin2(

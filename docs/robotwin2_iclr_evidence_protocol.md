@@ -222,6 +222,22 @@ The bounded launcher runs this audit automatically before multitask analysis
 when `RUN_ANALYSIS_AFTER=1`. If the audit fails, do not convert the raw traces
 into a paper-table manifest.
 
+If the raw audit fails because files are partial rather than invalid, generate a
+rescue plan before spending another GPU window:
+
+```bash
+python -m umm_reward_evaluator.benchmarks.robotwin2_partial_raw_rescue_plan \
+  --raw-root RUN_ROOT/raw \
+  --required-candidates-per-case 24 \
+  --output-json RUN_ROOT/selectors/robotwin2_partial_raw_rescue_plan.json \
+  --output-md RUN_ROOT/selectors/robotwin2_partial_raw_rescue_plan.md
+```
+
+Prioritize partial seeds that already contain both successful and failed
+candidates and no `candidate_error` rows. Do not count partial rows in paper
+tables. If `object_state_rows` is zero, the next run can test phase-gripper
+mechanisms but still cannot support relation/contact verifier claims.
+
 For a completed run root, use the finalize script instead of calling analysis
 pieces by hand:
 
