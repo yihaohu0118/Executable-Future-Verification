@@ -64,6 +64,8 @@ def evaluate_diagnostic_gate(
     min_categories: int = 1,
     required_metadata_keys: list[str] | None = None,
     require_planner_score_baseline: bool = True,
+    min_planner_score_oracle_gap: int = 1,
+    min_planner_score_failures: int = 1,
 ) -> dict[str, Any]:
     schema_summary, schema_errors = validate_rows(rows, require_metadata=True)
     grouped = _group_rows(rows)
@@ -103,6 +105,8 @@ def evaluate_diagnostic_gate(
                 break
 
     score_success, score_covered = _selector_success_by_score(grouped)
+    score_failures = score_covered - score_success
+    score_oracle_gap = oracle_success - score_success
     checks = [
         _check("schema", not schema_errors, {"num_errors": len(schema_errors), "errors": schema_errors[:20]}),
         _check("min_cases", len(grouped) >= min_cases, {"cases": len(grouped), "minimum": min_cases}),
@@ -153,6 +157,22 @@ def evaluate_diagnostic_gate(
                 },
             )
         )
+        checks.append(
+            _check(
+                "planner_score_proxy_gap",
+                score_covered == len(grouped)
+                and score_oracle_gap >= min_planner_score_oracle_gap
+                and score_failures >= min_planner_score_failures,
+                {
+                    "planner_score_success": score_success,
+                    "planner_score_failures": score_failures,
+                    "oracle_success": oracle_success,
+                    "oracle_minus_planner_score": score_oracle_gap,
+                    "min_oracle_gap": min_planner_score_oracle_gap,
+                    "min_planner_score_failures": min_planner_score_failures,
+                },
+            )
+        )
 
     return {
         "passed": all(check["passed"] for check in checks),
@@ -165,6 +185,8 @@ def evaluate_diagnostic_gate(
             "oracle_better": oracle_better,
             "planner_score_success": score_success,
             "planner_score_covered_cases": score_covered,
+            "planner_score_failures": score_failures,
+            "planner_score_oracle_gap": score_oracle_gap,
             "schema_summary": schema_summary,
             "categories": categories,
         },
@@ -189,6 +211,8 @@ def render_markdown(result: dict[str, Any], *, title: str = "World-Model Diagnos
             text = f"{value} / min {detail['minimum']}"
         elif check["name"] == "planner_score_baseline":
             text = f"{detail['covered_cases']}/{detail['cases']} cases covered"
+        elif check["name"] == "planner_score_proxy_gap":
+            text = f"gap {detail['oracle_minus_planner_score']} / min {detail['min_oracle_gap']}; failures {detail['planner_score_failures']} / min {detail['min_planner_score_failures']}"
         else:
             text = f"{detail.get('num_errors', detail.get('num_bad_cases', detail.get('num_missing_rows', '-')))}"
         lines.append(f"| `{check['name']}` | {'pass' if check['passed'] else 'fail'} | {text} |")
@@ -204,6 +228,8 @@ def render_markdown(result: dict[str, Any], *, title: str = "World-Model Diagnos
             f"| Oracle success | {summary['oracle_success']} |",
             f"| Oracle better | {summary['oracle_better']} |",
             f"| Planner-score success | {summary['planner_score_success']} |",
+            f"| Planner-score failures | {summary['planner_score_failures']} |",
+            f"| Oracle minus planner-score | {summary['planner_score_oracle_gap']} |",
             "",
             "Interpretation:",
             "",
@@ -229,6 +255,8 @@ def main() -> None:
     parser.add_argument("--min-categories", type=int, default=1)
     parser.add_argument("--require-metadata-key", action="append", default=[])
     parser.add_argument("--no-require-planner-score-baseline", action="store_true")
+    parser.add_argument("--min-planner-score-oracle-gap", type=int, default=1)
+    parser.add_argument("--min-planner-score-failures", type=int, default=1)
     args = parser.parse_args()
 
     result = evaluate_diagnostic_gate(
@@ -241,6 +269,8 @@ def main() -> None:
         min_categories=args.min_categories,
         required_metadata_keys=list(args.require_metadata_key),
         require_planner_score_baseline=not args.no_require_planner_score_baseline,
+        min_planner_score_oracle_gap=args.min_planner_score_oracle_gap,
+        min_planner_score_failures=args.min_planner_score_failures,
     )
     text = json.dumps(result, indent=2, sort_keys=True) + "\n"
     if args.output_json:

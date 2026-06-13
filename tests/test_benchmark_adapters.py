@@ -474,7 +474,94 @@ class BenchmarkAdaptersTest(unittest.TestCase):
             "action_only",
             "candidate_id_or_rank_remap",
         ]
+        diagnostic_controls = controls + [
+            "oracle_judgment_labels",
+            "proxy_or_rank0_failure",
+            "visual_or_model_score_proxy",
+        ]
         complete = evaluate_evidence_stack(
+            [
+                {
+                    "benchmark": "RoboCasa365",
+                    "year": 2026,
+                    "layer": "executable_primary",
+                    "status": "passed",
+                    "cases": 64,
+                    "tasks": 4,
+                    "rank0_success": 0,
+                    "oracle_success": 64,
+                    "method_success": 63,
+                    "best_non_oracle_baseline_success": 31,
+                    "shortcut_controls": controls,
+                },
+                {
+                    "benchmark": "RoboTwin2",
+                    "year": 2025,
+                    "layer": "executable_second",
+                    "status": "passed",
+                    "cases": 32,
+                    "tasks": 4,
+                    "rank0_success": 2,
+                    "oracle_success": 28,
+                    "method_success": 24,
+                    "best_non_oracle_baseline_success": 18,
+                    "shortcut_controls": controls,
+                },
+                {
+                    "benchmark": "MiraBench",
+                    "year": 2026,
+                    "layer": "world_model_diagnostic",
+                    "status": "passed",
+                    "cases": 80,
+                    "tasks": 8,
+                    "rank0_success": 30,
+                    "oracle_success": 65,
+                    "method_success": 54,
+                    "best_non_oracle_baseline_success": 45,
+                    "shortcut_controls": diagnostic_controls,
+                },
+            ],
+            min_cases_per_passed_benchmark=16,
+        )
+        self.assertTrue(complete["passed"])
+        self.assertIn("`diagnostic_layers` | pass", render_iclr_stack_markdown(complete))
+
+        incomplete = evaluate_evidence_stack(
+            [
+                {
+                    "benchmark": "RoboCasa365",
+                    "year": 2026,
+                    "layer": "executable_primary",
+                    "status": "passed",
+                    "cases": 64,
+                    "tasks": 4,
+                    "rank0_success": 0,
+                    "oracle_success": 64,
+                    "method_success": 63,
+                    "best_non_oracle_baseline_success": 31,
+                    "shortcut_controls": controls,
+                },
+                {
+                    "benchmark": "RoboTwin2",
+                    "year": 2025,
+                    "layer": "executable_second",
+                    "status": "pending",
+                    "cases": 5,
+                    "tasks": 1,
+                    "rank0_success": 0,
+                    "oracle_success": 5,
+                    "method_success": 5,
+                    "best_non_oracle_baseline_success": 3,
+                    "shortcut_controls": controls,
+                },
+            ]
+        )
+        self.assertFalse(incomplete["passed"])
+        checks = {check["name"]: check["passed"] for check in incomplete["checks"]}
+        self.assertFalse(checks["total_passed_benchmarks"])
+        self.assertFalse(checks["diagnostic_layers"])
+
+        weak_diagnostic = evaluate_evidence_stack(
             [
                 {
                     "benchmark": "RoboCasa365",
@@ -518,43 +605,9 @@ class BenchmarkAdaptersTest(unittest.TestCase):
             ],
             min_cases_per_passed_benchmark=16,
         )
-        self.assertTrue(complete["passed"])
-        self.assertIn("`diagnostic_layers` | pass", render_iclr_stack_markdown(complete))
-
-        incomplete = evaluate_evidence_stack(
-            [
-                {
-                    "benchmark": "RoboCasa365",
-                    "year": 2026,
-                    "layer": "executable_primary",
-                    "status": "passed",
-                    "cases": 64,
-                    "tasks": 4,
-                    "rank0_success": 0,
-                    "oracle_success": 64,
-                    "method_success": 63,
-                    "best_non_oracle_baseline_success": 31,
-                    "shortcut_controls": controls,
-                },
-                {
-                    "benchmark": "RoboTwin2",
-                    "year": 2025,
-                    "layer": "executable_second",
-                    "status": "pending",
-                    "cases": 5,
-                    "tasks": 1,
-                    "rank0_success": 0,
-                    "oracle_success": 5,
-                    "method_success": 5,
-                    "best_non_oracle_baseline_success": 3,
-                    "shortcut_controls": controls,
-                },
-            ]
-        )
-        self.assertFalse(incomplete["passed"])
-        checks = {check["name"]: check["passed"] for check in incomplete["checks"]}
-        self.assertFalse(checks["total_passed_benchmarks"])
-        self.assertFalse(checks["diagnostic_layers"])
+        self.assertFalse(weak_diagnostic["passed"])
+        mira = [entry for entry in weak_diagnostic["benchmarks"] if entry["benchmark"] == "MiraBench"][0]
+        self.assertIn("visual_or_model_score_proxy", mira["missing_controls"])
 
     def test_world_model_diagnostic_label_and_score_conversion(self):
         rows = convert_diagnostic(
@@ -716,7 +769,9 @@ class BenchmarkAdaptersTest(unittest.TestCase):
         )
         self.assertTrue(result["passed"])
         self.assertEqual(result["summary"]["planner_score_success"], 0)
+        self.assertEqual(result["summary"]["planner_score_oracle_gap"], 2)
         self.assertIn("`planner_score_baseline` | pass", render_diagnostic_gate_markdown(result))
+        self.assertIn("`planner_score_proxy_gap` | pass", render_diagnostic_gate_markdown(result))
 
         missing_score = [dict(row) for row in rows]
         for row in missing_score:
@@ -732,6 +787,25 @@ class BenchmarkAdaptersTest(unittest.TestCase):
         self.assertFalse(failed["passed"])
         checks = {check["name"]: check["passed"] for check in failed["checks"]}
         self.assertFalse(checks["planner_score_baseline"])
+        self.assertFalse(checks["planner_score_proxy_gap"])
+
+        no_proxy_gap = [dict(row) for row in rows]
+        for row in no_proxy_gap:
+            if row["candidate_rank_by_planner"] == 0:
+                row["oracle_success"] = True
+            else:
+                row["oracle_success"] = False
+        failed_gap = evaluate_diagnostic_gate(
+            no_proxy_gap,
+            min_cases=2,
+            min_tasks=2,
+            min_categories=2,
+            category_keys=["metadata.scenario"],
+            required_metadata_keys=["metadata.scenario", "metadata.verification_target"],
+        )
+        self.assertFalse(failed_gap["passed"])
+        failed_gap_checks = {check["name"]: check["passed"] for check in failed_gap["checks"]}
+        self.assertFalse(failed_gap_checks["planner_score_proxy_gap"])
 
     def test_rank_randomization_groups_by_task_and_case(self):
         rows = []

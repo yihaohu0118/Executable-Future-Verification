@@ -31,6 +31,16 @@ Required shortcut controls per passed benchmark:
 - `action_only`;
 - `candidate_id_or_rank_remap`.
 
+World-model/trust diagnostic benchmarks additionally require:
+
+- `oracle_judgment_labels`;
+- `proxy_or_rank0_failure`;
+- `visual_or_model_score_proxy`.
+
+These extra controls mean the diagnostic layer must show a real selection gap:
+visual/model-score ranking or rank0 must fail on some cases, and benchmark or
+human judgment labels must expose an oracle candidate that can recover them.
+
 ## Current Expected Status
 
 The gate should fail right now.

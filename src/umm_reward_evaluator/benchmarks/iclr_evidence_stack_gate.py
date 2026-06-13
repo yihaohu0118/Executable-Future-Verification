@@ -18,6 +18,11 @@ REQUIRED_CONTROLS = {
     "action_only",
     "candidate_id_or_rank_remap",
 }
+REQUIRED_DIAGNOSTIC_CONTROLS = {
+    "oracle_judgment_labels",
+    "proxy_or_rank0_failure",
+    "visual_or_model_score_proxy",
+}
 
 
 def _load_json(path: Path) -> dict[str, Any]:
@@ -40,6 +45,13 @@ def _as_int(value: Any, default: int = 0) -> int:
     return int(value)
 
 
+def _required_controls(layer: str) -> set[str]:
+    controls = set(REQUIRED_CONTROLS)
+    if layer in DIAGNOSTIC_LAYERS:
+        controls |= REQUIRED_DIAGNOSTIC_CONTROLS
+    return controls
+
+
 def _benchmark_passes(entry: dict[str, Any], *, min_cases: int, min_tasks: int, min_margin: float) -> bool:
     cases = _as_int(entry.get("cases"))
     tasks = _as_int(entry.get("tasks"), 1)
@@ -47,6 +59,7 @@ def _benchmark_passes(entry: dict[str, Any], *, min_cases: int, min_tasks: int, 
     baseline = _as_float(entry.get("best_non_oracle_baseline_success"))
     oracle = _as_float(entry.get("oracle_success"))
     rank0 = _as_float(entry.get("rank0_success"))
+    layer = str(entry.get("layer", "unknown"))
     controls = set(entry.get("shortcut_controls") or [])
     return (
         entry.get("status") == "passed"
@@ -55,7 +68,7 @@ def _benchmark_passes(entry: dict[str, Any], *, min_cases: int, min_tasks: int, 
         and tasks >= min_tasks
         and oracle > rank0
         and method >= baseline + min_margin
-        and REQUIRED_CONTROLS.issubset(controls)
+        and _required_controls(layer).issubset(controls)
     )
 
 
@@ -84,11 +97,13 @@ def evaluate_evidence_stack(
             min_margin=min_selector_margin,
         )
         controls = set(entry.get("shortcut_controls") or [])
+        required_controls = _required_controls(layer)
         normalized.append(
             {
                 **entry,
                 "gate_passed": passed,
-                "missing_controls": sorted(REQUIRED_CONTROLS - controls),
+                "missing_controls": sorted(required_controls - controls),
+                "required_controls": sorted(required_controls),
                 "modern_year": int(entry.get("year", 0)) in MODERN_YEARS,
                 "selector_margin": _as_float(entry.get("method_success")) - _as_float(entry.get("best_non_oracle_baseline_success")),
             }

@@ -83,6 +83,12 @@ python -m umm_reward_evaluator.benchmarks.world_model_diagnostic_gate \
   --output-md RUN_ROOT/selectors/world_model_diagnostic_gate.md
 ```
 
+By default this gate requires the `planner_score`/`model_score` proxy to be
+present for every case, to fail on at least one case, and to trail oracle-best
+judgment by at least one successful case. This is intentional: if the visual or
+model-score proxy already matches oracle judgment, the diagnostic does not
+support the EFV claim that future selection is brittle.
+
 Only update `docs/iclr_evidence_stack_registry.json` after this diagnostic gate
 passes and the selector result beats the planner-score or visual-proxy baseline.
 
