@@ -34,6 +34,29 @@ new RoboTwin2 trace jobs on GPUs that pass the repository guard:
 | `stack_bowls_two` | 4 | `0-7` | `targeted_energy_matched` | stacking with contact/pose tolerance |
 | `press_stapler` | 5 | `0-7` | `targeted_energy_matched` | button/press contact control |
 
+## Early Task Failures And Replacements
+
+Early monitoring found that `place_object_basket` and `press_stapler` failed
+inside the official expert/demo initialization path, before producing usable
+candidate traces:
+
+```text
+AssertionError: target_pose cannot be None for move action.
+```
+
+This is treated as a task-generation failure, not as evidence against the EFV
+selector. To avoid wasting the GPU window, two diagnostic replacements were
+started under the same run root:
+
+| Replacement task | GPU | Seeds | Candidate preset | Reason |
+| --- | ---: | --- | --- | --- |
+| `open_laptop` | 3 | `0-7` | `targeted_energy_matched` | previously showed clean headroom but permissive smoothness/gripper baselines |
+| `handover_block` | 5 | `0-7` | `targeted_energy_matched` | bimanual handoff/contact diagnostic; useful if primary relation tasks remain weak |
+
+The original driver posthoc command only includes the primary-window task list.
+After replacement traces finish, rerun multitask analysis manually over all
+tasks that produced usable raw JSONL files.
+
 ## Launch Command
 
 The run was started as a background driver. Each task is launched through
