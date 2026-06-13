@@ -52,6 +52,10 @@
       "method_success": 0,
       "best_non_oracle_baseline_success": 0,
       "shortcut_controls": [],
+      "availability_checked": "2026-06-13",
+      "source_urls": [
+        "https://arxiv.org/abs/2605.29360"
+      ],
       "evidence": "Adapter exists through world_model_diagnostic_to_manifest.py, but public judgment data has not been imported into a manifest yet."
     },
     {
@@ -66,7 +70,13 @@
       "method_success": 0,
       "best_non_oracle_baseline_success": 0,
       "shortcut_controls": [],
-      "evidence": "A public HuggingFace 40-sample subset is available, covering Normal, Constraint-sensitive, Counterfactual, and Adversarial prompts. It is not the full benchmark and does not yet contain our multi-candidate judgment manifest."
+      "availability_checked": "2026-06-13",
+      "source_urls": [
+        "https://arxiv.org/abs/2606.01600",
+        "https://huiqiongli.github.io/RoboTrustBench/",
+        "https://huggingface.co/datasets/Huiqiong0124/RoboTrustBench_Dataset"
+      ],
+      "evidence": "A public HuggingFace 40-sample subset is available, covering Normal, Constraint-sensitive, Counterfactual, and Adversarial prompts. It is not the full 1,207-sample benchmark and does not yet contain our multi-candidate judgment manifest."
     },
     {
       "benchmark": "RoboWM-Bench",

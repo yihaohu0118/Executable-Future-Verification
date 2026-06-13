@@ -2,6 +2,9 @@
 
 Date checked: 2026-06-13
 
+Detailed availability snapshot:
+`docs/world_model_benchmark_availability_20260613.md`.
+
 ## Current Public Status
 
 ### MiraBench
@@ -15,9 +18,9 @@ targets action-conditioned reliability directly. The paper reports:
 - 906 generated videos;
 - 16,704 structured human annotation decisions.
 
-Current blocker: the arXiv HTML page does not expose an official code or data
-link. Treat MiraBench as the preferred diagnostic target once the annotation
-corpus or result tables are publicly accessible.
+Current blocker: the arXiv HTML page does not expose an official code, project,
+or dataset link. Treat MiraBench as the preferred diagnostic target once the
+annotation corpus or result tables are publicly accessible.
 
 ### RoboTrustBench
 
