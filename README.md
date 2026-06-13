@@ -78,6 +78,17 @@ smoke has 15 cases and six candidates per case:
 - The `targeted_energy_matched` seed-0 smoke confirms the intended control:
   `energy_sum_max` and `length_max` both select long failed probes rather than
   the successful contact-repeat trajectory.
+- The current official multitask `targeted_energy_matched` analysis now drops
+  any case containing `candidate_error` rows, so CUDA OOM or simulator errors
+  are not counted as physical hard negatives. On the clean complete subset,
+  `stack_blocks_two` has rank0 0/2 and oracle 2/2, while energy, smoothness,
+  action-distribution, gripper nearest-positive, DTW-gripper, and
+  DTW-joint+gripper selectors all stay at 0/2. This is the strongest current
+  diagnostic that gripper-only verification is not sufficient for multi-stage
+  stacking.
+- On the same clean protocol, `open_laptop` has rank0 0/2 and oracle 2/2, but
+  smoothness, gripper distribution, and DTW-gripper reach 2/2. This task is
+  useful as a permissiveness counterexample, not a headline benchmark result.
 
 The important control is that candidate-ID lookup collapses to 0/15 after
 anonymous remapping, while trace-based selectors remain above rank0 and simple
@@ -91,6 +102,8 @@ learned executability beyond template matching.
 ## Repository Layout
 
 - `docs/proposal.md`: active paper proposal and current evidence.
+- `docs/iclr_execution_envelope_decision_20260613.md`: bounded ICLR direction
+  decision after reviewer-risk reassessment.
 - `docs/benchmark_expansion_roadmap.md`: benchmark status, results, and next
   experiments.
 - `docs/robotwin2_executable_future_adapter.md`: RoboTwin2 setup, trace
@@ -213,9 +226,9 @@ PYTHONPATH=src python -m unittest discover -s tests
    of contact direction, closing timing, or task constraints.
 5. Scale the RoboTwin2 `targeted_hard` preset beyond the current one-case smoke
    and compare against DTW/template baselines.
-6. Run `targeted_energy_matched` on `stamp_seal` to determine whether the
-   current energy/length shortcut can be removed. Seed 0 passes; K=5 is running
-   on dev2.
+6. Extend clean `targeted_energy_matched` RoboTwin2 coverage only when GPU
+   capacity is available without stopping user training jobs. Main analysis
+   must drop incomplete and `candidate_error` cases.
 7. Keep RoboWM-Bench as a world-model-specific diagnostic layer until its
    public evaluator ceiling is clarified.
 

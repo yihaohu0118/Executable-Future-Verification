@@ -201,6 +201,35 @@ RoboTwin2 task. The remaining risk is that gripper timing itself may be a
 task-specific template, so the same shortcut-control pattern must be reproduced
 on additional tasks and with hard positives that are not full expert traces.
 
+The first clean official multitask rerun makes that risk concrete. The analysis
+now drops any case containing `candidate_error` rows, including CUDA OOM
+candidates, so system failures cannot become false physical hard negatives.
+Under this stricter protocol, the current `stack_blocks_two` subset keeps only
+two complete error-free cases:
+
+| Selector or bound | Success |
+| --- | ---: |
+| Rank0 | 0/2 |
+| Oracle-best | 2/2 |
+| Energy-sum max | 0/2 |
+| Smoothness max | 0/2 |
+| Action-distribution nearest-positive | 0/2 |
+| Gripper distribution nearest-positive | 0/2 |
+| DTW gripper | 0/2 |
+| DTW joint+gripper | 0/2 |
+| Gripper or phase-gripper nearest-pos-neg | 1/2 |
+
+This is scientifically more valuable than another easy success. It shows that
+the gripper-only mechanism that solves `stamp_seal` fails catastrophically on a
+multi-stage stacking task with matched gripper/contact negatives. The next
+method should therefore be task-phase/contact-relation conditioned, not merely
+a stronger gripper-distance selector.
+
+The corresponding clean `open_laptop` subset also has rank0 0/2 and oracle
+2/2, but smoothness, gripper distribution, and DTW-gripper reach 2/2. This
+should be used as a permissiveness counterexample: some tasks are too easy for
+shortcut selectors and should not carry the main claim.
+
 K-shot target-task calibration under the same anonymous remap protocol:
 
 | Selector | K=0 | K=1 | K=2 | K=4 |
@@ -270,6 +299,12 @@ Recommended contribution shape:
   The paper should present this as the discovered mechanism, not hide it as a
   weak baseline. The next task is to test when gripper timing stops being
   sufficient.
+- The first clean `stack_blocks_two` subset shows exactly that boundary, but it
+  is only 2 cases. It is a strong diagnostic direction, not yet a main-table
+  result.
+- System-error rows are now a tracked validity risk. Any case containing
+  `candidate_error` must be dropped from main analysis rather than interpreted
+  as a failed physical future.
 - We have no real robot; the paper must be framed as executable-future
   verification in modern simulated/world-model benchmarks, not deployment.
 - RoboWM-Bench remains conceptually ideal, but current public-code friction
@@ -278,7 +313,8 @@ Recommended contribution shape:
 ## Immediate Next Experiments
 
 1. Reproduce `targeted_energy_matched` shortcut control on at least three more
-   RoboTwin2 tasks using only complete 24-candidate official-planner cases.
+   RoboTwin2 tasks using only complete 24-candidate official-planner cases with
+   no `candidate_error` rows.
 2. Build a RoboTwin2 anti-template pool where at least one successful candidate
    per case is not the full expert trace.
 3. Add hard positives: successful trajectories with different timing,
@@ -303,14 +339,16 @@ baselines, plus a `targeted_energy_matched` mode for the stricter
 length/energy-shortcut control.
 
 Latest remote result: see `docs/robotwin2_antitemplate_k5_results.md`. The
-active remote run is extending `targeted_energy_matched` to
-`stack_blocks_two`, `open_laptop`, `handover_block`, and `press_stapler`. Main
-tables should use only complete 24-candidate official-planner cases; incomplete
-or terminated seeds are diagnostics only.
+active multitask `targeted_energy_matched` analysis currently has clean
+complete subsets for `stack_blocks_two` and `open_laptop`. Main tables should
+use only complete 24-candidate official-planner cases with no `candidate_error`
+rows; incomplete, terminated, OOM, or simulator-error seeds are diagnostics
+only.
 
 Interim multitask note: see `docs/robotwin2_multitask_interim_20260612.md`.
-The early two-case `stack_blocks_two` table is scientifically useful because it
-breaks the current gripper-only mechanism: rank0 is 0/2 and oracle is 2/2, but
+The early two-case `stack_blocks_two` table remains scientifically useful after
+the stricter `candidate_error` filter because it breaks the current
+gripper-only mechanism: rank0 is 0/2 and oracle is 2/2, but
 gripper-distribution, DTW-gripper, and DTW joint+gripper selectors all score
 0/2 under anonymous remap. A contrastive nearest-positive/nearest-negative
 baseline over gripper features recovers only 1/2, so the failure is not fixed

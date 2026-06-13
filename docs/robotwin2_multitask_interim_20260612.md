@@ -14,6 +14,14 @@ Interim analysis root:
 The converter was run with `--require-candidates-per-case 24`, so partial or
 terminated seeds are excluded.
 
+Update on 2026-06-13: the official analysis was re-run with
+`--drop-cases-with-candidate-error`. Complete or incomplete cases containing
+`candidate_error` rows, including CUDA OOM or simulator exceptions, are now
+dropped from main analysis instead of being interpreted as physical failures.
+This keeps the current two complete `stack_blocks_two` and `open_laptop` cases
+but explicitly excludes `stack_blocks_two` seed 2/7 and `open_laptop` seed 2
+from main tables.
+
 ## Completed Cases
 
 | Task | Complete cases | Rank0 | Oracle | Diverse non-full success | Matched low-DTW negative |
@@ -22,6 +30,15 @@ terminated seeds are excluded.
 | `open_laptop` | 2 | 0/2 | 2/2 | 2/2 | 2/2 |
 | `handover_block` | 0 | - | - | - | - |
 | `press_stapler` | 0 | - | - | - | - |
+
+Dropped cases under the stricter 2026-06-13 filter:
+
+| Task | Case | Rows | Reason |
+| --- | --- | ---: | --- |
+| `stack_blocks_two` | seed 2 | 15 | incomplete plus `candidate_error` on `repeat_middle_drop_final`, `delete_contact_step` |
+| `stack_blocks_two` | seed 5 | 3 | incomplete |
+| `stack_blocks_two` | seed 7 | 6 | incomplete plus `candidate_error` on `drop_last`, `reverse` |
+| `open_laptop` | seed 2 | 20 | incomplete plus `candidate_error` on `gripper_contact_pulse_wide`, `long_gripper_contact_pulse` |
 
 ## Selector Signal
 
@@ -72,6 +89,15 @@ rank0 headroom, but the candidate pool is permissive: random expected is
 This task can show that some benchmarks are easy for shortcut selectors, but it
 should not be used as the main evidence for a stronger verifier.
 
+The 2026-06-13 clean rerun sharpens this contrast. On `stack_blocks_two`,
+energy, smoothness, action distribution, gripper nearest-positive, DTW-gripper,
+and DTW-joint+gripper all select failure sources across 20/20 anonymized runs.
+Only negative-aware gripper or phase-gripper kNN recovers 10/20 selections. On
+`open_laptop`, smoothness, gripper distribution, and DTW-gripper all recover
+20/20 selections. Therefore `open_laptop` should be treated as a task
+permissiveness diagnostic, while `stack_blocks_two` is the task that can make
+the ICLR story more counterintuitive.
+
 `handover_block` and `press_stapler` currently have no complete 24-candidate
 cases in the interim copy. Their partial traces should remain diagnostics until
 the full run or replacement seeds produce complete cases.
@@ -83,5 +109,7 @@ the full run or replacement seeds produce complete cases.
   permissiveness.
 - Do not include incomplete `handover_block` or `press_stapler` seeds in main
   tables.
+- Do not include any seed with `candidate_error` rows in main tables, even when
+  some successful or failed candidates in that seed look informative.
 - If `stack_blocks_two` remains hard at K=5, it becomes the strongest
   anti-template result because it breaks the current gripper-only mechanism.
