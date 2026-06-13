@@ -133,6 +133,30 @@ same guard and bad-seed continuation enabled:
 | `open_microwave` | 2 | `0-7` |
 | `open_laptop` | 3 | `0-7` |
 
+At `2026-06-13T09:35Z`, all eight GPUs were again occupied by user
+`ray::WorkerDict.ref_compute_ref_log_prob` / `actor_rollout_*` workers. To
+avoid interfering with the user's training job, all EFV/RoboTwin2 Python
+processes were terminated. No ray or training process was modified.
+
+The final raw directory therefore contains partial candidate pools only. These
+partials are useful for debugging the collection pipeline, but not for a main
+benchmark table:
+
+| Task seed file | Candidate rows | Success rows | Status |
+| --- | ---: | ---: | --- |
+| `handover_block/seed_0.jsonl` | 9 | 2 | partial |
+| `open_laptop/seed_0.jsonl` | 1 | 0 | partial |
+| `place_object_basket/seed_1.jsonl` | 8 | 2 | partial |
+| `press_stapler/seed_1.jsonl` | 8 | 5 | partial |
+| `stack_blocks_two/seed_0.jsonl` | 0 | 0 | interrupted |
+| `stack_bowls_two/seed_1.jsonl` | 7 | 3 | partial |
+| `stamp_seal/seed_0.jsonl` | 1 | 0 | partial |
+
+CPU-only posthoc analysis with `REQUIRE_CANDIDATES_PER_CASE=24` dropped all
+cases for `candidate_count_mismatch`; the paper readiness gate correctly failed
+with zero usable cases. This run should therefore be cited only as an
+operational/debugging window, not as RoboTwin2 evidence.
+
 ## Launch Command
 
 The run was started as a background driver. Each task is launched through

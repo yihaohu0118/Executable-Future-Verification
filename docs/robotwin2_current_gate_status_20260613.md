@@ -4,14 +4,25 @@ Date: 2026-06-13
 
 ## GPU / Run Status
 
-At the latest dev2 check, all 8 H100 GPUs were occupied by `ray::WorkerDict`
-processes. The most recent check at `2026-06-13T07:58:50Z` showed roughly
-55 GB used per GPU with 96% utilization. No RoboTwin2 benchmark run was
-started, and no training process was stopped.
+At the latest dev2 check, all 8 H100 GPUs were occupied by user
+`ray::WorkerDict` train/rollout/checkpoint workers. EFV/RoboTwin2 jobs were
+stopped when they began sharing GPUs with those workers. No ray or training
+process was stopped.
 
 The attempted clean stack run directory
 `/home/yihao_hyh/efv_runs/robotwin2_stack_clean_energy_matched_gpu0_20260613`
 contains only `logs/driver.log`; it terminated while waiting for GPU0.
+
+A later clean-window attempt was launched under:
+
+```text
+/home/yihao_hyh/efv_runs/robotwin2_iclr_clean_20260613_0905
+```
+
+It briefly collected partial traces across eight RoboTwin2 tasks, but user
+Ray workers reclaimed all GPUs before any case reached the required full
+candidate count. The run was stopped to protect training. See
+`docs/robotwin2_iclr_clean_run_20260613_0905.md`.
 
 ## Latest CPU-Only Analysis
 
@@ -67,10 +78,17 @@ progress, but it is not ready as the second main ICLR benchmark.
 
 ## Next Safe Action
 
-Update: the six-task primary window was briefly launched after dev2 GPUs
-appeared free, but it was stopped before producing usable candidate rows when
-Ray training reclaimed all GPUs. See
-`docs/robotwin2_iclr_window_run_20260613_0802.md`.
+The latest clean-window run produced only partial candidate pools. CPU-only
+posthoc analysis with `REQUIRE_CANDIDATES_PER_CASE=24` dropped all cases for
+`candidate_count_mismatch`, so the paper gate remains fail with zero usable
+cases from this run.
+
+Do not start another RoboTwin2 GPU window while the current Ray training jobs
+occupy the GPUs. The next safe action is either:
+
+- wait until training finishes and rerun a bounded 4-task window first; or
+- use CPU-only/documentation work to improve gates, summaries, and benchmark
+  selection logic.
 
 For future reruns, use:
 
@@ -82,8 +100,8 @@ EXECUTE=1 GPU_ID=auto SEEDS=0-7 scripts/robotwin2_iclr_window_launcher.sh \
 
 With `GPU_ID=auto`, the launcher starts only if a GPU is already free; if all
 GPUs are occupied, it exits without waiting, killing, or preempting processes.
-Do not run with an explicit GPU while the current Ray training jobs occupy all
-GPUs.
+Do not run with an explicit GPU while the current Ray training jobs occupy the
+same GPUs.
 
 Check whether it is safe to start with:
 
