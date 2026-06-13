@@ -245,7 +245,7 @@ rerunning the whole seed. Generate a command plan first:
 cd /home/yihao_hyh/Executable-Future-Verification
 python -m umm_reward_evaluator.benchmarks.robotwin2_resume_command_plan \
   --rescue-json RUN_ROOT/selectors/robotwin2_partial_raw_rescue_plan.json \
-  --max-priority 5 \
+  --max-priority 1 \
   --require-object-state \
   --output-json RUN_ROOT/selectors/robotwin2_resume_command_plan.json \
   --output-md RUN_ROOT/selectors/robotwin2_resume_command_plan.md
