@@ -12,6 +12,9 @@ RUN_ANALYSIS_AFTER="${RUN_ANALYSIS_AFTER:-0}"
 RESUME_PARTIAL="${RESUME_PARTIAL:-0}"
 REQUIRE_CANDIDATES_PER_CASE="${REQUIRE_CANDIDATES_PER_CASE:-24}"
 NUM_SWEEP_SEEDS="${NUM_SWEEP_SEEDS:-10}"
+RETRY_TRANSIENT_GPU="${RETRY_TRANSIENT_GPU:-1}"
+TRANSIENT_GPU_RETRY_SECONDS="${TRANSIENT_GPU_RETRY_SECONDS:-180}"
+TRANSIENT_GPU_MAX_RETRIES="${TRANSIENT_GPU_MAX_RETRIES:-0}"
 
 echo "RUN_ROOT=$RUN_ROOT"
 echo "SEEDS=$SEEDS"
@@ -24,6 +27,9 @@ echo "RUN_ANALYSIS_AFTER=$RUN_ANALYSIS_AFTER"
 echo "RESUME_PARTIAL=$RESUME_PARTIAL"
 echo "REQUIRE_CANDIDATES_PER_CASE=$REQUIRE_CANDIDATES_PER_CASE"
 echo "NUM_SWEEP_SEEDS=$NUM_SWEEP_SEEDS"
+echo "RETRY_TRANSIENT_GPU=$RETRY_TRANSIENT_GPU"
+echo "TRANSIENT_GPU_RETRY_SECONDS=$TRANSIENT_GPU_RETRY_SECONDS"
+echo "TRANSIENT_GPU_MAX_RETRIES=$TRANSIENT_GPU_MAX_RETRIES"
 echo "MODE=sequential_bounded"
 
 if [ "$EXECUTE" = "1" ]; then
@@ -36,12 +42,31 @@ for task in $TASKS; do
   echo
   echo "=== $task ==="
   if [ "$EXECUTE" = "1" ]; then
-    GPU_ID="$GPU_ID" \
-    TASK_CONFIG="$TASK_CONFIG" \
-    CANDIDATE_PRESET="$CANDIDATE_PRESET" \
-    RESUME_PARTIAL="$RESUME_PARTIAL" \
-    RUN_ANALYSIS_AFTER=0 \
-      scripts/robotwin2_run_clean_traces.sh "$RUN_ROOT" "$task" "$SEEDS"
+    transient_attempt=0
+    while true; do
+      set +e
+      GPU_ID="$GPU_ID" \
+      TASK_CONFIG="$TASK_CONFIG" \
+      CANDIDATE_PRESET="$CANDIDATE_PRESET" \
+      RESUME_PARTIAL="$RESUME_PARTIAL" \
+      RUN_ANALYSIS_AFTER=0 \
+        scripts/robotwin2_run_clean_traces.sh "$RUN_ROOT" "$task" "$SEEDS"
+      status="$?"
+      set -e
+      if [ "$status" -eq 0 ]; then
+        break
+      fi
+      if [ "$status" -ne 75 ] || [ "$RETRY_TRANSIENT_GPU" != "1" ]; then
+        exit "$status"
+      fi
+      transient_attempt=$((transient_attempt + 1))
+      if [ "$TRANSIENT_GPU_MAX_RETRIES" -gt 0 ] && [ "$transient_attempt" -gt "$TRANSIENT_GPU_MAX_RETRIES" ]; then
+        echo "$(date -Is 2>/dev/null || date +%Y-%m-%dT%H:%M:%S%z) $task hit transient GPU exit 75 after $TRANSIENT_GPU_MAX_RETRIES retries; exiting"
+        exit "$status"
+      fi
+      echo "$(date -Is 2>/dev/null || date +%Y-%m-%dT%H:%M:%S%z) $task hit transient GPU exit 75; retrying in ${TRANSIENT_GPU_RETRY_SECONDS}s (attempt $transient_attempt)"
+      sleep "$TRANSIENT_GPU_RETRY_SECONDS"
+    done
   else
     DRY_RUN=1 \
     GPU_ID="$GPU_ID" \
