@@ -115,6 +115,8 @@ for EFV traces, but GPU2-7 are intermittently occupied by external Ray jobs. See
   adapter, K=5 results, selector controls.
 - `docs/robotwin2_antitemplate_k5_results.md`: latest anti-template RoboTwin2
   K=5 results and interpretation.
+- `docs/robotwin2_stack_blocks_two_seed2_interim_20260614.md`: incomplete
+  stack-blocks pressure-case note; not paper evidence.
 - `docs/dev2_recovery_status_20260614.md`: current dev2 disk/GPU status and
   safe RoboTwin2 recovery sequence.
 - `docs/reviewer_risk_antitemplate_plan.md`: reviewer-risk assessment and the
