@@ -171,20 +171,23 @@ check_free_disk "$RUN_ROOT"
 mkdir -p "$RAW_DIR" "$LOG_DIR"
 
 if [ "$WAIT_FOR_GPU" = "1" ]; then
-  while ! gpu_is_free "$GPU_ID"; do
-    memory_used="$(nvidia-smi -i "$GPU_ID" --query-gpu=memory.used --format=csv,noheader,nounits 2>/dev/null | tr -d '[:space:]' || true)"
-    busy="$(nvidia-smi -i "$GPU_ID" --query-compute-apps=pid --format=csv,noheader,nounits 2>/dev/null | tr -d '[:space:]' || true)"
-    echo "$(ts) GPU $GPU_ID not free; memory_used_mb=${memory_used:-unknown}; compute_pids=${busy:-none}; waiting ${GPU_WAIT_SECONDS}s"
-    sleep "$GPU_WAIT_SECONDS"
-  done
-  if [ "$GPU_STABLE_SECONDS" -gt 0 ]; then
-    echo "$(ts) GPU $GPU_ID is free; rechecking after ${GPU_STABLE_SECONDS}s"
-    sleep "$GPU_STABLE_SECONDS"
-    if ! gpu_is_free "$GPU_ID"; then
-      echo "$(ts) GPU $GPU_ID no longer free for $TASK_NAME; exiting without starting simulation" >&2
-      exit 75
+  while true; do
+    while ! gpu_is_free "$GPU_ID"; do
+      memory_used="$(nvidia-smi -i "$GPU_ID" --query-gpu=memory.used --format=csv,noheader,nounits 2>/dev/null | tr -d '[:space:]' || true)"
+      busy="$(nvidia-smi -i "$GPU_ID" --query-compute-apps=pid --format=csv,noheader,nounits 2>/dev/null | tr -d '[:space:]' || true)"
+      echo "$(ts) GPU $GPU_ID not free; memory_used_mb=${memory_used:-unknown}; compute_pids=${busy:-none}; waiting ${GPU_WAIT_SECONDS}s"
+      sleep "$GPU_WAIT_SECONDS"
+    done
+    if [ "$GPU_STABLE_SECONDS" -gt 0 ]; then
+      echo "$(ts) GPU $GPU_ID is free; rechecking after ${GPU_STABLE_SECONDS}s"
+      sleep "$GPU_STABLE_SECONDS"
+      if ! gpu_is_free "$GPU_ID"; then
+        echo "$(ts) GPU $GPU_ID no longer free for $TASK_NAME; retrying wait"
+        continue
+      fi
     fi
-  fi
+    break
+  done
 fi
 
 check_free_disk "$RUN_ROOT"
