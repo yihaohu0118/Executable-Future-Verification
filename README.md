@@ -99,9 +99,9 @@ solved by expert-trajectory similarity. It is useful as a mechanism diagnostic,
 but it is not yet strong enough as a main-table claim that the verifier has
 learned executability beyond template matching.
 
-Operationally, the next RoboTwin2 window should run on GPU2-7 only. As of
-2026-06-14, dev2 has GPU2-7 idle but the root filesystem is full, so the blocker
-is disk space rather than GPU availability. See
+Operationally, the RoboTwin2 window should run on GPU2-7 only unless the owner
+explicitly releases other cards. As of 2026-06-14, dev2 has enough disk space
+for EFV traces, but GPU2-7 are intermittently occupied by external Ray jobs. See
 `docs/dev2_recovery_status_20260614.md` before restarting persistent waiters.
 
 ## Repository Layout

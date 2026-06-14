@@ -5,8 +5,10 @@ paper evidence by itself.
 
 ## Current Finding
 
-dev2 has usable H100 capacity for EFV but cannot safely launch RoboTwin2 because
-the root filesystem is full.
+dev2 has enough disk space for the current EFV traces, but RoboTwin2 launch is
+currently gated by shared GPU contention. GPU2-7 should be used before GPU0/1,
+and the launcher should wait for a sustained idle window rather than a short gap
+between external Ray phases.
 
 Read-only preflight at `2026-06-14`:
 
@@ -20,8 +22,8 @@ Read-only preflight at `2026-06-14`:
 | latest pushed EFV repo | GitHub `main` at `7ddb899` |
 | EFV run directory size | about `34M`, not a cleanup target |
 
-The current blocker is disk, not GPU. Do not start persistent RoboTwin2 waiters
-until free space is restored and the remote EFV checkout is updated.
+This initial blocker was disk, not GPU. Later cleanup restored enough free
+space for EFV traces.
 
 Follow-up read-only check after GitHub `b5b9e8e`:
 
@@ -35,6 +37,17 @@ Follow-up read-only check after GitHub `b5b9e8e`:
 Use `scripts/dev2_checkpoint_cleanup_audit.sh` on dev2 for a read-only cleanup
 report. The script prints disk status, active GPU compute apps, large checkpoint
 directories, and an approval template. It intentionally contains no `rm`.
+
+Follow-up execution status after GitHub `f852303`:
+
+- `/home` has about `892G` free;
+- the remote EFV checkout is synced to GitHub `main`;
+- GPU2-7 are intermittently occupied by external `ray::WorkerDict` jobs;
+- the bounded launcher retries transient GPU exits (`75`) instead of stopping;
+- the active stack-only resume launcher uses `GPU_STABLE_SECONDS=180` to avoid
+  starting during short Ray phase gaps;
+- current log:
+  `/home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614_stack_only_resume_20260614_055011_stable180.log`.
 
 ## Large Disk Consumers
 
