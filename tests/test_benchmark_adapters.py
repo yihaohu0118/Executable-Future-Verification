@@ -582,7 +582,7 @@ class BenchmarkAdaptersTest(unittest.TestCase):
         self.assertIn("stack_blocks_two", commands_by_task)
         self.assertIn("stack_bowls_two", commands_by_task)
         self.assertIn("AUTO_GPU_IDS='2 3 4 5 6 7'", commands_by_task["stack_blocks_two"]["command"])
-        self.assertIn("RESUME_PARTIAL=0", commands_by_task["stack_blocks_two"]["command"])
+        self.assertIn("RESUME_PARTIAL=1", commands_by_task["stack_blocks_two"]["command"])
         self.assertIn("SEEDS=2-7", commands_by_task["stack_blocks_two"]["command"])
         self.assertTrue(commands_by_task["press_stapler"]["diagnostic_only"])
         self.assertIn("scripts/robotwin2_finalize_run.sh /runs/robotwin2_pressure", plan["fresh_finalize_command"])

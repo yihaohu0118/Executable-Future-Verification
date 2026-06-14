@@ -15,19 +15,19 @@ echo '=== resume_relation_partial press_stapler seeds 1 ==='
 EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=press_stapler SEEDS=1 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=1 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_iclr_clean_20260613_0905
 
 echo '=== fresh_pressure stack_blocks_two seeds 2-7 ==='
-EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=stack_blocks_two SEEDS=2-7 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=0 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614
+EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=stack_blocks_two SEEDS=2-7 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=1 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614
 
 echo '=== fresh_pressure stack_bowls_two seeds 0-5 ==='
-EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=stack_bowls_two SEEDS=0-5 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=0 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614
+EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=stack_bowls_two SEEDS=0-5 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=1 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614
 
 echo '=== fresh_pressure handover_block seeds 2-5 ==='
-EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=handover_block SEEDS=2-5 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=0 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614
+EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=handover_block SEEDS=2-5 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=1 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614
 
 echo '=== fresh_pressure place_object_basket seeds 2-5 ==='
-EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=place_object_basket SEEDS=2-5 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=0 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614
+EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=place_object_basket SEEDS=2-5 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=1 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614
 
 echo '=== fresh_pressure press_stapler seeds 2-4 ==='
-EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=press_stapler SEEDS=2-4 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=0 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614
+EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=press_stapler SEEDS=2-4 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=1 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614
 
 echo '=== dry-run finalize fresh pressure run ==='
 printf '%s\n' 'PYTHONPATH=src PYTHON_BIN=python3 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_finalize_run.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614 stack_blocks_two stack_bowls_two handover_block place_object_basket press_stapler'

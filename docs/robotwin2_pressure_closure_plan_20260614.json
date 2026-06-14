@@ -36,7 +36,7 @@
     },
     {
       "candidate_preset": "targeted_energy_matched",
-      "command": "EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=stack_blocks_two SEEDS=2-7 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=0 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614",
+      "command": "EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=stack_blocks_two SEEDS=2-7 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=1 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614",
       "diagnostic_only": false,
       "keep_rule": "keep only if EFV-family selector continues to beat DTW/template baselines",
       "phase": "fresh_pressure",
@@ -47,7 +47,7 @@
     },
     {
       "candidate_preset": "targeted_energy_matched",
-      "command": "EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=stack_bowls_two SEEDS=0-5 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=0 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614",
+      "command": "EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=stack_bowls_two SEEDS=0-5 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=1 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614",
       "diagnostic_only": false,
       "keep_rule": "keep if rank0 fails, oracle succeeds, and DTW/template is not near oracle",
       "phase": "fresh_pressure",
@@ -58,7 +58,7 @@
     },
     {
       "candidate_preset": "targeted_energy_matched",
-      "command": "EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=handover_block SEEDS=2-5 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=0 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614",
+      "command": "EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=handover_block SEEDS=2-5 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=1 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614",
       "diagnostic_only": false,
       "keep_rule": "keep if relation/contact traces rescue cases beyond gripper-only",
       "phase": "fresh_pressure",
@@ -69,7 +69,7 @@
     },
     {
       "candidate_preset": "targeted_energy_matched",
-      "command": "EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=place_object_basket SEEDS=2-5 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=0 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614",
+      "command": "EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=place_object_basket SEEDS=2-5 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=1 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614",
       "diagnostic_only": false,
       "keep_rule": "keep if relation/contact traces beat smoothness and DTW baselines",
       "phase": "fresh_pressure",
@@ -80,7 +80,7 @@
     },
     {
       "candidate_preset": "targeted_energy_matched",
-      "command": "EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=press_stapler SEEDS=2-4 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=0 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614",
+      "command": "EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=press_stapler SEEDS=2-4 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=1 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614",
       "diagnostic_only": true,
       "keep_rule": "diagnostic only; do not count if energy/smoothness solves it",
       "phase": "fresh_pressure",

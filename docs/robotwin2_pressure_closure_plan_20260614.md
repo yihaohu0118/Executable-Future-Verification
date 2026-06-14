@@ -54,7 +54,7 @@ EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo
 Role: known clean mechanism target; extend beyond the 2 complete seeds
 
 ```bash
-EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=stack_blocks_two SEEDS=2-7 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=0 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614
+EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=stack_blocks_two SEEDS=2-7 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=1 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614
 ```
 
 ### fresh_pressure: stack_bowls_two
@@ -62,7 +62,7 @@ EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo
 Role: new multistage contact task for a second DTW-breaking result
 
 ```bash
-EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=stack_bowls_two SEEDS=0-5 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=0 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614
+EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=stack_bowls_two SEEDS=0-5 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=1 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614
 ```
 
 ### fresh_pressure: handover_block
@@ -70,7 +70,7 @@ EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo
 Role: relation-ready bimanual transfer candidate
 
 ```bash
-EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=handover_block SEEDS=2-5 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=0 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614
+EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=handover_block SEEDS=2-5 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=1 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614
 ```
 
 ### fresh_pressure: place_object_basket
@@ -78,7 +78,7 @@ EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo
 Role: spatial constraint candidate with object-state coverage
 
 ```bash
-EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=place_object_basket SEEDS=2-5 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=0 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614
+EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=place_object_basket SEEDS=2-5 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=1 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614
 ```
 
 ### fresh_pressure: press_stapler
@@ -86,7 +86,7 @@ EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo
 Role: permissive negative-control task
 
 ```bash
-EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=press_stapler SEEDS=2-4 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=0 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614
+EXECUTE=0 GPU_ID=auto AUTO_GPU_IDS='2 3 4 5 6 7' WAIT_FOR_GPU=1 TASK_CONFIG=demo_clean_k5 CANDIDATE_PRESET=targeted_energy_matched TASKS=press_stapler SEEDS=2-4 RUN_ANALYSIS_AFTER=0 RESUME_PARTIAL=1 REQUIRE_CANDIDATES_PER_CASE=24 NUM_SWEEP_SEEDS=10 scripts/robotwin2_bounded_window_launcher.sh /home/yihao_hyh/efv_runs/robotwin2_pressure_closure_20260614
 ```
 
 ## Finalize Commands

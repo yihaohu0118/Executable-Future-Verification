@@ -155,7 +155,7 @@ def _fresh_command(
         "TASKS": target.task_name,
         "SEEDS": seeds,
         "RUN_ANALYSIS_AFTER": "0",
-        "RESUME_PARTIAL": "0",
+        "RESUME_PARTIAL": "1",
         "REQUIRE_CANDIDATES_PER_CASE": str(required_candidates_per_case),
         "NUM_SWEEP_SEEDS": str(num_sweep_seeds),
     }
@@ -437,4 +437,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
